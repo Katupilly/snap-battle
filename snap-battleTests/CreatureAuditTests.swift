@@ -126,6 +126,69 @@ struct CreatureAuditTests {
             Issue.record("Unexpected error: \(error)")
         }
     }
+
+    @Test func retroProcessorUsesDarkestToneForBlack() async throws {
+        let output = try await RetroImageProcessor().process(TestImages.solid(.black))
+        let outputPixel = try pixel(at: 0, in: output)
+        #expect(outputPixel == (20, 24, 20, 255))
+    }
+
+    @Test func retroProcessorUsesLightestToneForWhite() async throws {
+        let output = try await RetroImageProcessor().process(TestImages.solid(.white))
+        let outputPixel = try pixel(at: 0, in: output)
+        #expect(outputPixel == (226, 234, 194, 255))
+    }
+
+    @Test func retroProcessorUsesFourPaletteColorsAndPreservesTransparency() async throws {
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 16, height: 8)).image { context in
+            UIColor.clear.setFill()
+            context.cgContext.fill(CGRect(x: 0, y: 0, width: 16, height: 8))
+            for column in 0 ..< 4 {
+                UIColor(white: CGFloat(column) / 3, alpha: 1).setFill()
+                context.cgContext.fill(CGRect(x: column * 4, y: 0, width: 4, height: 4))
+            }
+        }
+        let output = try await RetroImageProcessor().process(image)
+        let colors = try pixels(in: output)
+        let opaqueColors = Set(colors.filter { $0.3 > 0 }.map { "\($0.0),\($0.1),\($0.2)" })
+        #expect(opaqueColors.count <= 4)
+        #expect(colors.contains { $0.3 == 0 })
+    }
+
+    @Test func retroProcessorPreservesAspectRatioAndIsDeterministic() async throws {
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 80, height: 40)).image { context in
+            UIColor.gray.setFill()
+            context.cgContext.fill(CGRect(x: 0, y: 0, width: 80, height: 40))
+        }
+        let processor = RetroImageProcessor()
+        let first = try await processor.process(image)
+        let second = try await processor.process(image)
+        #expect(first.size == CGSize(width: 160, height: 80))
+        #expect(first.pngData() == second.pngData())
+    }
+
+    @Test @MainActor func pipelineFallsBackToExtractedSubjectWhenRetroProcessingFails() async throws {
+        let subject = TestImages.valid
+        let pipeline = CreaturePipeline(subjectService: TestSubjectExtractor(), visionAnalyzer: TestObjectAnalyzer(), generator: TestGenerator(result: .success(MockDrafts.valid), delay: .zero), validator: CreatureDraftValidator(), calculator: DeterministicStatCalculator(), imagePreparer: ImageInputPreparer(), retroImageProcessor: FailingRetroProcessor())
+        let output = try await pipeline.run(with: subject) { _ in }
+        let fallbackImage = try #require(UIImage(data: output.creature.extractedSubject))
+        let fallbackPixel = try pixel(at: 0, in: fallbackImage)
+        #expect(fallbackImage.cgImage?.width == subject.cgImage?.width)
+        #expect(fallbackImage.cgImage?.height == subject.cgImage?.height)
+        #expect(fallbackPixel == (255, 255, 255, 255))
+    }
+}
+
+private func pixels(in image: UIImage) throws -> [(UInt8, UInt8, UInt8, UInt8)] {
+    guard let cgImage = image.cgImage else { throw RetroImageProcessorError.invalidImage }
+    var bytes = [UInt8](repeating: 0, count: cgImage.width * cgImage.height * 4)
+    guard let context = CGContext(data: &bytes, width: cgImage.width, height: cgImage.height, bitsPerComponent: 8, bytesPerRow: cgImage.width * 4, space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { throw RetroImageProcessorError.contextCreationFailed }
+    context.draw(cgImage, in: CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height))
+    return stride(from: 0, to: bytes.count, by: 4).map { (bytes[$0], bytes[$0 + 1], bytes[$0 + 2], bytes[$0 + 3]) }
+}
+
+private func pixel(at index: Int, in image: UIImage) throws -> (UInt8, UInt8, UInt8, UInt8) {
+    try pixels(in: image)[index]
 }
 
 enum MockDrafts {
@@ -136,6 +199,13 @@ enum TestImages {
     static var valid: UIImage {
         UIGraphicsImageRenderer(size: CGSize(width: 4, height: 4)).image { context in
             UIColor.white.setFill()
+            context.cgContext.fill(CGRect(x: 0, y: 0, width: 4, height: 4))
+        }
+    }
+
+    static func solid(_ color: UIColor) -> UIImage {
+        UIGraphicsImageRenderer(size: CGSize(width: 4, height: 4)).image { context in
+            color.setFill()
             context.cgContext.fill(CGRect(x: 0, y: 0, width: 4, height: 4))
         }
     }
@@ -166,4 +236,8 @@ struct TestGenerator: CreatureGenerating {
         try await Task.sleep(for: delay)
         return try result.get()
     }
+}
+
+struct FailingRetroProcessor: RetroImageProcessing {
+    func process(_ image: UIImage) async throws -> UIImage { throw RetroImageProcessorError.invalidImage }
 }

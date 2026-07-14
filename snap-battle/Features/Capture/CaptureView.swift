@@ -63,9 +63,6 @@ struct CaptureView: View {
             if case .processing(let stage) = model.state { CreatureGenerationView(stage: stage, cancel: model.cancel) }
             if case .failed(let error) = model.state { Text(error.localizedDescription).foregroundStyle(.red).multilineTextAlignment(.center) }
             if loadingImage { ProgressView("Loading photo…") }
-            #if DEBUG
-            DebugDiagnosticsView(diagnostics: model.diagnostics)
-            #endif
         }
         .padding()
         .task(id: selectedItem) { await loadSelectedPhoto() }

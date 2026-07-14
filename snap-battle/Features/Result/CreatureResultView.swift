@@ -13,7 +13,7 @@ struct CreatureResultView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                if let image = UIImage(data: creature.extractedSubject) { Image(uiImage: image).resizable().scaledToFit().frame(maxWidth: .infinity).frame(height: 260).background(.black.opacity(0.06), in: .rect(cornerRadius: 20)) }
+                if let image = UIImage(data: creature.extractedSubject) { Image(uiImage: image).interpolation(.none).resizable().scaledToFit().frame(maxWidth: .infinity).frame(height: 260).background(.black.opacity(0.06), in: .rect(cornerRadius: 20)) }
                 Text(creature.name).font(.largeTitle.bold())
                 Text(creature.role.rawValue.capitalized).font(.headline).foregroundStyle(.tint)
                 Text(creature.description)

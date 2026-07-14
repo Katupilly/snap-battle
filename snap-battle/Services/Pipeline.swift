@@ -21,6 +21,7 @@ final class CreaturePipeline {
     private let validator: CreatureDraftValidator
     private let calculator: DeterministicStatCalculator
     private let imagePreparer: ImageInputPreparer
+    private let retroImageProcessor: any RetroImageProcessing
 
     init(
         subjectService: any SubjectExtracting,
@@ -28,7 +29,8 @@ final class CreaturePipeline {
         generator: any CreatureGenerating,
         validator: CreatureDraftValidator,
         calculator: DeterministicStatCalculator,
-        imagePreparer: ImageInputPreparer
+        imagePreparer: ImageInputPreparer,
+        retroImageProcessor: any RetroImageProcessing = RetroImageProcessor()
     ) {
         self.subjectService = subjectService
         self.visionAnalyzer = visionAnalyzer
@@ -36,6 +38,7 @@ final class CreaturePipeline {
         self.validator = validator
         self.calculator = calculator
         self.imagePreparer = imagePreparer
+        self.retroImageProcessor = retroImageProcessor
     }
 
     convenience init(subjectService: any SubjectExtracting, visionAnalyzer: any ObjectAnalyzing, generator: any CreatureGenerating, validator: CreatureDraftValidator, calculator: DeterministicStatCalculator) {
@@ -151,7 +154,14 @@ final class CreaturePipeline {
             started = clock.now
             let role = try role(from: draft)
             let stats = calculator.calculate(name: draft.name, role: role, labels: observation.labels, material: observation.material)
-            guard let subjectData = subject.image.pngData() else { throw AppError.imageDecodeFailed }
+            let presentationImage: UIImage
+            do {
+                presentationImage = try await retroImageProcessor.process(subject.image)
+            } catch {
+                presentationImage = subject.image
+                debugLog(run.id, "Retro image processing failed; using extracted subject", duration: nil, error: Self.logDescription(error))
+            }
+            guard let subjectData = presentationImage.pngData() else { throw AppError.imageDecodeFailed }
             let creature = Creature(name: draft.name, role: role, temperament: draft.temperament, description: draft.description, tags: draft.tags, material: observation.material, stats: stats, extractedSubject: subjectData)
             run.durations[.calculatingStats] = started.duration(to: clock.now)
             run.stats = stats
