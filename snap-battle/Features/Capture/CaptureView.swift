@@ -9,6 +9,8 @@ struct ContentView: View {
     @State private var showingCamera = false
     @State private var loadingImage = false
     @State private var loadError: String?
+    @State private var battleCreature: Creature?
+    @State private var showingBattle = false
 
     init() {
         #if DEBUG
@@ -24,9 +26,9 @@ struct ContentView: View {
             Group {
                 if let result = model.result {
                     #if DEBUG
-                    CreatureResultView(creature: result, reset: model.reset, diagnostics: model.diagnostics, runAgain: model.runAgainWithSameImage, isRepeating: model.isRepeating)
+                    CreatureResultView(creature: result, reset: model.reset, onBattle: { battleCreature = result; showingBattle = true }, diagnostics: model.diagnostics, runAgain: model.runAgainWithSameImage, isRepeating: model.isRepeating)
                     #else
-                    CreatureResultView(creature: result, reset: model.reset)
+                    CreatureResultView(creature: result, reset: model.reset, onBattle: { battleCreature = result; showingBattle = true })
                     #endif
                 } else {
                     CaptureView(model: model, selectedItem: $selectedItem, showingCamera: $showingCamera, loadingImage: $loadingImage, loadError: $loadError)
@@ -37,6 +39,13 @@ struct ContentView: View {
                 CameraScreen { image in
                     showingCamera = false
                     model.process(image)
+                }
+            }
+            .navigationDestination(isPresented: $showingBattle) {
+                if let battleCreature {
+                    BattleView(player: battleCreature)
+                } else {
+                    EmptyView()
                 }
             }
             .onAppear { model.refreshEnvironmentDiagnostics() }

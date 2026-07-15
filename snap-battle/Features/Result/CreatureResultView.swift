@@ -4,6 +4,7 @@ import UIKit
 struct CreatureResultView: View {
     let creature: Creature
     let reset: () -> Void
+    let onBattle: () -> Void
     #if DEBUG
     let diagnostics: DebugDiagnostics
     let runAgain: () -> Void
@@ -33,6 +34,7 @@ struct CreatureResultView: View {
                 if isRepeating { ProgressView("Running diagnostic repeat…") }
                 DebugDiagnosticsView(diagnostics: diagnostics)
                 #endif
+                Button("Battle", action: onBattle).buttonStyle(.borderedProminent)
                 Button("Create another", action: reset).buttonStyle(.borderedProminent)
             }.padding()
         }

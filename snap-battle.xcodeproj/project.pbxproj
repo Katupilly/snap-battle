@@ -8,6 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		A10000000000000000000003 /* CreatureAuditTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* CreatureAuditTests.swift */; };
+		B20000000000000000000001 /* BattleEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000002 /* BattleEngineTests.swift */; };
+		B20000000000000000000003 /* TimingEvaluatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000004 /* TimingEvaluatorTests.swift */; };
+		B20000000000000000000005 /* SimpleBattleAITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000006 /* SimpleBattleAITests.swift */; };
+		B20000000000000000000007 /* BattleViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000008 /* BattleViewModelTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -24,6 +28,10 @@
 		9F985DCF3006B61B00C50612 /* snap-battle.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "snap-battle.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		9F985F373006BCA500C50612 /* snap-battleTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "snap-battleTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000002 /* CreatureAuditTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatureAuditTests.swift; sourceTree = "<group>"; };
+		B20000000000000000000002 /* BattleEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BattleEngineTests.swift; sourceTree = "<group>"; };
+		B20000000000000000000004 /* TimingEvaluatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimingEvaluatorTests.swift; sourceTree = "<group>"; };
+		B20000000000000000000006 /* SimpleBattleAITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleBattleAITests.swift; sourceTree = "<group>"; };
+		B20000000000000000000008 /* BattleViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BattleViewModelTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -74,6 +82,10 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000002 /* CreatureAuditTests.swift */,
+				B20000000000000000000002 /* BattleEngineTests.swift */,
+				B20000000000000000000004 /* TimingEvaluatorTests.swift */,
+				B20000000000000000000006 /* SimpleBattleAITests.swift */,
+				B20000000000000000000008 /* BattleViewModelTests.swift */,
 			);
 			path = "snap-battleTests";
 			sourceTree = "<group>";
@@ -178,6 +190,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000003 /* CreatureAuditTests.swift in Sources */,
+				B20000000000000000000001 /* BattleEngineTests.swift in Sources */,
+				B20000000000000000000003 /* TimingEvaluatorTests.swift in Sources */,
+				B20000000000000000000005 /* SimpleBattleAITests.swift in Sources */,
+				B20000000000000000000007 /* BattleViewModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
