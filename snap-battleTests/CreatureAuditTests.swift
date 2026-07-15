@@ -177,6 +177,81 @@ struct CreatureAuditTests {
         #expect(fallbackImage.cgImage?.height == subject.cgImage?.height)
         #expect(fallbackPixel == (255, 255, 255, 255))
     }
+
+    @Test @MainActor func pipelineUsesOriginalImageWhenVisionKitFindsNoSubjects() async throws {
+        let original = TestImages.solid(.white)
+        let retro = RecordingRetroProcessor(delay: .milliseconds(20))
+        let pipeline = CreaturePipeline(
+            subjectService: NoSubjectExtractor(),
+            visionAnalyzer: TestObjectAnalyzer(),
+            generator: TestGenerator(result: .success(MockDrafts.valid), delay: .zero),
+            validator: CreatureDraftValidator(),
+            calculator: DeterministicStatCalculator(),
+            imagePreparer: ImageInputPreparer(),
+            retroImageProcessor: retro
+        )
+        var diagnostics: DiagnosticRun?
+
+        let output = try await pipeline.run(with: original) { _ in } progress: { run in
+            diagnostics = run
+        }
+
+        let processedInput = try #require(retro.lastInput)
+        #expect(processedInput.cgImage?.width == original.cgImage?.width)
+        #expect(processedInput.cgImage?.height == original.cgImage?.height)
+        #expect(try pixel(at: 0, in: processedInput) == pixel(at: 0, in: original))
+        #expect(retro.processCount == 1)
+        #expect(output.creature.name == MockDrafts.valid.name)
+        #expect(output.creature.extractedSubject.isEmpty == false)
+        #expect(diagnostics?.subjectLiftingSucceeded == false)
+        #expect(diagnostics?.subjectImageSource == "original image")
+        #expect(diagnostics?.subjectCount == 0)
+        #expect(diagnostics?.retroProcessingDuration != nil)
+        #expect(diagnostics?.finalAssemblyDuration != nil)
+        let statsDuration = try #require(diagnostics?.durations[.calculatingStats])
+        let retroDuration = try #require(diagnostics?.retroProcessingDuration)
+        let finalAssemblyDuration = try #require(diagnostics?.finalAssemblyDuration)
+        let totalDuration = try #require(diagnostics?.totalDuration)
+        print("[Run \(try #require(diagnostics?.id))] Stats completed duration=\(milliseconds(statsDuration))ms")
+        print("[Run \(try #require(diagnostics?.id))] Retro processing completed duration=\(milliseconds(retroDuration))ms")
+        print("[Run \(try #require(diagnostics?.id))] Final assembly completed duration=\(milliseconds(finalAssemblyDuration))ms")
+        print("[Run \(try #require(diagnostics?.id))] Pipeline completed duration=\(milliseconds(totalDuration))ms")
+        #expect(statsDuration < retroDuration)
+    }
+
+    @Test @MainActor func pipelineDoesNotRequireCameraForUnitTestProcessing() async throws {
+        let pipeline = CreaturePipeline(
+            subjectService: NoSubjectExtractor(),
+            visionAnalyzer: TestObjectAnalyzer(),
+            generator: TestGenerator(result: .success(MockDrafts.valid), delay: .zero),
+            validator: CreatureDraftValidator(),
+            calculator: DeterministicStatCalculator(),
+            imagePreparer: ImageInputPreparer(),
+            retroImageProcessor: RecordingRetroProcessor()
+        )
+
+        let output = try await pipeline.run(with: TestImages.valid) { _ in }
+
+        // The pipeline is fully exercised with service doubles; it never constructs CameraCaptureModel
+        // or calls AVCaptureSession/AVCaptureDevice APIs.
+        #expect(output.creature.name == MockDrafts.valid.name)
+    }
+
+    @Test func retroProcessorAverageDurationIsMeasured() async throws {
+        let processor = RetroImageProcessor()
+        var durations: [Duration] = []
+        for _ in 0 ..< 5 {
+            let started = ContinuousClock.now
+            _ = try await processor.process(TestImages.solid(.white))
+            durations.append(started.duration(to: .now))
+        }
+        let averageMilliseconds = durations.reduce(0.0) { partial, duration in
+            let components = duration.components
+            return partial + Double(components.seconds) * 1_000 + Double(components.attoseconds) / 1e15
+        } / Double(durations.count)
+        print(String(format: "RetroImageProcessor average duration=%.1fms samples=%d", averageMilliseconds, durations.count))
+        #expect(averageMilliseconds >= 0)
+    }
 }
 
 private func pixels(in image: UIImage) throws -> [(UInt8, UInt8, UInt8, UInt8)] {
@@ -189,6 +264,12 @@ private func pixels(in image: UIImage) throws -> [(UInt8, UInt8, UInt8, UInt8)] 
 
 private func pixel(at index: Int, in image: UIImage) throws -> (UInt8, UInt8, UInt8, UInt8) {
     try pixels(in: image)[index]
+}
+
+private func milliseconds(_ duration: Duration) -> String {
+    let components = duration.components
+    let value = Double(components.seconds) * 1_000 + Double(components.attoseconds) / 1e15
+    return String(format: "%.1f", value)
 }
 
 enum MockDrafts {
@@ -218,6 +299,20 @@ struct TestSubjectExtractor: SubjectExtracting {
 }
 
 @MainActor
+struct NoSubjectExtractor: SubjectExtracting {
+    let isAvailable = true
+    func extract(from image: UIImage) async throws -> ExtractedSubject {
+        ExtractedSubject(
+            image: image,
+            confidence: nil,
+            usedFallback: true,
+            fallbackReason: "VisionKit completed without returning an image subject.",
+            subjectCount: 0
+        )
+    }
+}
+
+@MainActor
 struct TestObjectAnalyzer: ObjectAnalyzing {
     func analyze(image: UIImage, subject: ExtractedSubject) async throws -> ObjectObservation {
         ObjectObservation(labels: ["bird"], labelConfidence: 0.5, subjectConfidence: nil, aspectRatio: 1, subjectPixelCount: 1, hasTransparency: false, material: .unknown, materialConfidence: 0)
@@ -240,4 +335,24 @@ struct TestGenerator: CreatureGenerating {
 
 struct FailingRetroProcessor: RetroImageProcessing {
     func process(_ image: UIImage) async throws -> UIImage { throw RetroImageProcessorError.invalidImage }
+}
+
+final class RecordingRetroProcessor: RetroImageProcessing, @unchecked Sendable {
+    private let lock = NSLock()
+    private let delay: Duration
+    private(set) var lastInput: UIImage?
+    private(set) var processCount = 0
+
+    init(delay: Duration = .zero) {
+        self.delay = delay
+    }
+
+    func process(_ image: UIImage) async throws -> UIImage {
+        lock.lock()
+        lastInput = image
+        processCount += 1
+        lock.unlock()
+        try await Task.sleep(for: delay)
+        return try await RetroImageProcessor().process(image)
+    }
 }

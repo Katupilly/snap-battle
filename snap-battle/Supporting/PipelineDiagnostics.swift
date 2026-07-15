@@ -17,6 +17,8 @@ struct DiagnosticRun: Equatable, Sendable {
     var subjectImageSource: String?
     var subjectCount: Int?
     var subjectExtractionDetail: String?
+    var retroProcessingDuration: Duration?
+    var finalAssemblyDuration: Duration?
     var observation: ObjectObservation?
     var draft: CreatureDraft?
     var stats: CreatureStats?

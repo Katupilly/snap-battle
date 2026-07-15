@@ -123,7 +123,10 @@ final class CreaturePipeline {
             run.subjectExtractionDetail = subject.fallbackReason
             run.approximateMemoryBytes = MemorySampler.residentBytes()
             progress(run)
-            debugLog(run.id, "Subject extraction completed", duration: run.durations[.extractingSubject], error: subject.usedFallback ? "subject lifting fallback; inspect the Debug panel for complete detail" : nil)
+            debugLog(run.id, "Subject extraction completed", duration: run.durations[.extractingSubject])
+            if subject.usedFallback {
+                debugLog(run.id, "Subject extraction unavailable; using original image", duration: nil)
+            }
             try Task.checkCancellation()
 
             activeStage = .extractingFeatures
@@ -151,24 +154,32 @@ final class CreaturePipeline {
 
             activeStage = .calculatingStats
             stage(.calculatingStats)
-            started = clock.now
             let role = try role(from: draft)
+            let statsStarted = clock.now
             let stats = calculator.calculate(name: draft.name, role: role, labels: observation.labels, material: observation.material)
+            let statsDuration = statsStarted.duration(to: clock.now)
+            run.durations[.calculatingStats] = statsDuration
+            debugLog(run.id, "Stats completed", duration: statsDuration)
             let presentationImage: UIImage
             do {
+                let retroStarted = clock.now
                 presentationImage = try await retroImageProcessor.process(subject.image)
+                let retroDuration = retroStarted.duration(to: clock.now)
+                run.retroProcessingDuration = retroDuration
+                debugLog(run.id, "Retro processing completed", duration: retroDuration)
             } catch {
                 presentationImage = subject.image
                 debugLog(run.id, "Retro image processing failed; using extracted subject", duration: nil, error: Self.logDescription(error))
             }
+            let finalAssemblyStarted = clock.now
             guard let subjectData = presentationImage.pngData() else { throw AppError.imageDecodeFailed }
             let creature = Creature(name: draft.name, role: role, temperament: draft.temperament, description: draft.description, tags: draft.tags, material: observation.material, stats: stats, extractedSubject: subjectData)
-            run.durations[.calculatingStats] = started.duration(to: clock.now)
+            run.finalAssemblyDuration = finalAssemblyStarted.duration(to: clock.now)
             run.stats = stats
             run.totalDuration = totalStarted.duration(to: clock.now)
             run.approximateMemoryBytes = MemorySampler.residentBytes()
             progress(run)
-            debugLog(run.id, "Stats completed", duration: run.durations[.calculatingStats])
+            debugLog(run.id, "Final assembly completed", duration: run.finalAssemblyDuration)
             debugLog(run.id, "Pipeline completed", duration: run.totalDuration)
             return PipelineResult(creature: creature, analysis: CreatureAnalysis(observation: observation, draft: draft), durations: run.durations, preparedInput: prepared, diagnostics: run)
         } catch {
