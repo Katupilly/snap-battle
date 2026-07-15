@@ -339,7 +339,7 @@
 				DEVELOPMENT_TEAM = 3YFDTC5X3L;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Use the camera to capture a photo for creature analysis.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Use the camera to create a Photo Pedal from a photo.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -372,7 +372,7 @@
 				DEVELOPMENT_TEAM = 3YFDTC5X3L;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSCameraUsageDescription = "Use the camera to capture a photo for creature analysis.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Use the camera to create a Photo Pedal from a photo.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
