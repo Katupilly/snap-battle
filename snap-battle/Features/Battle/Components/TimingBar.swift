@@ -23,7 +23,12 @@ struct TimingBar: View {
                         Capsule().fill(.secondary.opacity(0.15))
                         Capsule().fill(.green.opacity(0.22)).frame(width: goodWidth).offset(x: (width - goodWidth) / 2)
                         Capsule().fill(.yellow.opacity(0.55)).frame(width: perfectWidth).offset(x: (width - perfectWidth) / 2)
-                        Circle().fill(.tint).frame(width: 24, height: 24).offset(x: max(0, width - 24) * position)
+                        Circle()
+                            .fill(.tint)
+                            .frame(width: 24, height: 24)
+                            .overlay { Circle().stroke(.white, lineWidth: 2) }
+                            .shadow(radius: 1)
+                            .offset(x: max(0, width - 24) * position)
                     }
                 }
                 .frame(height: 26)

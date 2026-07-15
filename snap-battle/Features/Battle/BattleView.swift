@@ -4,8 +4,8 @@ struct BattleView: View {
     @State private var model: BattleViewModel
     @Environment(\.dismiss) private var dismiss
 
-    init(player: Creature) {
-        _model = State(initialValue: BattleViewModel(player: player))
+    init(player: Creature, opponent: Creature? = nil) {
+        _model = State(initialValue: BattleViewModel(player: player, opponent: opponent))
     }
 
     var body: some View {
@@ -64,13 +64,21 @@ struct BattleView: View {
         case .choosingAction:
             Text("Choose your action for round \(model.state.round).")
                 .font(.subheadline.weight(.medium))
-        case .timing:
-            TimingBar(
-                round: model.state.round,
-                agility: model.state.player.creature.stats.agility,
-                balance: model.balance,
-                confirm: model.confirmTiming
-            )
+        case .timing(let action):
+            VStack(spacing: 8) {
+                Text("Lock your \(action.title) timing")
+                    .font(.headline)
+                Text("Tap when the marker reaches the center zone.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                TimingBar(
+                    round: model.state.round,
+                    agility: model.state.player.creature.stats.agility,
+                    balance: model.balance,
+                    confirm: model.confirmTiming
+                )
+            }
         case .resolving:
             ProgressView("Resolving round…")
         case .showingRoundResult:

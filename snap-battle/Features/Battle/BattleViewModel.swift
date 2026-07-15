@@ -1,5 +1,8 @@
 import Foundation
 import Observation
+#if DEBUG
+import OSLog
+#endif
 
 @MainActor
 @Observable
@@ -74,6 +77,9 @@ final class BattleViewModel {
             state = resolution.state
             roundResult = resolution.result
             selectedAction = nil
+            #if DEBUG
+            logRound(resolution.result)
+            #endif
             phase = resolution.state.outcome.map(Phase.finished) ?? .showingRoundResult
         } catch {
             errorMessage = "Unable to resolve this round."
@@ -95,7 +101,24 @@ final class BattleViewModel {
         selectedAction = nil
         errorMessage = nil
     }
+
+    #if DEBUG
+    private func logRound(_ result: RoundResult) {
+        Logger.battle.debug(
+            "round=\(result.round) playerAction=\(result.player.decision.action.rawValue) playerTiming=\(result.player.decision.timing.rawValue) opponentAction=\(result.opponent.decision.action.rawValue) opponentTiming=\(result.opponent.decision.timing.rawValue) playerDamage=\(result.player.damageDealt) opponentDamage=\(result.opponent.damageDealt) playerHP=\(result.player.hpBefore)->\(result.player.hpAfter) opponentHP=\(result.opponent.hpBefore)->\(result.opponent.hpAfter) playerEnergy=\(result.player.energyBefore)->\(result.player.energyAfter) opponentEnergy=\(result.opponent.energyBefore)->\(result.opponent.energyAfter) outcome=\(String(describing: result.outcome))"
+        )
+    }
+    #endif
 }
+
+#if DEBUG
+private extension Logger {
+    static let battle = Logger(
+        subsystem: Bundle.main.bundleIdentifier ?? "SnapBattle",
+        category: "Battle"
+    )
+}
+#endif
 
 final class BattleAIDecisionProvider: BattleActionChoosing {
     private var ai = SimpleBattleAI(random: SystemRandomNumberProvider())

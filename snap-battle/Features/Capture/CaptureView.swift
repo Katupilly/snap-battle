@@ -69,6 +69,14 @@ struct CaptureView: View {
                 Button { showingCamera = true } label: { Label("Camera", systemImage: "camera") }.buttonStyle(.borderedProminent)
                 PhotosPicker(selection: $selectedItem, matching: .images) { Label("Choose photo", systemImage: "photo") }.buttonStyle(.bordered)
             }
+            #if DEBUG
+            NavigationLink {
+                BattleDebugLauncher()
+            } label: {
+                Label("Battle Debug", systemImage: "hammer")
+            }
+            .buttonStyle(.bordered)
+            #endif
             if case .processing(let stage) = model.state { CreatureGenerationView(stage: stage, cancel: model.cancel) }
             if case .failed(let error) = model.state { Text(error.localizedDescription).foregroundStyle(.red).multilineTextAlignment(.center) }
             if loadingImage { ProgressView("Loading photo…") }

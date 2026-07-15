@@ -8,7 +8,7 @@ struct RoundSummaryView: View {
         VStack(spacing: 10) {
             Text("Round \(result.round)")
                 .font(.headline.monospaced())
-            Text("You: \(result.player.decision.action.title) (\(result.player.decision.timing.rawValue)) · Opponent: \(result.opponent.decision.action.title)")
+            Text("You: \(result.player.decision.action.title) · \(result.player.decision.timing.rawValue.uppercased()) · Opponent: \(result.opponent.decision.action.title)")
                 .font(.subheadline)
                 .multilineTextAlignment(.center)
             Text(summary)
