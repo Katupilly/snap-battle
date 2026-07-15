@@ -25,11 +25,7 @@ struct ContentView: View {
         NavigationStack {
             Group {
                 if let result = model.result {
-                    #if DEBUG
-                    CreatureResultView(creature: result, reset: model.reset, onBattle: { battleCreature = result; showingBattle = true }, diagnostics: model.diagnostics, runAgain: model.runAgainWithSameImage, isRepeating: model.isRepeating)
-                    #else
                     CreatureResultView(creature: result, reset: model.reset, onBattle: { battleCreature = result; showingBattle = true })
-                    #endif
                 } else {
                     CaptureView(model: model, selectedItem: $selectedItem, showingCamera: $showingCamera, loadingImage: $loadingImage, loadError: $loadError)
                 }
@@ -61,14 +57,46 @@ struct CaptureView: View {
     @Binding var loadError: String?
 
     var body: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "sparkles.rectangle.stack").font(.system(size: 64)).foregroundStyle(.tint)
-            Text("Turn a photo into a creature").font(.title2.weight(.semibold)).multilineTextAlignment(.center)
-            Text("The image is analyzed on-device. Numeric stats are deterministic.").foregroundStyle(.secondary).multilineTextAlignment(.center)
-            HStack {
-                Button { showingCamera = true } label: { Label("Camera", systemImage: "camera") }.buttonStyle(.borderedProminent)
-                PhotosPicker(selection: $selectedItem, matching: .images) { Label("Choose photo", systemImage: "photo") }.buttonStyle(.bordered)
+        let isProcessing = if case .processing = model.state { true } else { false }
+
+        VStack(spacing: 28) {
+            Spacer(minLength: 12)
+            Image(systemName: "sparkles.rectangle.stack.fill")
+                .font(.system(size: 56, weight: .medium))
+                .foregroundStyle(.tint)
+                .accessibilityHidden(true)
+
+            VStack(spacing: 10) {
+                Text("Capture a creature")
+                    .font(.title2.weight(.bold))
+                    .multilineTextAlignment(.center)
+                Text("Frame it clearly and let the battle begin.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
+            .accessibilityElement(children: .combine)
+
+            if !isProcessing {
+                VStack(spacing: 12) {
+                    Button { showingCamera = true } label: {
+                        Label("Open camera", systemImage: "camera.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .accessibilityHint("Opens the camera to capture the creature")
+
+                    PhotosPicker(selection: $selectedItem, matching: .images) {
+                        Label("Choose from photos", systemImage: "photo.on.rectangle")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                }
+                .frame(maxWidth: 360)
+            }
+
             #if DEBUG
             NavigationLink {
                 BattleDebugLauncher()
@@ -77,11 +105,31 @@ struct CaptureView: View {
             }
             .buttonStyle(.bordered)
             #endif
-            if case .processing(let stage) = model.state { CreatureGenerationView(stage: stage, cancel: model.cancel) }
-            if case .failed(let error) = model.state { Text(error.localizedDescription).foregroundStyle(.red).multilineTextAlignment(.center) }
-            if loadingImage { ProgressView("Loading photo…") }
+
+            if case .processing(let stage) = model.state {
+                CreatureGenerationView(stage: stage, cancel: model.cancel)
+                    .transition(.opacity.combined(with: .scale(scale: 0.96)))
+            } else if case .failed = model.state {
+                CaptureErrorView {
+                    loadError = nil
+                    model.reset()
+                }
+            } else if loadError != nil {
+                CaptureErrorView(message: "Não foi possível carregar essa imagem.") {
+                    loadError = nil
+                }
+            }
+
+            if loadingImage {
+                ProgressView("Preparing photo…")
+                    .accessibilityLabel("Preparing selected photo")
+            }
+            Spacer(minLength: 12)
         }
-        .padding()
+        .padding(.horizontal, 24)
+        .padding(.vertical, 20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .animation(.easeInOut(duration: 0.25), value: model.state)
         .task(id: selectedItem) { await loadSelectedPhoto() }
     }
 
@@ -92,147 +140,149 @@ struct CaptureView: View {
         do {
             guard let data = try await selectedItem.loadTransferable(type: Data.self), let image = UIImage(data: data) else { throw AppError.imageDecodeFailed }
             model.process(image)
-        } catch { loadError = error.localizedDescription }
+        } catch {
+            loadError = error.localizedDescription
+        }
+    }
+}
+
+private struct CaptureErrorView: View {
+    var message = "A criatura não conseguiu ser formada."
+    let retry: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Label(message, systemImage: "exclamationmark.triangle.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.orange)
+                .multilineTextAlignment(.center)
+            Text("Tente uma foto mais nítida e mantenha a criatura inteira no enquadramento.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button("Try again", action: retry)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+        }
+        .padding(20)
+        .frame(maxWidth: 360)
+        .background(.thinMaterial, in: .rect(cornerRadius: 20))
+        .accessibilityElement(children: .combine)
     }
 }
 
 struct CameraScreen: View {
     let onCapture: (UIImage) -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var camera = CameraCaptureModel()
     @State private var isCapturing = false
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            if camera.isAuthorized { CameraPreview(session: camera.session).ignoresSafeArea() }
-            else { ContentUnavailableView("Camera unavailable", systemImage: "video.slash.fill", description: Text(camera.errorMessage ?? "Allow camera access to continue.")) }
-            VStack {
-                HStack { Spacer(); Button("Close", systemImage: "xmark") { dismiss() }.labelStyle(.iconOnly).padding().background(.ultraThinMaterial, in: Circle()) }
+        ZStack {
+            if camera.isAuthorized {
+                CameraPreview(session: camera.session).ignoresSafeArea()
+                CaptureFrameGuide()
+                    .padding(.horizontal, 34)
+                    .padding(.vertical, 132)
+                    .accessibilityHidden(true)
+            } else {
+                CameraUnavailableView(message: camera.errorMessage)
+            }
+
+            VStack(spacing: 0) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Snap Battle")
+                            .font(.headline.weight(.bold))
+                        Text(isCapturing ? "Saving your snapshot…" : "Keep the creature in frame")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.82))
+                    }
+                    .foregroundStyle(.white)
+                    Spacer()
+                    Button("Close", systemImage: "xmark") { dismiss() }
+                        .labelStyle(.iconOnly)
+                        .font(.headline)
+                        .frame(width: 44, height: 44)
+                        .background(.ultraThinMaterial, in: Circle())
+                        .foregroundStyle(.white)
+                        .accessibilityLabel("Close camera")
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 12)
+
                 Spacer()
-                if isCapturing { ProgressView().tint(.white).padding() }
+
+                if isCapturing {
+                    ProgressView()
+                        .tint(.white)
+                        .padding(.bottom, 18)
+                        .accessibilityLabel("Capturing photo")
+                }
+
                 Button {
-                    Task { isCapturing = true; if let image = await camera.capture() { camera.stop(); onCapture(image) }; isCapturing = false }
-                } label: { Circle().fill(.white).frame(width: 74, height: 74).overlay(Circle().stroke(.gray, lineWidth: 3)) }
+                    guard !isCapturing else { return }
+                    Task {
+                        isCapturing = true
+                        defer { isCapturing = false }
+                        if let image = await camera.capture() {
+                            camera.stop()
+                            onCapture(image)
+                        }
+                    }
+                } label: {
+                    Circle()
+                        .fill(.white)
+                        .frame(width: 76, height: 76)
+                        .overlay(Circle().stroke(.white.opacity(0.55), lineWidth: 6).padding(4))
+                }
+                .buttonStyle(CameraShutterButtonStyle(reduceMotion: reduceMotion))
                 .disabled(isCapturing || !camera.isConfigured)
-                .padding(.bottom, 24)
-            }.padding()
+                .accessibilityLabel(isCapturing ? "Capturing photo" : "Take photo")
+                .accessibilityHint("Captures the creature and starts the analysis")
+                .sensoryFeedback(.impact(flexibility: .rigid, intensity: 0.85), trigger: isCapturing)
+                .padding(.bottom, 28)
+            }
+            .padding(.bottom, 8)
         }
+        .background(.black)
         .task { await camera.configure(); camera.start() }
         .onDisappear { camera.stop() }
     }
 }
 
-struct ScanningOverlay<Content: View>: View {
-    @ViewBuilder let content: () -> Content
+private struct CameraUnavailableView: View {
+    let message: String?
+
     var body: some View {
-        content().overlay {
-            TimelineView(.animation) { timeline in
-                GeometryReader { proxy in
-                    let position = proxy.size.height * (0.5 + 0.45 * sin(timeline.date.timeIntervalSinceReferenceDate * 2.2))
-                    Rectangle().fill(.tint.opacity(0.7)).frame(height: 2).shadow(color: Color.accentColor, radius: 6).position(x: proxy.size.width / 2, y: position)
-                }
-            }
-        }.clipShape(.rect(cornerRadius: 12))
+        ContentUnavailableView("Camera unavailable", systemImage: "video.slash.fill", description: Text(message ?? "Allow camera access to continue."))
+            .foregroundStyle(.white)
     }
 }
 
-#if DEBUG
-struct DebugDiagnosticsView: View {
-    let diagnostics: DebugDiagnostics
-
+private struct CaptureFrameGuide: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Debug diagnostics").font(.headline)
-            Text("Generator: \(diagnostics.activeGenerator.rawValue)")
-            Text("Model state: \(diagnostics.modelAvailability.state.rawValue)")
-            Text("Model detail: \(diagnostics.modelAvailability.detail)")
-            Text("Locale: \(diagnostics.modelAvailability.currentLocale) (\(diagnostics.modelAvailability.currentLocaleSupported ? "supported" : "unsupported"))")
-            Text("Model languages: \(diagnostics.modelAvailability.supportedLanguages.joined(separator: ", "))")
-            Text("Camera: \(diagnostics.cameraAvailable ? "available" : "unavailable")")
-            Text("Subject extraction: \(diagnostics.subjectExtractionAvailable ? "available" : "unavailable")")
-            if let run = diagnostics.currentRun { RunDiagnosticsView(run: run) }
-            if let first = diagnostics.firstRun, let second = diagnostics.repeatedRun {
-                Divider()
-                RunComparisonView(first: first, second: second)
+        RoundedRectangle(cornerRadius: 28, style: .continuous)
+            .stroke(.white.opacity(0.72), style: StrokeStyle(lineWidth: 2, dash: [14, 10]))
+            .overlay(alignment: .bottom) {
+                Text("Center the creature")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(.black.opacity(0.38), in: Capsule())
+                    .padding(.bottom, 16)
             }
-        }
-        .font(.caption2)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(8)
-        .background(.quaternary, in: .rect(cornerRadius: 8))
     }
 }
 
-private struct RunDiagnosticsView: View {
-    let run: DiagnosticRun
+private struct CameraShutterButtonStyle: ButtonStyle {
+    let reduceMotion: Bool
 
-    var body: some View {
-        Group {
-            Text("Run: \(run.id)")
-            if !run.fingerprint.isEmpty { Text("Fingerprint: \(run.fingerprint.prefix(12))…") }
-            if let size = run.originalSize { Text("Original: \(size.description)") }
-            if let size = run.processedSize { Text("Processed: \(size.description)") }
-            if let succeeded = run.subjectLiftingSucceeded { Text("Subject extraction: \(succeeded ? "success" : "fallback")") }
-            if let source = run.subjectImageSource { Text("Analysis image: \(source)") }
-            if let count = run.subjectCount { Text("Subjects found: \(count)") }
-            if let detail = run.subjectExtractionDetail { Text("Subject extraction detail: \(detail)").foregroundStyle(.orange).textSelection(.enabled) }
-            if let observation = run.observation {
-                Text("Labels (\(observation.labels.count)): \(labelSummary(observation))")
-                Text("Material heuristic: \(observation.material.rawValue) (\(observation.materialConfidence, format: .number.precision(.fractionLength(2))))")
-            }
-            ForEach(ProcessingStage.allCases, id: \.self) { stage in
-                if let duration = run.durations[stage] { Text("\(stage.rawValue): \(duration.formatted(.units(allowed: [.milliseconds])))") }
-            }
-            if let duration = run.totalDuration { Text("Total: \(duration.formatted(.units(allowed: [.milliseconds])))") }
-            if let bytes = run.approximateMemoryBytes { Text("Approx. resident memory: \(ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .memory))") }
-            if let stage = run.failedStage { Text("Failed stage: \(stage.rawValue)").foregroundStyle(.red) }
-            if let error = run.error { Text("Full error: \(error)").foregroundStyle(.red).textSelection(.enabled) }
-        }
-    }
-
-    private func labelSummary(_ observation: ObjectObservation) -> String {
-        observation.rankedLabels.map { "\($0.label) (\(String(format: "%.3f", $0.confidence)))" }.joined(separator: ", ")
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.96 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
-
-private struct RunComparisonView: View {
-    let first: DiagnosticRun
-    let second: DiagnosticRun
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text("First vs second run").font(.caption.bold())
-            comparison("Fingerprint", short(first.fingerprint), short(second.fingerprint))
-            comparison("Labels + confidence", labels(first), labels(second))
-            comparison("Material + confidence", material(first), material(second))
-            comparison("Name", first.draft?.name, second.draft?.name)
-            comparison("Species", "Not generated by this PoC", "Not generated by this PoC")
-            comparison("Archetype", first.draft?.role, second.draft?.role)
-            comparison("Affinity", "Not generated by this PoC", "Not generated by this PoC")
-            comparison("Rarity hint", "Not generated by this PoC", "Not generated by this PoC")
-            comparison("Stats", stats(first), stats(second))
-            comparison("Duration", duration(first), duration(second))
-        }
-    }
-
-    private func comparison(_ name: String, _ first: String?, _ second: String?) -> some View {
-        let lhs = first ?? "—"
-        let rhs = second ?? "—"
-        return Text("\(name): \(lhs) → \(rhs) \(lhs == rhs ? "=" : "≠")")
-    }
-
-    private func short(_ value: String) -> String { value.isEmpty ? "—" : String(value.prefix(12)) }
-    private func labels(_ run: DiagnosticRun) -> String? {
-        run.observation?.rankedLabels.map { "\($0.label):\(String(format: "%.3f", $0.confidence))" }.joined(separator: ", ")
-    }
-    private func material(_ run: DiagnosticRun) -> String? {
-        run.observation.map { "\($0.material.rawValue):\(String(format: "%.2f", $0.materialConfidence))" }
-    }
-    private func stats(_ run: DiagnosticRun) -> String? {
-        run.stats.map { "D\($0.defense) P\($0.power) A\($0.agility) E\($0.energy)" }
-    }
-    private func duration(_ run: DiagnosticRun) -> String? {
-        run.totalDuration?.formatted(.units(allowed: [.milliseconds]))
-    }
-}
-#endif

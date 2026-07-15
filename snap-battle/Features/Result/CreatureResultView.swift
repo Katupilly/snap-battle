@@ -5,11 +5,6 @@ struct CreatureResultView: View {
     let creature: Creature
     let reset: () -> Void
     let onBattle: () -> Void
-    #if DEBUG
-    let diagnostics: DebugDiagnostics
-    let runAgain: () -> Void
-    let isRepeating: Bool
-    #endif
 
     var body: some View {
         ScrollView {
@@ -27,13 +22,6 @@ struct CreatureResultView: View {
                     StatRowView(name: "Agility", value: creature.stats.agility)
                     StatRowView(name: "Energy", value: creature.stats.energy)
                 }
-                #if DEBUG
-                Button("Run Again With Same Image", action: runAgain)
-                    .buttonStyle(.bordered)
-                    .disabled(isRepeating)
-                if isRepeating { ProgressView("Running diagnostic repeat…") }
-                DebugDiagnosticsView(diagnostics: diagnostics)
-                #endif
                 Button("Battle", action: onBattle).buttonStyle(.borderedProminent)
                 Button("Create another", action: reset).buttonStyle(.borderedProminent)
             }.padding()
