@@ -37,6 +37,27 @@ struct NavigationGalleryTests {
         #expect(FileManager.default.fileExists(atPath: directory.appendingPathComponent("latest-pedal.json").path))
     }
 
+    @Test func deletingMigratedLegacyDoesNotRecreateIt() throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let legacy = pedal(name: "MONITOR")
+        let legacyJSON = directory.appendingPathComponent("latest-pedal.json")
+        let legacyPNG = directory.appendingPathComponent("latest-pedal.png")
+        try JSONEncoder().encode(legacy).write(to: legacyJSON)
+        try png(cover(.blue)).write(to: legacyPNG)
+        let store = PedalStore(directory: directory)
+
+        #expect(store.loadCollection().pedals.map(\.id) == [legacy.id])
+        try store.delete(id: legacy.id)
+
+        #expect(throws: Error.self) { try store.load(id: legacy.id) }
+        #expect(store.loadCollection().pedals.isEmpty)
+        #expect(store.loadLatest() == nil)
+        #expect(FileManager.default.fileExists(atPath: legacyJSON.path))
+        #expect(FileManager.default.fileExists(atPath: legacyPNG.path))
+    }
+
     @Test func writeFailureDoesNotCreateVisibleRecord() throws {
         let directory = temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -106,6 +127,44 @@ struct NavigationGalleryTests {
         #expect(model.state.pedals.count == 1)
     }
 
+    @Test func galleryAsyncReloadLoadsSavedCollection() async throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalStore(directory: directory)
+        let item = pedal(name: "Async")
+        try store.save(item, cover: cover(.blue))
+        let model = GalleryViewModel(store: store, player: PlayerDouble())
+
+        await model.reloadAsync()
+
+        #expect(model.state.pedals.map(\.id) == [item.id])
+    }
+
+    @Test func galleryStopOnlyStopsCurrentPedal() throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalStore(directory: directory)
+        let player = PlayerDouble()
+        let current = pedal(name: "Current")
+        let other = pedal(name: "Other")
+        try store.save(current, cover: cover(.blue))
+        try store.save(other, cover: cover(.orange))
+        let model = GalleryViewModel(store: store, player: player)
+        model.reload()
+        let currentItem = try #require(model.state.pedals.first(where: { $0.id == current.id }))
+        let otherItem = try #require(model.state.pedals.first(where: { $0.id == other.id }))
+
+        model.quickPlay(currentItem)
+        model.stop(otherItem)
+        #expect(player.isPlaying)
+        #expect(model.playingID == current.id)
+
+        model.stop(currentItem)
+        #expect(!player.isPlaying)
+        #expect(model.playingID == nil)
+        #expect(player.stopCount == 1)
+    }
+
     private func temporaryDirectory() -> URL { FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString) }
     private func png(_ image: UIImage) -> Data { image.pngData()! }
     private func cover(_ color: UIColor) -> UIImage { UIGraphicsImageRenderer(size: CGSize(width: 8, height: 8)).image { color.setFill(); $0.cgContext.fill(CGRect(x: 0, y: 0, width: 8, height: 8)) } }
@@ -119,6 +178,7 @@ private final class PlayerDouble: PedalPlaying {
     let shouldFail: Bool
     private(set) var playedID: UUID?
     private(set) var isPlaying = false
+    private(set) var stopCount = 0
 
     init(shouldFail: Bool = false) { self.shouldFail = shouldFail }
 
@@ -128,5 +188,8 @@ private final class PlayerDouble: PedalPlaying {
         isPlaying = true
     }
 
-    func stop() { isPlaying = false }
+    func stop() {
+        stopCount += 1
+        isPlaying = false
+    }
 }

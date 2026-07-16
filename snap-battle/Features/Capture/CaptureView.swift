@@ -11,7 +11,7 @@ struct ContentView: View {
         NavigationStack {
             Group {
                 switch navigation.selectedDestination {
-                case .gallery: GalleryView(model: gallery)
+                case .gallery: GalleryView(model: gallery, beginCapture: navigation.beginCapture)
                 case .jam: JamPlaceholderView()
                 }
             }
@@ -19,7 +19,7 @@ struct ContentView: View {
                 MainNavigationBar(selected: $navigation.selectedDestination, beginCapture: navigation.beginCapture)
             }
         }
-        .task { gallery.reload() }
+        .task { await gallery.reloadAsync() }
         .sheet(isPresented: $navigation.isPresentingCapture, onDismiss: { gallery.insertedSavedPedal() }) {
             CaptureFlowView(
                 onCancel: navigation.cancelCapture,
@@ -43,17 +43,26 @@ struct ContentView: View {
 private struct MainNavigationBar: View {
     @Binding var selected: AppNavigationModel.Destination
     let beginCapture: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        HStack(spacing: 20) {
+        HStack(alignment: .center, spacing: 14) {
             destinationButton(.gallery, title: "Gallery", symbol: "square.grid.2x2")
             Button(action: beginCapture) {
-                Label("Criar pedal", systemImage: "camera.fill")
-                    .labelStyle(.iconOnly)
-                    .frame(width: 52, height: 52)
-                    .background(.tint, in: Circle())
+                VStack(spacing: 4) {
+                    Image(systemName: "camera.fill")
+                        .font(.title3.weight(.semibold))
+                    Text("Criar")
+                        .font(.caption2.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                    .frame(minWidth: 64, minHeight: 56)
+                    .padding(.horizontal, 4)
+                    .background(.tint, in: .rect(cornerRadius: 18, style: .continuous))
                     .foregroundStyle(.white)
             }
+            .buttonStyle(PressFeedbackButtonStyle(reduceMotion: reduceMotion))
             .accessibilityLabel("Criar pedal")
             .accessibilityHint("Abre a câmera ou a biblioteca de fotos para criar um pedal")
             destinationButton(.jam, title: "Jam", symbol: "music.note.list")
@@ -68,10 +77,32 @@ private struct MainNavigationBar: View {
 
     private func destinationButton(_ destination: AppNavigationModel.Destination, title: String, symbol: String) -> some View {
         Button { selected = destination } label: {
-            Label(title, systemImage: symbol)
-                .frame(maxWidth: .infinity, minHeight: 44)
+            VStack(spacing: 4) {
+                Image(systemName: symbol)
+                    .font(.headline.weight(selected == destination ? .semibold : .regular))
+                Text(title)
+                    .font(.caption.weight(selected == destination ? .semibold : .regular))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+                .foregroundStyle(selected == destination ? Color.accentColor : Color.secondary)
+                .frame(maxWidth: .infinity, minHeight: 56)
+                .contentShape(.rect)
         }
-        .accessibilityAddTraits(selected == destination ? .isSelected : [])
+        .buttonStyle(PressFeedbackButtonStyle(reduceMotion: reduceMotion))
+        .accessibilityLabel(title)
+        .accessibilityHint("Mostra \(title)")
+        .accessibilityAddTraits(selected == destination ? [.isSelected] : [])
+    }
+}
+
+struct PressFeedbackButtonStyle: ButtonStyle {
+    let reduceMotion: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: configuration.isPressed)
     }
 }
 

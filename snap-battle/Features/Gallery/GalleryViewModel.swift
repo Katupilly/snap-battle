@@ -39,6 +39,19 @@ final class GalleryViewModel {
     func reload() {
         state = .loading
         let result = store.loadCollection()
+        apply(result)
+    }
+
+    func reloadAsync() async {
+        state = .loading
+        let store = store
+        let result = await Task.detached(priority: .userInitiated) {
+            store.loadCollection()
+        }.value
+        apply(result)
+    }
+
+    private func apply(_ result: PedalStoreLoadResult) {
         if result.pedals.isEmpty {
             state = result.issues.isEmpty ? .empty : .blockingError(result.issues.joined(separator: " "))
         } else {
@@ -46,7 +59,9 @@ final class GalleryViewModel {
         }
     }
 
-    func insertedSavedPedal() { reload() }
+    func insertedSavedPedal() {
+        Task { await reloadAsync() }
+    }
 
     func quickPlay(_ item: StoredPedal) {
         do {
@@ -64,14 +79,23 @@ final class GalleryViewModel {
         quickPlay(latest)
     }
 
-    func delete(_ item: StoredPedal) {
+    @discardableResult
+    func delete(_ item: StoredPedal) -> Bool {
         deletionErrorMessage = nil
         if playingID == item.id { player.stop(); playingID = nil }
         do {
             try store.delete(id: item.id)
             reload()
+            return true
         } catch {
             deletionErrorMessage = error.localizedDescription
+            return false
         }
+    }
+
+    func stop(_ item: StoredPedal) {
+        guard playingID == item.id else { return }
+        player.stop()
+        playingID = nil
     }
 }

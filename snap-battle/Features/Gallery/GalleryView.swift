@@ -2,14 +2,22 @@ import SwiftUI
 
 struct GalleryView: View {
     let model: GalleryViewModel
+    let beginCapture: () -> Void
     @State private var itemPendingDeletion: StoredPedal?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         content(for: model.state)
         .navigationTitle("Gallery")
         .navigationDestination(for: UUID.self) { id in
             if let item = model.state.pedals.first(where: { $0.id == id }) {
-                PedalDetailView(item: item, play: { model.quickPlay(item) })
+                PedalDetailView(
+                    item: item,
+                    isPlaying: model.playingID == item.id,
+                    play: { model.quickPlay(item) },
+                    stop: { model.stop(item) },
+                    delete: { model.delete(item) }
+                )
             } else {
                 ContentUnavailableView("Pedal indisponível", systemImage: "exclamationmark.triangle")
             }
@@ -33,11 +41,21 @@ struct GalleryView: View {
                 ProgressView("Carregando pedais")
                     .accessibilityLabel("Carregando pedais")
             case .empty:
-                ContentUnavailableView("Sua Gallery está vazia", systemImage: "square.grid.2x2", description: Text("Crie um pedal para encontrá-lo aqui."))
+                ContentUnavailableView {
+                    Label("Sua Gallery está vazia", systemImage: "square.grid.2x2")
+                } description: {
+                    Text("Crie um pedal para encontrá-lo aqui.")
+                } actions: {
+                    Button("Criar pedal", systemImage: "camera.fill", action: beginCapture)
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                        .accessibilityHint("Abre a câmera ou a biblioteca de fotos para criar um pedal")
+                }
             case .blockingError(let message):
                 VStack(spacing: 16) {
                     ContentUnavailableView("Não foi possível carregar a Gallery", systemImage: "exclamationmark.triangle", description: Text(message))
-                    Button("Tentar novamente") { model.reload() }
+                    Button("Tentar novamente") { Task { await model.reloadAsync() } }
+                        .buttonStyle(PressFeedbackButtonStyle(reduceMotion: reduceMotion))
                 }
             case .content(let pedals):
                 galleryList(pedals)
@@ -55,14 +73,25 @@ struct GalleryView: View {
     private func galleryList(_ pedals: [StoredPedal]) -> some View {
         List(pedals) { item in
             GalleryCard(item: item, isPlaying: model.playingID == item.id, play: { model.quickPlay(item) }, delete: { itemPendingDeletion = item })
+                .swipeActions(edge: .trailing) {
+                    Button("Excluir", systemImage: "trash", role: .destructive) {
+                        itemPendingDeletion = item
+                    }
+                    .accessibilityLabel("Excluir \(item.pedal.name)")
+                }
         }
-        .refreshable { model.reload() }
+        .refreshable { await model.reloadAsync() }
     }
 }
 
 private struct PedalDetailView: View {
     let item: StoredPedal
+    let isPlaying: Bool
     let play: () -> Void
+    let stop: () -> Void
+    let delete: () -> Bool
+    @Environment(\.dismiss) private var dismiss
+    @State private var isConfirmingDeletion = false
 
     var body: some View {
         ScrollView {
@@ -72,12 +101,39 @@ private struct PedalDetailView: View {
                 Text(item.pedal.name).font(.largeTitle.bold()).multilineTextAlignment(.center)
                 Text(item.pedal.description).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 Text("\(item.pedal.effect.displayName) selecionado").font(.subheadline.weight(.semibold))
-                Button("Tocar pedal", systemImage: "play.fill", action: play).buttonStyle(.borderedProminent).controlSize(.large)
+                Text(isPlaying ? "Reprodução em andamento" : "Pronto para tocar")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel(isPlaying ? "Reprodução em andamento" : "Pronto para tocar")
+                HStack(spacing: 12) {
+                    Button("Tocar", systemImage: "play.fill", action: play)
+                        .buttonStyle(.borderedProminent)
+                    Button("Parar", systemImage: "stop.fill", action: stop)
+                        .buttonStyle(.bordered)
+                        .disabled(!isPlaying)
+                }
+                .controlSize(.large)
+                Button("Excluir", systemImage: "trash", role: .destructive) {
+                    isConfirmingDeletion = true
+                }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .accessibilityHint("Pede confirmação antes de remover este pedal")
             }
             .padding(24)
         }
         .navigationTitle("Pedal")
         .navigationBarTitleDisplayMode(.inline)
+        .alert("Excluir pedal?", isPresented: $isConfirmingDeletion) {
+            Button("Excluir", role: .destructive) {
+                if delete() {
+                    dismiss()
+                }
+            }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text("\(item.pedal.name) será removido da Gallery.")
+        }
     }
 }
 

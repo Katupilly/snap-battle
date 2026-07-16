@@ -29,7 +29,7 @@ enum PedalStoreError: LocalizedError {
     }
 }
 
-struct PedalStore {
+nonisolated struct PedalStore {
     static let shared = PedalStore()
 
     private let rootDirectory: URL
@@ -110,6 +110,7 @@ struct PedalStore {
         try promote(temporaryJSON, to: jsonURL(for: pedal.id), token: token)
         try promote(temporaryPNG, to: pngURL(for: pedal.id), token: token)
         _ = try load(id: pedal.id)
+        try? fileManager.removeItem(at: deletionMarkerURL(for: pedal.id))
     }
 
     func delete(id: UUID) throws {
@@ -118,22 +119,27 @@ struct PedalStore {
         let token = UUID().uuidString
         let jsonBackup = temporaryURL(for: id, ext: "json", token: "delete-\(token)")
         let pngBackup = temporaryURL(for: id, ext: "png", token: "delete-\(token)")
+        let deletionMarker = deletionMarkerURL(for: id)
+        let hadDeletionMarker = fileManager.fileExists(atPath: deletionMarker.path)
         do {
             if fileManager.fileExists(atPath: json.path) { try fileManager.moveItem(at: json, to: jsonBackup) }
             if fileManager.fileExists(atPath: png.path) { try fileManager.moveItem(at: png, to: pngBackup) }
             let jsonData = fileManager.fileExists(atPath: jsonBackup.path) ? try Data(contentsOf: jsonBackup) : nil
             let pngData = fileManager.fileExists(atPath: pngBackup.path) ? try Data(contentsOf: pngBackup) : nil
             do {
+                try writeData(Data("deleted".utf8), deletionMarker)
                 if fileManager.fileExists(atPath: jsonBackup.path) { try fileManager.removeItem(at: jsonBackup) }
                 if fileManager.fileExists(atPath: pngBackup.path) { try fileManager.removeItem(at: pngBackup) }
             } catch {
                 if let jsonData { try? jsonData.write(to: json, options: .atomic) }
                 if let pngData { try? pngData.write(to: png, options: .atomic) }
+                if !hadDeletionMarker { try? fileManager.removeItem(at: deletionMarker) }
                 throw error
             }
         } catch {
             if fileManager.fileExists(atPath: jsonBackup.path) { try? fileManager.moveItem(at: jsonBackup, to: json) }
             if fileManager.fileExists(atPath: pngBackup.path) { try? fileManager.moveItem(at: pngBackup, to: png) }
+            if !hadDeletionMarker { try? fileManager.removeItem(at: deletionMarker) }
             throw error
         }
     }
@@ -146,6 +152,7 @@ struct PedalStore {
 
     private func migrateLegacyIfNeeded() throws {
         guard let legacy = loadLegacy() else { return }
+        guard !isDeletionMarked(legacy.pedal.id) else { return }
         if (try? load(id: legacy.pedal.id)) != nil { return }
         try save(legacy.pedal, cover: legacy.cover)
     }
@@ -153,6 +160,7 @@ struct PedalStore {
     private func loadLegacy() -> StoredPedal? {
         guard let pedal = try? JSONDecoder().decode(PhotoPedal.self, from: Data(contentsOf: legacyJSONURL)),
               let cover = UIImage(contentsOfFile: legacyPNGURL.path) else { return nil }
+        guard !isDeletionMarked(pedal.id) else { return nil }
         return StoredPedal(pedal: pedal, cover: cover)
     }
 
@@ -167,6 +175,8 @@ struct PedalStore {
 
     private func jsonURL(for id: UUID) -> URL { collectionDirectory.appendingPathComponent("\(id.uuidString).json") }
     private func pngURL(for id: UUID) -> URL { collectionDirectory.appendingPathComponent("\(id.uuidString).png") }
+    private func deletionMarkerURL(for id: UUID) -> URL { collectionDirectory.appendingPathComponent("\(id.uuidString).deleted") }
+    private func isDeletionMarked(_ id: UUID) -> Bool { fileManager.fileExists(atPath: deletionMarkerURL(for: id).path) }
     private func temporaryURL(for id: UUID, ext: String, token: String) -> URL { collectionDirectory.appendingPathComponent("\(id.uuidString).tmp-\(token).\(ext)") }
 
     private func pngData(from cover: UIImage) throws -> Data {

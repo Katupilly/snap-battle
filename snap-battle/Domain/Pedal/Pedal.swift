@@ -1,7 +1,7 @@
 import Foundation
 import FoundationModels
 
-enum PedalScale: String, Codable, Sendable, CaseIterable {
+nonisolated enum PedalScale: String, Codable, Sendable, CaseIterable {
     case majorPentatonic, minorPentatonic, dorian, wholeTone
 
     var degrees: [Int] {
@@ -23,17 +23,17 @@ enum PedalScale: String, Codable, Sendable, CaseIterable {
     }
 }
 
-enum PedalEffect: String, Codable, Sendable, CaseIterable, Identifiable { case reverb, distortion
+nonisolated enum PedalEffect: String, Codable, Sendable, CaseIterable, Identifiable { case reverb, distortion
     var id: String { rawValue }
     var displayName: String { self == .reverb ? "Reverb" : "Distortion" }
     var symbolName: String { self == .reverb ? "waveform.path.ecg" : "waveform.badge.plus" }
 }
 
-enum PedalWaveform: String, Codable, Sendable { case square, triangle }
-enum PedalReverbPreset: String, Codable, Sendable { case smallRoom, mediumRoom, cathedral }
-enum PedalDistortionPreset: String, Codable, Sendable { case multiEcho1, drumsBitBrush }
+nonisolated enum PedalWaveform: String, Codable, Sendable { case square, triangle }
+nonisolated enum PedalReverbPreset: String, Codable, Sendable { case smallRoom, mediumRoom, cathedral }
+nonisolated enum PedalDistortionPreset: String, Codable, Sendable { case multiEcho1, drumsBitBrush }
 
-struct PedalSoundProfile: Codable, Sendable, Equatable {
+nonisolated struct PedalSoundProfile: Codable, Sendable, Equatable {
     let gate: Double
     let octaveRange: Double
     let waveform: PedalWaveform
@@ -53,19 +53,19 @@ struct PedalSoundProfile: Codable, Sendable, Equatable {
     static let legacy = PedalSoundProfile(gate: 1, octaveRange: 1, waveform: .square, reverbPreset: .mediumRoom, distortionPreset: .multiEcho1, defaultReverbMix: 48, defaultDistortionMix: 55, reverbMix: 48, distortionMix: 55)
 }
 
-struct PedalHarmony: Codable, Sendable, Equatable {
+nonisolated struct PedalHarmony: Codable, Sendable, Equatable {
     let rootPitchClass: Int
     let scale: PedalScale
     let bpm: Int
     var rootName: String { ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"][max(0, min(11, rootPitchClass))] }
 }
 
-struct PedalNote: Codable, Sendable, Equatable, Identifiable {
+nonisolated struct PedalNote: Codable, Sendable, Equatable, Identifiable {
     let step: Int; let row: Int; let midiNote: Int; let velocity: Float
     var id: String { "\(step)-\(row)" }
 }
 
-struct PedalSequence: Codable, Sendable, Equatable {
+nonisolated struct PedalSequence: Codable, Sendable, Equatable {
     static let steps = 16; static let rows = 8
     let harmony: PedalHarmony
     let notes: [PedalNote]
@@ -83,7 +83,7 @@ struct PedalSequence: Codable, Sendable, Equatable {
     }
 }
 
-struct PhotoPedal: Codable, Sendable, Equatable, Identifiable {
+nonisolated struct PhotoPedal: Codable, Sendable, Equatable, Identifiable {
     let id: UUID; let name: String; let description: String; let sequence: PedalSequence
     let effect: PedalEffect; let createdAt: Date; let coverFilename: String
 
