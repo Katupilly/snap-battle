@@ -12,6 +12,7 @@
 		B20000000000000000000003 /* TimingEvaluatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000004 /* TimingEvaluatorTests.swift */; };
 		B20000000000000000000005 /* SimpleBattleAITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000006 /* SimpleBattleAITests.swift */; };
 		B20000000000000000000007 /* BattleViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000008 /* BattleViewModelTests.swift */; };
+		C30000000000000000000001 /* PhotoPedalStabilizationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30000000000000000000002 /* PhotoPedalStabilizationTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -32,6 +33,7 @@
 		B20000000000000000000004 /* TimingEvaluatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimingEvaluatorTests.swift; sourceTree = "<group>"; };
 		B20000000000000000000006 /* SimpleBattleAITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimpleBattleAITests.swift; sourceTree = "<group>"; };
 		B20000000000000000000008 /* BattleViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BattleViewModelTests.swift; sourceTree = "<group>"; };
+		C30000000000000000000002 /* PhotoPedalStabilizationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPedalStabilizationTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -86,6 +88,7 @@
 				B20000000000000000000004 /* TimingEvaluatorTests.swift */,
 				B20000000000000000000006 /* SimpleBattleAITests.swift */,
 				B20000000000000000000008 /* BattleViewModelTests.swift */,
+				C30000000000000000000002 /* PhotoPedalStabilizationTests.swift */,
 			);
 			path = "snap-battleTests";
 			sourceTree = "<group>";
@@ -194,6 +197,7 @@
 				B20000000000000000000003 /* TimingEvaluatorTests.swift in Sources */,
 				B20000000000000000000005 /* SimpleBattleAITests.swift in Sources */,
 				B20000000000000000000007 /* BattleViewModelTests.swift in Sources */,
+				C30000000000000000000001 /* PhotoPedalStabilizationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

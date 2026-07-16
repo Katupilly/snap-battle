@@ -1,7 +1,7 @@
 import Foundation
 import FoundationModels
 
-struct FoundationModelsPedalGenerator: Sendable {
+struct FoundationModelsPedalGenerator: Sendable, PedalMetadataGenerating {
     func generate(observation: ObjectObservation, harmony: PedalHarmony) async throws -> PedalDraft {
         let model = SystemLanguageModel.default
         guard case .available = model.availability, model.supportsLocale(Locale.current) else { throw AppError.modelUnavailable("O modelo de linguagem no dispositivo não está disponível.") }
