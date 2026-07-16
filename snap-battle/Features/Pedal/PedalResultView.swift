@@ -4,6 +4,7 @@ struct PedalResultView: View {
     let model: PhotoPedalViewModel
     let pedal: PhotoPedal
     let cover: UIImage
+    let onDone: () -> Void
 
     var body: some View {
         @Bindable var model = model
@@ -28,7 +29,7 @@ struct PedalResultView: View {
                         .accessibilityLabel("Intensidade de \(model.selectedEffect.displayName)")
                 }
                 Button("Tocar pedal", systemImage: "play.fill") { model.play() }.buttonStyle(.borderedProminent).controlSize(.large)
-                Button("Criar outro", systemImage: "camera") { model.reset() }.buttonStyle(.bordered)
+                Button("Ver na Gallery", systemImage: "square.grid.2x2") { onDone() }.buttonStyle(.bordered)
             }
             .padding(24)
         }

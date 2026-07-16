@@ -313,4 +313,6 @@ xcodebuild build -project "snap-battle.xcodeproj" -scheme "snap-battle" -configu
 git diff --check
 ```
 
-For this documentation-only task, validate Markdown links, run `git diff --check`, confirm only this specification and the minimal specification index update changed, do not run tests or builds, do not alter Swift, and do not commit.
+## Implementation Authorization
+
+This Ready specification authorizes the localized Swift, test, project-membership, and directly affected documentation changes required to implement its Gallery and navigation foundation. Run the tests, Debug and Release builds, and `git diff --check` listed above; do not create a commit automatically.

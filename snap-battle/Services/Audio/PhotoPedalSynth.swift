@@ -1,13 +1,20 @@
 import AVFoundation
 import Foundation
 
+@MainActor
+protocol PedalPlaying: AnyObject {
+    var isPlaying: Bool { get }
+    func play(_ pedal: PhotoPedal) throws
+    func stop()
+}
+
 private final class PlaybackBuffer: @unchecked Sendable {
     let samples: [Float]; var position = 0
     init(samples: [Float]) { self.samples = samples }
 }
 
 @MainActor
-final class PhotoPedalSynth: NSObject {
+final class PhotoPedalSynth: NSObject, PedalPlaying {
     private let engine = AVAudioEngine()
     private let reverb = AVAudioUnitReverb()
     private let distortion = AVAudioUnitDistortion()

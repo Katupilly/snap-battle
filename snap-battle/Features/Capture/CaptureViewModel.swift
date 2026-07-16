@@ -10,14 +10,18 @@ final class PhotoPedalViewModel {
     var isProcessing = false
     var errorMessage: String?
     var selectedEffect: PedalEffect = .reverb
+    var pendingPedal: PhotoPedal?
+    var pendingCover: UIImage?
+    var saveErrorMessage: String?
 
     private let pipeline = PhotoPedalPipeline()
     private let synth = PhotoPedalSynth()
     private var task: Task<Void, Never>?
 
-    init() {
-        if let latest = PedalStore.loadLatest() { pedal = latest.pedal; cover = latest.cover; selectedEffect = latest.pedal.effect }
-    }
+    private let store: PedalStore
+
+    convenience init() { self.init(store: .shared) }
+    init(store: PedalStore) { self.store = store }
 
     func load(data: Data?) {
         do {
@@ -33,8 +37,10 @@ final class PhotoPedalViewModel {
             defer { isProcessing = false; task = nil }
             do {
                 let result = try await pipeline.run(image: image) { [weak self] stage in self?.stage = stage }
-                pedal = result.pedal; cover = result.cover; selectedEffect = result.pedal.effect
-                try PedalStore.save(result.pedal, cover: result.cover)
+                pendingPedal = result.pedal
+                pendingCover = result.cover
+                selectedEffect = result.pedal.effect
+                try savePendingResult()
             } catch is CancellationError { }
             catch { errorMessage = error.localizedDescription }
         }
@@ -42,22 +48,40 @@ final class PhotoPedalViewModel {
 
     func chooseEffect(_ effect: PedalEffect) {
         selectedEffect = effect
-        guard var pedal, let cover else { return }
-        pedal = pedal.updating(effect: effect)
-        self.pedal = pedal
-        try? PedalStore.save(pedal, cover: cover)
+        guard let pedal, let cover else { return }
+        let updated = pedal.updating(effect: effect)
+        do { try store.save(updated, cover: cover); self.pedal = updated }
+        catch { errorMessage = error.localizedDescription }
     }
 
     func updateEffectMix(_ mix: Double) {
         guard let pedal, let cover else { return }
         let profile = pedal.sequence.soundProfile.updatingMix(mix, for: selectedEffect)
         let updated = pedal.updating(soundProfile: profile)
-        self.pedal = updated
-        try? PedalStore.save(updated, cover: cover)
+        do { try store.save(updated, cover: cover); self.pedal = updated }
+        catch { errorMessage = error.localizedDescription }
     }
 
     func effectMix(for effect: PedalEffect) -> Double { pedal?.sequence.soundProfile.mix(for: effect) ?? 0 }
     func play() { guard let pedal else { return }; try? synth.play(pedal) }
-    func playLast() { if pedal == nil, let latest = PedalStore.loadLatest() { pedal = latest.pedal; cover = latest.cover }; play() }
-    func reset() { task?.cancel(); synth.stop(); pedal = nil; cover = nil; errorMessage = nil }
+    func retrySave() {
+        do { try savePendingResult() }
+        catch { saveErrorMessage = error.localizedDescription }
+    }
+
+    func discardPendingResult() { pendingPedal = nil; pendingCover = nil; saveErrorMessage = nil }
+
+    func reset() {
+        task?.cancel(); synth.stop(); pedal = nil; cover = nil; pendingPedal = nil; pendingCover = nil; errorMessage = nil; saveErrorMessage = nil
+    }
+
+    private func savePendingResult() throws {
+        guard let pendingPedal, let pendingCover else { return }
+        try store.save(pendingPedal, cover: pendingCover)
+        pedal = pendingPedal
+        cover = pendingCover
+        self.pendingPedal = nil
+        self.pendingCover = nil
+        saveErrorMessage = nil
+    }
 }

@@ -4,8 +4,8 @@
 
 | Intent | Behavior | Limitation |
 | --- | --- | --- |
-| `CreatePedalIntent` | Sets `AppIntentRouter` to `.create`; UI opens camera flow | Does not capture or create autonomously |
-| `PlayLastPedalIntent` | Sets router to `.playLast`; UI requests playback | Does not directly render audio; reloads only when the view model has no pedal |
+| `CreatePedalIntent` | Sets `AppIntentRouter` to `.create`; UI opens transient central Capture | Does not capture or create autonomously |
+| `PlayLastPedalIntent` | Sets router to `.playLast`; Gallery requests playback of the shared latest selection | Does not directly render audio or sort records |
 
 Both set `openAppWhenRun = true`. `PhotoPedalShortcuts` exposes Portuguese phrases. There is no intent parameter, `AppEntity`, entity query, play-by-name behavior, or deep-link routing.
 

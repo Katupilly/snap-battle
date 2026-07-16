@@ -34,7 +34,7 @@ Dependencies currently flow from SwiftUI views to `PhotoPedalViewModel`, then to
 
 ## Persistence Boundary
 
-`PedalStore` writes `latest-pedal.json` and `latest-pedal.png` in Application Support. It is not a gallery repository and does not store originals, fingerprints, Vision observations, or generator versions.
+`PedalStore` is the local collection boundary. It stores one validated JSON/PNG pair per pedal UUID in Application Support, derives collection cover paths from the UUID, and migrates the preserved `latest-pedal.json`/`latest-pedal.png` pair when valid. It does not store originals, fingerprints, Vision observations, or generator versions.
 
 ## Platform Integrations
 

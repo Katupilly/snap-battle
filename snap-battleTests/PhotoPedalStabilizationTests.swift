@@ -128,31 +128,32 @@ struct PhotoPedalStabilizationTests {
     }
 
     @Test func latestPedalCanSaveReloadAndReplace() throws {
-        removeLatestFiles()
-        defer { removeLatestFiles() }
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalStore(directory: directory)
 
-        let first = Fixtures.pedal(name: "First")
-        let second = Fixtures.pedal(name: "Second")
-        try PedalStore.save(first, cover: Fixtures.cover(.blue))
-        let loadedFirst = try #require(PedalStore.loadLatest())
+        let first = Fixtures.pedal(name: "First", createdAt: Date(timeIntervalSince1970: 1))
+        let second = Fixtures.pedal(name: "Second", createdAt: Date(timeIntervalSince1970: 2))
+        try store.save(first, cover: Fixtures.cover(.blue))
+        let loadedFirst = try #require(store.loadLatest())
         #expect(loadedFirst.pedal == first)
         #expect(loadedFirst.cover.cgImage?.width == Fixtures.cover(.blue).cgImage?.width)
         #expect(loadedFirst.cover.cgImage?.height == Fixtures.cover(.blue).cgImage?.height)
 
-        try PedalStore.save(second, cover: Fixtures.cover(.orange))
-        let loadedSecond = try #require(PedalStore.loadLatest())
+        try store.save(second, cover: Fixtures.cover(.orange))
+        let loadedSecond = try #require(store.loadLatest())
         #expect(loadedSecond.pedal == second)
         #expect(loadedSecond.cover.cgImage?.width == Fixtures.cover(.orange).cgImage?.width)
         #expect(loadedSecond.cover.cgImage?.height == Fixtures.cover(.orange).cgImage?.height)
     }
 
     @Test func incompleteLatestPedalReturnsNil() throws {
-        removeLatestFiles()
-        defer { removeLatestFiles() }
-        try PedalStore.save(Fixtures.pedal(name: "Stored"), cover: Fixtures.cover(.blue))
-        let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        try FileManager.default.removeItem(at: directory.appendingPathComponent("latest-pedal.png"))
-        #expect(PedalStore.loadLatest() == nil)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalStore(directory: directory)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try JSONEncoder().encode(Fixtures.pedal(name: "Stored")).write(to: directory.appendingPathComponent("latest-pedal.json"))
+        #expect(store.loadLatest() == nil)
     }
 
     @Test @MainActor func synthStopLeavesCleanState() {
@@ -186,12 +187,6 @@ struct PhotoPedalStabilizationTests {
         return try ImageSequenceGenerator.makeSequence(retroImage: cover, colorProfile: color)
     }
 
-    private func removeLatestFiles() {
-        let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        for name in ["latest-pedal.json", "latest-pedal.png"] {
-            try? FileManager.default.removeItem(at: directory.appendingPathComponent(name))
-        }
-    }
 }
 
 private enum Fixtures {
@@ -220,13 +215,13 @@ private enum Fixtures {
         }
     }
 
-    static func pedal(name: String) -> PhotoPedal {
+    static func pedal(name: String, createdAt: Date = Date(timeIntervalSince1970: 1)) -> PhotoPedal {
         let sequence = PedalSequence(
             harmony: PedalHarmony(rootPitchClass: 0, scale: .majorPentatonic, bpm: 100),
             notes: [PedalNote(step: 0, row: 0, midiNote: 60, velocity: 1)],
             soundProfile: .legacy
         )
-        return PhotoPedal(id: UUID(), name: name, description: "A test pedal.", sequence: sequence, effect: .reverb, createdAt: Date(timeIntervalSince1970: 1), coverFilename: "latest-pedal.png")
+        return PhotoPedal(id: UUID(), name: name, description: "A test pedal.", sequence: sequence, effect: .reverb, createdAt: createdAt, coverFilename: "latest-pedal.png")
     }
 }
 

@@ -19,9 +19,12 @@ The current app target still compiles Creature/Battle-era code. `ObjectObservati
 
 Legacy cleanup requires a dedicated audit and an approved cleanup spec.
 
+### Active Product Foundation
+
+- Gallery and navigation foundation (see `specs/current/navigation-gallery-foundation.md`)
+
 ### Planned Product Expansion
 
-- Gallery
 - Board
 - Sharing
 - Collaboration

@@ -35,16 +35,15 @@
 
 ## Serialization And Storage
 
-`PhotoPedal` is `Codable`. `PedalStore` serializes the complete final note events and sound settings to `latest-pedal.json`, and stores only the processed PNG cover as `latest-pedal.png`. The original image, input fingerprint, color analysis, Vision data, generator version, board data, and image file URLs are not persisted.
+`PhotoPedal` remains `Codable` with its existing schema. `PedalStore` serializes the complete final note events and sound settings to `<PhotoPedal.id>.json` and stores the processed cover as `<PhotoPedal.id>.png`; collection lookup derives that path from identity rather than `coverFilename`. The legacy `latest-pedal.json`/`latest-pedal.png` pair remains readable and is preserved after idempotent migration. The original image, input fingerprint, color analysis, Vision data, generator version, board data, and image file URLs are not persisted.
 
 `PedalSequence` decodes missing `soundProfile` as `PedalSoundProfile.legacy`; this is the only current decode compatibility behavior.
 
 ## Storage Scope
 
 - **Ephemeral session state:** `PhotoPedalViewModel` holds the currently displayed pedal, cover, selected effect, and synth playback state while the app runs.
-- **Latest-pedal storage:** `PedalStore` overwrites one JSON/PNG pair and reloads it on launch.
-- **Complete pedal persistence:** not implemented; there is no persistent collection, original-image retention, migration system, or versioned recipe.
-- **Gallery:** planned, not implemented.
+- **Collection storage:** `PedalStore` loads, validates, orders, saves, deletes, and migrates local pedal pairs.
+- **Gallery:** presents valid persisted pedals; invalid pairs are excluded without blocking valid records.
 - **Cache, export, sharing, and boards:** not implemented.
 
 ## Invariants And Gaps
