@@ -10,8 +10,13 @@
 
 The prompt instructs the model not to use creature, stats, combat, or game mechanics terminology. Vision labels currently pass through legacy `CreatureMaterial` mapping; this is pivot debt, not product vocabulary.
 
-## Availability And Failure
+## Availability, Failure, And Fallback
 
-The generator requires `SystemLanguageModel.default.availability == .available` and current-locale support. Unavailable, refused, or invalid output fails the current creation flow; there is no fallback name/description, timeout policy, or retry policy.
+The generator requires `SystemLanguageModel.default.availability == .available` and current-locale support for model-generated metadata. Unavailable, refused, failed, empty, or invalid metadata output no longer aborts creation after the musical result exists. The pipeline uses this fallback metadata instead:
 
-The integration uses Apple on-device Foundation Models APIs. This repository does not establish a broader privacy claim beyond that local API choice. There are no mocks or focused tests for the pedal metadata generator.
+- name: `Photo Pedal`
+- description: `A photo-generated sound pedal.`
+
+Image preparation, cover generation, color analysis, and musical sequence generation failures still abort the pipeline. The fallback is only for semantic metadata and does not change the musical sequence, fingerprint, persistence schema, filenames, or audio lifecycle.
+
+The integration uses Apple on-device Foundation Models APIs. This repository does not establish a broader privacy claim beyond that local API choice. Tests use the `PedalMetadataGenerating` seam for metadata success and fallback paths without depending on live Foundation Models. Live Foundation Models availability, locale behavior, and device prompts remain physical-device validation items. There is no timeout policy or retry policy.

@@ -2,7 +2,7 @@
 
 Photo Pedal is an iOS prototype that turns a captured or imported photo into a playable musical object. The current flow is:
 
-`photo input -> image preparation -> 2-bit cover -> deterministic note sequence -> synth playback -> name and description -> saved pedal`
+`photo input -> image preparation -> 2-bit cover -> deterministic note sequence -> name and description or metadata fallback -> synth playback -> saved pedal`
 
 The app is an MVP. A roadmap item is not necessarily implemented; see [the roadmap](docs/ROADMAP.md) and active specifications before starting feature work.
 
@@ -10,8 +10,8 @@ The app is an MVP. A roadmap item is not necessarily implemented; see [the roadm
 
 - Xcode 26.5 or later
 - iOS 26.5 or later
-- A physical iOS device for camera, VisionKit, audio, and Apple Foundation Models validation
-- Apple Intelligence and a supported current locale for pedal metadata generation
+- A physical iOS device for camera, VisionKit, audio, and live Apple Foundation Models validation
+- Apple Intelligence and a supported current locale for model-generated pedal metadata; creation continues with fallback metadata when semantic metadata generation is unavailable or fails
 
 The project uses Swift, SwiftUI, PhotosUI, AVFoundation, Vision, VisionKit, Apple Foundation Models, App Intents, and Swift Testing. The project is `snap-battle.xcodeproj`; its names remain from the pre-pivot project.
 
@@ -34,7 +34,7 @@ Device-only integrations require manual validation. See [Testing](docs/TESTING.m
 
 ## MVP Status
 
-Implemented: camera or photo-library input, 2-bit cover processing, deterministic music generation, local synth playback, reverb/distortion selection, locally persisted latest pedal, Foundation Models metadata, and two App Intents.
+Implemented: camera or photo-library input, 2-bit cover processing, deterministic music generation, local synth playback, reverb/distortion selection, locally persisted latest pedal, Foundation Models metadata with static fallback, and two App Intents.
 
 Not implemented: generator versioning, a persistent gallery, boards, sharing, collaboration, offline rendering, video export, and the roadmap's effect macro labels.
 

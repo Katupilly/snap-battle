@@ -2,9 +2,9 @@
 
 ## Current Test Structure
 
-The `snap-battleTests` target uses Swift Testing and has 52 `@Test` methods. Files include `CreatureAuditTests.swift`, `BattleEngineTests.swift`, `TimingEvaluatorTests.swift`, `BattleViewModelTests.swift`, and `SimpleBattleAITests.swift`.
+The `snap-battleTests` target uses Swift Testing and currently has 62 tests in 6 suites.
 
-Most coverage is legacy game coverage. `CreatureAuditTests.swift` contains some pedal/image checks, but there are no dedicated tests for `PhotoPedalPipeline`, `PedalStore`, `PhotoPedalSynth`, camera UI, App Intents, or live Foundation Models.
+The current suite includes legacy game coverage plus focused Photo Pedal coverage for deterministic generation, metadata fallback through the `PedalMetadataGenerating` seam, latest-pedal persistence, audio lifecycle coordination, and App Intent routing where it is testable without framework/device invocation. Camera UI, audible playback, route changes, Siri/Shortcuts framework integration, and live Foundation Models behavior remain device-validation items.
 
 Run the shared scheme against an installed simulator:
 
@@ -18,12 +18,12 @@ xcodebuild test -project "snap-battle.xcodeproj" -scheme "snap-battle" -destinat
 | --- | ---: | ---: | ---: | ---: |
 | Image processing | Partial | No | Yes | Optional |
 | Deterministic generation | Partial | No | Yes | Optional |
-| Persistence | No | No | Possible | Required before release |
-| Audio graph | No | No | Possible | Required |
+| Persistence | Yes | Partial | Possible | Required before release |
+| Audio graph | Partial | No | Possible | Required |
 | Perceptual audio | No | No | No | Required |
 | Camera | No | No | No | Required |
-| Foundation Models | No | No | No | Required |
-| App Intents | No | No | Possible | Required |
+| Foundation Models metadata fallback | Yes, through seam | Partial | Possible | Required for live model behavior |
+| App Intents | Partial routing | No | Possible | Required |
 | Haptics | No | No | No | Planned feature |
 
-Future generator work must add deterministic fixtures and regression assertions. The repository has no documented fixture-image set; do not add binary fixtures without an approved specification.
+The repository has no documented fixture-image set; do not add binary fixtures without an approved specification. Simulator builds can validate deterministic, persistence, fallback, and routing behavior, but cannot complete camera hardware, perceptual audio, route-change, Siri/Shortcuts, or live Foundation Models validation.

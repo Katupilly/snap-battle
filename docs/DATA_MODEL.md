@@ -11,7 +11,7 @@
 | `PedalHarmony` | Root pitch class, scale, BPM | Persisted |
 | `PedalNote` | One grid note: step, row, MIDI note, velocity | Persisted |
 | `PedalSoundProfile` | Gate, octave range, waveform, effect presets and mixes | Persisted |
-| `PedalDraft` | Foundation Models name/description output | Transient |
+| `PedalDraft` | Foundation Models or fallback name/description output | Transient |
 
 `PhotoPedal` stores `id`, `name`, `description`, `sequence`, `effect`, `createdAt`, and `coverFilename`. The selected effect and both stored effect mixes are saved. `updating` creates a replacement value rather than mutating the model.
 
@@ -31,7 +31,7 @@
 
 ### Semantic Metadata
 
-`PhotoPedal.name` and `PhotoPedal.description` originate from `PedalDraft` after Foundation Models generation and validation. They may vary and do not define the musical result. The current code has no fallback metadata path.
+`PhotoPedal.name` and `PhotoPedal.description` originate from `PedalDraft` after Foundation Models generation and validation. If Foundation Models metadata is unavailable, refused, failed, empty, or invalid after the musical result exists, the pipeline uses fallback metadata: name `Photo Pedal`; description `A photo-generated sound pedal.`. These values do not define the musical result.
 
 ## Serialization And Storage
 

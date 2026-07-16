@@ -5,7 +5,7 @@ Priority: P0
 
 ## Context
 
-The current Photo Pedal vertical slice captures or imports a photo, prepares it, produces a four-tone cover, generates a deterministic `PedalSequence`, plays it through `PhotoPedalSynth`, generates semantic metadata, and persists the latest result. The product flow is active, but the `snap-battleTests` target is mostly inherited from Snap Battle. `CreatureAuditTests.swift` contains some pedal/image checks, but there are no dedicated tests for `PhotoPedalPipeline`, `PedalStore`, `PhotoPedalSynth`, App Intents, or live Foundation Models.
+The current Photo Pedal vertical slice captures or imports a photo, prepares it, produces a four-tone cover, generates a deterministic `PedalSequence`, generates semantic metadata or static fallback metadata, plays it through `PhotoPedalSynth`, and persists the latest result. The product flow is active. The `snap-battleTests` target currently has 62 tests in 6 suites, including focused Photo Pedal coverage for deterministic generation, metadata fallback, latest-pedal persistence, audio lifecycle coordination, and App Intent routing where testable without device/framework invocation.
 
 This specification stabilizes existing behavior. It does not authorize creative changes to the image-to-music algorithm or product expansion.
 
@@ -22,12 +22,11 @@ References:
 
 ## Problem
 
-Confirmed gaps:
+Current boundaries and remaining validation:
 
-- The current Photo Pedal musical contract is only partially tested in `snap-battleTests/CreatureAuditTests.swift`; it lacks a focused regression suite for complete current sequences.
-- `PhotoPedalPipeline.run(image:stage:)` fails when Vision, Foundation Models availability, Foundation Models generation, or `PedalDraftValidator` fails. A metadata failure therefore prevents creation of an otherwise valid musical result.
-- `PedalStore` saves and loads only the latest pedal, but save, reload, replacement, and absence behavior have no focused tests.
-- `PhotoPedalSynth.play(_:)` stops an existing playback before starting another, but has no focused lifecycle tests. Route-change recovery, automatic interruption recovery, and a playback-concurrency policy are not implemented.
+- `PhotoPedalPipeline.run(image:stage:)` now falls back to static metadata when semantic metadata generation is unavailable, refused, failed, empty, or invalid after the musical result exists. Image preparation, cover processing, color analysis, and sequence-generation failures still interrupt the pipeline.
+- `PedalStore` saves and loads only the latest pedal; save, reload, replacement, and incomplete-storage behavior have focused tests.
+- `PhotoPedalSynth.play(_:)` stops an existing playback before starting another. Focused tests cover clean stop state; route-change recovery, automatic interruption recovery, and a playback-concurrency policy are not implemented.
 
 Potential risks requiring proportional validation, not assumed defects:
 
@@ -48,19 +47,19 @@ Users can complete the existing photo-to-pedal flow when semantic metadata servi
 - `RetroImageProcessor.process(_:)` in `snap-battle/Services/ImageProcessing/RetroImageProcessor.swift` produces an aspect-preserving, 160-pixel-wide four-tone image.
 - `PhotoColorAnalyzer.analyze(_:)` in `snap-battle/Services/Pedal/PhotoColorAnalyzer.swift` produces hue, saturation, luminance, hue variance, and edge density.
 - `ImageSequenceGenerator.makeSequence(retroImage:colorProfile:)` in `snap-battle/Services/Pedal/ImageSequenceGenerator.swift` creates a 16-step by 8-row `PedalSequence`. Grid `level == 0` emits no event (a rest); levels `1...3` emit `PedalNote` events with velocity `level / 3`.
-- `PhotoPedalPipeline.run(image:stage:)` in `snap-battle/Services/Pedal/PhotoPedalPipeline.swift` prepares the image, creates the cover and sequence, runs subject extraction and visual analysis, obtains and validates a `PedalDraft`, then creates `PhotoPedal` with a new UUID and creation date.
-- `FoundationModelsPedalGenerator.generate(observation:harmony:)` in `snap-battle/Services/FoundationModels/FoundationModelsPedalGenerator.swift` requires available Foundation Models and locale support. `PedalDraftValidator.validate(_:)` rejects empty or over-limit metadata. There is no current fallback.
+- `PhotoPedalPipeline.run(image:stage:)` in `snap-battle/Services/Pedal/PhotoPedalPipeline.swift` prepares the image, creates the cover and sequence, runs subject extraction and visual analysis, obtains and validates a `PedalDraft` through `PedalMetadataGenerating`, then creates `PhotoPedal` with a new UUID and creation date. If semantic metadata fails after the musical result exists, it uses fallback name `Photo Pedal` and description `A photo-generated sound pedal.`.
+- `FoundationModelsPedalGenerator.generate(observation:harmony:)` in `snap-battle/Services/FoundationModels/FoundationModelsPedalGenerator.swift` requires available Foundation Models and locale support for model-generated metadata. `PedalDraftValidator.validate(_:)` rejects empty or over-limit metadata. Pipeline fallback handles unavailable, refused, failed, empty, or invalid metadata output without changing the musical result.
 - `PhotoPedalSynth.play(_:)` in `snap-battle/Services/Audio/PhotoPedalSynth.swift` calls `stop()`, configures `AVAudioSession` as `.playback` with `.default` mode, activates it, renders the current 16-step sequence to memory, and starts `AVAudioEngine`. `stop()` detaches the source node, clears playback, stops the engine, and clears `isPlaying`. An interruption beginning calls `stop()`.
 - `PedalStore.save(_:cover:)` and `PedalStore.loadLatest()` in `snap-battle/Services/Persistence/PedalStore.swift` overwrite/load `latest-pedal.json` and `latest-pedal.png` in Application Support. `loadLatest()` returns `nil` if either component cannot load.
 - `PhotoPedalViewModel` in `snap-battle/Features/Capture/CaptureViewModel.swift` blocks duplicate `process(_:)` calls while `isProcessing`, resets that state with `defer`, saves generated results, reloads the latest pedal at initialization, and calls `synth.play(_:)` from `play()`.
 - `CreatePedalIntent` and `PlayLastPedalIntent` in `snap-battle/Intents/PhotoPedalIntents.swift` set `AppIntentRouter.shared.request`; `ContentView` in `snap-battle/Features/Capture/CaptureView.swift` handles `.create` by resetting and opening `CameraScreen`, and `.playLast` by calling `PhotoPedalViewModel.playLast()`.
-- Existing pedal/image coverage is in `snap-battleTests/CreatureAuditTests.swift`: color analysis helpers, scale/range selection, sound-profile JSON coding, retro processing, and fingerprint stability. `BattleEngineTests.swift`, `TimingEvaluatorTests.swift`, `BattleViewModelTests.swift`, and `SimpleBattleAITests.swift` remain legacy coverage.
+- Current Photo Pedal coverage includes deterministic generation, fallback metadata paths through `PedalMetadataGenerating`, storage replacement/reload behavior, selected audio lifecycle coordination, and App Intent routing. Legacy Snap Battle coverage remains present.
 
 ## In Scope
 
 - Focused Photo Pedal domain regression tests for the current deterministic generation contract.
 - Minimal deterministic fixtures that do not use the fingerprint as a contract.
-- Metadata fallback for unavailable, refused, failed, empty, or invalid Foundation Models output.
+- Metadata fallback for unavailable, refused, failed, empty, or invalid Foundation Models output through the existing `PedalMetadataGenerating` seam.
 - Focused tests for latest-pedal storage: save, reload, replacement, and absence.
 - App Intent routing tests at the level supported by `AppIntentRouter` and manual validation for framework integration.
 - Small, demonstrated lifecycle fixes in `PhotoPedalSynth` or `PhotoPedalViewModel` only when required to meet this specification.
@@ -91,7 +90,7 @@ Users can complete the existing photo-to-pedal flow when semantic metadata servi
 
 ### Metadata Fallback
 
-- Sequence and cover creation must complete when subject extraction, visual analysis, Foundation Models availability, Foundation Models generation, or `PedalDraftValidator` fails after the musical result is available.
+- Sequence and cover creation must complete when subject extraction, Vision metadata-context analysis, Foundation Models availability, Foundation Models generation, or `PedalDraftValidator` fails after the musical result is available.
 - The fallback `PedalDraft` must be valid under `PedalDraftValidator`: name `Photo Pedal`; description `A photo-generated sound pedal.`. These static values are metadata only and must not affect the musical result.
 - Image preparation, cover processing, color analysis, and sequence-generation failures remain errors; they must not be hidden by metadata fallback.
 - No timeout is required by this specification because the current code has no timeout behavior and no timeout defect has been demonstrated.
@@ -159,7 +158,7 @@ Users can complete the existing photo-to-pedal flow when semantic metadata servi
 
 ### Service Tests
 
-- Test success and fallback metadata paths with lightweight doubles. `RetroImageProcessing`, `SubjectExtracting`, and `ObjectAnalyzing` already provide seams; introduce a metadata-generation seam only if required to test fallback without live Foundation Models.
+- Test success and fallback metadata paths with lightweight doubles. `RetroImageProcessing`, `SubjectExtracting`, `ObjectAnalyzing`, and `PedalMetadataGenerating` provide seams for testing without live Foundation Models.
 - Test fallback for unavailable/refused/failed metadata errors and invalid/empty `PedalDraft` validation.
 - Test `PedalStore` save/reload, replacement, and `loadLatest() == nil` for missing or incomplete storage. Add the smallest test-only storage-location seam only if isolation from Application Support is otherwise not possible.
 - Test error propagation for image preparation, cover processing, color analysis, or sequence generation separately from metadata fallback; do not convert those failures into successful pedals.
