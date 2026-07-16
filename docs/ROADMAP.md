@@ -1,5 +1,22 @@
 # Photo Pedal Roadmap
 
+## Current Focus
+
+- **Active:** stabilize and version image-to-music generation. See [Music Generation V2](../specs/current/music-generation-v2.md).
+- **Planned next:** prepare persistent data for a gallery, then validate the individual board model.
+
+## Status Legend
+
+- Implemented
+- Active
+- Planned
+- Optional
+- Deferred
+
+## Roadmap Governance
+
+This document defines product direction and sequencing. It is not an implementation specification. Major roadmap work requires an active document under `specs/current/` before implementation begins.
+
 ## Product Vision
 
 Photo Pedal transforms images into small, collectible musical objects.
@@ -17,7 +34,7 @@ The goal is not to create a simplified DAW. The product should allow anyone to c
 
 ---
 
-# Phase 0 — Improve Musical Variety
+# Phase 0 — Improve Musical Variety (Active)
 
 **Priority: Highest**
 **Complexity: Medium**
@@ -27,10 +44,10 @@ The goal is not to create a simplified DAW. The product should allow anyone to c
 The current system selects:
 
 * one of 12 root notes based on hue;
-* either a major or minor pentatonic scale based on saturation;
+* one of four current scales based on saturation and hue variance;
 * BPM based on luminance.
 
-This creates only 24 primary harmonic combinations. Even when rhythmic grids differ, multiple photos may still produce sequences with a similar musical character.
+Even with four current scales, multiple photos can produce sequences with a similar musical character. The generator has no versioned recipe or deterministic micro-variation layer.
 
 ## Recommended Approach
 
@@ -94,7 +111,9 @@ These profiles should be treated as part of the app’s musical identity, not as
 
 ---
 
-# Phase 1 — Data Model and Gallery
+# Phase 1 — Data Model and Gallery (Planned)
+
+Draft: [Gallery specification](../specs/planned/gallery.md).
 
 **Priority: Highest**
 **Complexity: Medium**
@@ -146,7 +165,9 @@ Do not include yet:
 
 ---
 
-# Phase 2 — Individual Pedalboard
+# Phase 2 — Individual Pedalboard (Planned)
+
+Draft: [Individual board specification](../specs/planned/individual-board.md).
 
 **Priority: High**
 **Complexity: High**
@@ -225,7 +246,7 @@ The interface can still use **Board**, but alternatives worth testing include:
 
 ---
 
-# Phase 3 — Improve Pedals and Controls
+# Phase 3 — Improve Pedals and Controls (Planned)
 
 **Priority: High**
 **Complexity: Medium**
@@ -268,7 +289,7 @@ Additional controls should only be added when they produce an obvious and enjoya
 
 ---
 
-# Phase 4 — Haptics and Sensory Feedback
+# Phase 4 — Haptics and Sensory Feedback (Planned)
 
 **Priority: High and Cross-Functional**
 **Complexity: Low to Medium**
@@ -291,7 +312,9 @@ Not every note should necessarily produce a strong vibration. More noticeable ha
 
 ---
 
-# Phase 5 — Board Sharing
+# Phase 5 — Board Sharing (Planned)
+
+Draft: [Board sharing specification](../specs/planned/board-sharing.md).
 
 **Priority: Medium**
 **Complexity: Medium**
@@ -327,7 +350,9 @@ The board should be shareable through the system share sheet, including AirDrop 
 
 ---
 
-# Phase 6 — Collaborative Sessions
+# Phase 6 — Collaborative Sessions (Planned)
+
+Draft: [Collaborative session specification](../specs/planned/collaborative-session.md).
 
 **Priority: Medium to Low**
 **Complexity: Very High**
@@ -377,7 +402,7 @@ For the first collaborative version, SharePlay should be preferred.
 
 ---
 
-# Phase 7 — Final Visual Design
+# Phase 7 — Final Visual Design (Planned)
 
 **Priority: High, After Structural Validation**
 
@@ -428,7 +453,9 @@ Design work should not begin only after all development is complete.
 
 ---
 
-# Phase 8 — Social Media Video Export
+# Phase 8 — Social Media Video Export (Optional)
+
+Draft: [Vertical video export specification](../specs/planned/vertical-video-export.md).
 
 **Priority: Optional**
 **Complexity: Medium**
