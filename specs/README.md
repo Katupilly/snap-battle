@@ -3,7 +3,7 @@
 Roadmap entries are direction, not implementation authorization. Significant work needs a specification before implementation.
 
 - `planned/` contains `Draft` specifications with unresolved decisions. They are not authorized for implementation.
-- `current/` contains only `Ready` or `In Progress` specifications approved for implementation. It is currently empty.
+- `current/` contains only `Ready` or `In Progress` specifications approved for implementation.
 - Completed specifications may be archived later or retain a `Done` status until an archive location is established.
 
 ## Statuses
@@ -42,3 +42,7 @@ Last updated: YYYY-MM-DD
 ```
 
 A Ready or In Progress specification in `current/` authorizes only its stated scope.
+
+## Current Specifications
+
+- [Photo Pedal Vertical Slice Stabilization](current/vertical-slice-stabilization.md) (`Ready`)
