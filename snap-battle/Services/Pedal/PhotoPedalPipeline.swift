@@ -3,6 +3,7 @@ import UIKit
 @MainActor
 final class PhotoPedalPipeline {
     private let imagePreparer: ImageInputPreparer
+    private let preparationExecutor: ImagePreparationExecutor
     private let retroProcessor: any RetroImageProcessing
     private let visionAnalyzer: any ObjectAnalyzing
     private let subjectService: any SubjectExtracting
@@ -11,6 +12,7 @@ final class PhotoPedalPipeline {
 
     init() {
         imagePreparer = ImageInputPreparer()
+        preparationExecutor = ImagePreparationExecutor()
         retroProcessor = RetroImageProcessor()
         visionAnalyzer = VisionObjectAnalyzer()
         subjectService = SubjectExtractionService()
@@ -25,6 +27,7 @@ final class PhotoPedalPipeline {
         generator: any PedalMetadataGenerating
     ) {
         self.imagePreparer = imagePreparer
+        self.preparationExecutor = ImagePreparationExecutor()
         self.retroProcessor = retroProcessor
         self.visionAnalyzer = visionAnalyzer
         self.subjectService = subjectService
@@ -54,9 +57,14 @@ final class PhotoPedalPipeline {
     func run(image: UIImage, runID: String? = nil, stage: @escaping (PedalProcessingStage) -> Void) async throws -> (pedal: PhotoPedal, cover: UIImage) {
         let runID = runID ?? PerformanceDiagnostics.makeRunID()
         stage(.preparing)
-        let prepared = try PerformanceDiagnostics.measure("imagePreparation", runID: runID, details: "inputWidth=\(image.cgImage?.width ?? 0) inputHeight=\(image.cgImage?.height ?? 0)") {
-            try imagePreparer.prepare(image, diagnosticsRunID: runID)
+        try Task.checkCancellation()
+        let input = try imagePreparer.makePixelBuffer(from: image)
+        let preparedValue = try await PerformanceDiagnostics.measure("imagePreparation", runID: runID, details: "inputWidth=\(input.buffer.width) inputHeight=\(input.buffer.height) executor=imagePreparation") {
+            try await preparationExecutor.prepare(input, runID: runID)
         }
+        let preparedImage = try imagePreparer.materialize(preparedValue)
+        let prepared = PreparedImage(image: preparedImage, originalSize: preparedValue.originalSize,
+                                     processedSize: preparedValue.processedSize, fingerprint: preparedValue.fingerprint)
         try Task.checkCancellation()
         stage(.makingCover)
         let cover = try await PerformanceDiagnostics.measure("retroProcessing", runID: runID, details: "inputWidth=\(prepared.processedSize.width) inputHeight=\(prepared.processedSize.height)") {

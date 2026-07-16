@@ -6,6 +6,55 @@ import UIKit
 @testable import snap_battle
 
 struct PhotoPedalStabilizationTests {
+    @Test func imagePixelBufferValidatesDimensionsStrideAndData() throws {
+        let valid = try ImagePixelBuffer(data: Data(repeating: 0, count: 16), width: 2, height: 2, bytesPerRow: 8)
+        #expect(valid.format == .rgba8SRGBPremultipliedLast)
+        #expect(valid.orientation == .up)
+
+        #expect(throws: ImagePixelBufferError.invalidDataSize) {
+            try ImagePixelBuffer(data: Data(repeating: 0, count: 15), width: 2, height: 2, bytesPerRow: 8)
+        }
+        #expect(throws: ImagePixelBufferError.invalidStride) {
+            try ImagePixelBuffer(data: Data(repeating: 0, count: 16), width: 2, height: 2, bytesPerRow: 4)
+        }
+    }
+
+    @Test func preparationPreservesOrientationPixelsFingerprintAndDimensions() async throws {
+        let source = UIGraphicsImageRenderer(size: CGSize(width: 3, height: 2)).image { context in
+            UIColor.red.setFill()
+            context.fill(CGRect(x: 0, y: 0, width: 3, height: 2))
+        }
+        let oriented = UIImage(cgImage: try #require(source.cgImage), scale: 1, orientation: .left)
+        let preparer = ImageInputPreparer()
+        let input = try preparer.makePixelBuffer(from: oriented)
+        let first = try await ImagePreparationExecutor().prepare(input, runID: "TEST")
+        let second = try await ImagePreparationExecutor().prepare(input, runID: "TEST")
+
+        #expect(first == second)
+        #expect(first.pixels.orientation == .up)
+        #expect(first.pixels.width == 6)
+        #expect(first.pixels.height == 9)
+        #expect(first.pixels.data == second.pixels.data)
+        #expect(first.fingerprint == second.fingerprint)
+        #expect(first.originalSize == PixelSize(width: 9, height: 6))
+    }
+
+    @Test func preparationCancellationBeforeWorkDoesNotPrepare() async throws {
+        let preparer = ImageInputPreparer()
+        let input = try preparer.makePixelBuffer(from: Fixtures.patternImage)
+        let executor = ImagePreparationExecutor()
+        let task = Task {
+            try await executor.prepare(input, runID: "CANCELLED")
+        }
+        task.cancel()
+        do {
+            _ = try await task.value
+            Issue.record("Expected preparation cancellation")
+        } catch is CancellationError {
+            // Expected: the actor checks cancellation before synchronous work.
+        }
+    }
+
     @Test func identicalNormalizedInputProducesEqualMusicalData() throws {
         let image = Fixtures.patternImage
         let preparer = ImageInputPreparer()
@@ -18,6 +67,28 @@ struct PhotoPedalStabilizationTests {
         #expect(firstSequence.harmony == secondSequence.harmony)
         #expect(firstSequence.notes == secondSequence.notes)
         #expect(firstSequence.soundProfile == secondSequence.soundProfile)
+    }
+
+    @Test func boundaryPreparationPreservesColorCoverAndSequence() async throws {
+        let preparer = ImageInputPreparer()
+        let input = try preparer.makePixelBuffer(from: Fixtures.patternImage)
+        let prepared = try await ImagePreparationExecutor().prepare(input, runID: "EQUIVALENCE")
+        let image = try preparer.materialize(prepared)
+        let color = try PhotoColorAnalyzer.analyze(image)
+        let cover = try await RetroImageProcessor().process(image)
+        let sequence = try ImageSequenceGenerator.makeSequence(retroImage: cover, colorProfile: color)
+
+        let legacy = try preparer.prepare(Fixtures.patternImage)
+        let legacyColor = try PhotoColorAnalyzer.analyze(legacy.image)
+        let legacyCover = try await RetroImageProcessor().process(legacy.image)
+        let legacySequence = try ImageSequenceGenerator.makeSequence(retroImage: legacyCover, colorProfile: legacyColor)
+
+        #expect(prepared.fingerprint == legacy.fingerprint)
+        #expect(color == legacyColor)
+        #expect(cover.cgImage?.width == legacyCover.cgImage?.width)
+        #expect(cover.cgImage?.height == legacyCover.cgImage?.height)
+        #expect(try rgbaBytes(cover) == rgbaBytes(legacyCover))
+        #expect(sequence == legacySequence)
     }
 
     @Test func gridLevelsProduceCurrentRestsAndVelocitiesInOrder() throws {
@@ -185,6 +256,21 @@ struct PhotoPedalStabilizationTests {
         let cover = try await RetroImageProcessor().process(prepared.image)
         let color = try PhotoColorAnalyzer.analyze(prepared.image)
         return try ImageSequenceGenerator.makeSequence(retroImage: cover, colorProfile: color)
+    }
+
+    private func rgbaBytes(_ image: UIImage) throws -> Data {
+        guard let cgImage = image.cgImage,
+              let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else {
+            throw AppError.imageDecodeFailed
+        }
+        var bytes = Data(count: cgImage.width * cgImage.height * 4)
+        guard let context = bytes.withUnsafeMutableBytes({ raw in
+            CGContext(data: raw.baseAddress, width: cgImage.width, height: cgImage.height,
+                      bitsPerComponent: 8, bytesPerRow: cgImage.width * 4, space: colorSpace,
+                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        }) else { throw AppError.imageDecodeFailed }
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: cgImage.width, height: cgImage.height))
+        return bytes
     }
 
 }

@@ -17,6 +17,7 @@ final class PhotoPedalViewModel {
     private let pipeline = PhotoPedalPipeline()
     private let synth = PhotoPedalSynth()
     private var task: Task<Void, Never>?
+    private var processingToken: UUID?
 
     private let store: PedalStore
 
@@ -40,14 +41,23 @@ final class PhotoPedalViewModel {
         guard !isProcessing else { return }
         let runID = runID ?? PerformanceDiagnostics.makeRunID()
         errorMessage = nil; isProcessing = true
+        let processingToken = UUID()
+        self.processingToken = processingToken
         task = Task {
-            defer { isProcessing = false; task = nil }
+            defer {
+                if self.processingToken == processingToken {
+                    isProcessing = false
+                    task = nil
+                }
+            }
             do {
                 try await PerformanceDiagnostics.measure("totalPipeline", runID: runID, details: "inputWidth=\(image.cgImage?.width ?? 0) inputHeight=\(image.cgImage?.height ?? 0)") {
                     let result = try await pipeline.run(image: image, runID: runID) { [weak self] stage in self?.stage = stage }
+                    try Task.checkCancellation()
                     pendingPedal = result.pedal
                     pendingCover = result.cover
                     selectedEffect = result.pedal.effect
+                    try Task.checkCancellation()
                     try savePendingResult(runID: runID)
                 }
             } catch is CancellationError { }
@@ -81,6 +91,7 @@ final class PhotoPedalViewModel {
     func discardPendingResult() { pendingPedal = nil; pendingCover = nil; saveErrorMessage = nil }
 
     func reset() {
+        processingToken = nil
         task?.cancel(); synth.stop(); pedal = nil; cover = nil; pendingPedal = nil; pendingCover = nil; errorMessage = nil; saveErrorMessage = nil
     }
 
