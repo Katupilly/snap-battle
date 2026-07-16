@@ -42,4 +42,16 @@ UIKit/AVFoundation support camera capture; PhotosUI imports images; Vision/Visio
 
 ## Legacy Pivot Debt
 
-The app target still compiles unreachable Snap Battle code: `Creature*` domain/services, `Services/Battle/`, `Features/Generation/`, `Features/Result/`, and `Features/Battle/`. Legacy tests and names (`snap-battle`, `snap_battleApp`, `RetroImageConfiguration.snapBattle`) also remain. This documentation does not treat that code as Photo Pedal architecture; migration or removal requires a separately approved specification.
+### Legacy But Still Reused
+
+`ObjectObservation`, `CreatureMaterial`, `SubjectExtracting`, `ObjectAnalyzing`, and `AppError` retain game-era names or relationships but participate in the current metadata/input flow. Their removal safety is unknown and requires reference, target-membership, and test analysis.
+
+### Legacy And Apparently Isolated
+
+The target also compiles legacy `Creature*` domain/services, `Services/Battle/`, `Features/Generation/`, `Features/Result/`, and `Features/Battle/`. These areas are not reached from the active Photo Pedal flow, but this observation alone does not make them safe to remove because target membership and tests still compile them.
+
+### Naming Legacy
+
+Legacy tests and names include `snap-battle`, `snap_battleApp`, and `RetroImageConfiguration.snapBattle`.
+
+Legacy cleanup requires a dedicated audit and an approved cleanup spec.

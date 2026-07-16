@@ -2,8 +2,30 @@
 
 ## Current Focus
 
-- **Active:** stabilize and version image-to-music generation. See [Music Generation V2](../specs/current/music-generation-v2.md).
-- **Planned next:** prepare persistent data for a gallery, then validate the individual board model.
+Current focus: validate and refine the existing Photo Pedal vertical slice, resolve open music-generation decisions, and improve non-legacy test coverage.
+
+### Current Stabilization
+
+- Correct documentation/code divergences.
+- Validate the current flow on a physical device.
+- Expand Photo Pedal-specific test coverage.
+- Define any future fingerprint responsibility through an approved spec.
+- Decide whether and when generator versioning is needed.
+- Review the [Music Generation V2 draft](../specs/planned/music-generation-v2.md).
+
+### Legacy Pivot
+
+The current app target still compiles Creature/Battle-era code. `ObjectObservation`, `CreatureMaterial`, `SubjectExtracting`, `ObjectAnalyzing`, and `AppError` remain reused by the Photo Pedal flow and require investigation before any removal. Other legacy areas may be isolated from the active flow but are not safe to delete without target-membership and test analysis. See [Architecture](ARCHITECTURE.md).
+
+Legacy cleanup requires a dedicated audit and an approved cleanup spec.
+
+### Planned Product Expansion
+
+- Gallery
+- Board
+- Sharing
+- Collaboration
+- Video export
 
 ## Status Legend
 
@@ -15,7 +37,7 @@
 
 ## Roadmap Governance
 
-This document defines product direction and sequencing. It is not an implementation specification. Major roadmap work requires an active document under `specs/current/` before implementation begins.
+This document defines product direction and sequencing. It is not an implementation specification. Major roadmap work requires a `Ready` or `In Progress` document under `specs/current/` before implementation begins.
 
 ## Product Vision
 
@@ -34,7 +56,7 @@ The goal is not to create a simplified DAW. The product should allow anyone to c
 
 ---
 
-# Phase 0 — Improve Musical Variety (Active)
+# Phase 0 — Improve Musical Variety (Planned)
 
 **Priority: Highest**
 **Complexity: Medium**
@@ -334,7 +356,7 @@ Create a custom shareable format, for example:
 * thumbnails;
 * original images only when strictly necessary.
 
-Because the audio is deterministic, pre-rendered audio files do not need to be included. The receiving device can reconstruct the sound from the stored musical recipe.
+The future package should preserve the final musical result and sound settings needed for equivalent playback. Realtime audio output is not guaranteed to be byte-for-byte identical across devices or routes; whether pre-rendered audio is needed is an unresolved sharing-format decision.
 
 ## AirDrop
 

@@ -25,7 +25,14 @@ Date: YYYY-MM-DD
 ## References
 ```
 
+## Accepted Decisions
+
 - [0001 Deterministic local music generation](0001-deterministic-local-music-generation.md)
 - [0002 Persist generated musical results](0002-persist-generated-musical-results.md)
 - [0003 Foundation Models for semantic metadata](0003-foundation-models-for-semantic-metadata.md)
+
+## Proposed Decisions
+
+Proposed ADRs do not authorize implementation and may change or be rejected.
+
 - [0004 Board uses a shared global clock](0004-board-uses-a-shared-global-clock.md)

@@ -5,11 +5,11 @@ Date: 2026-07-16
 
 ## Context
 
-The roadmap proposes boards that order pedals without becoming timeline editors.
+The planned Board feature may order pedals without becoming a timeline editor. No Board model or Board playback exists in the current MVP.
 
 ## Decision
 
-If boards are implemented, they should use one global timing source and quantized pedal transitions.
+For the future Board feature only, evaluate one global timing source and quantized pedal transitions. This proposal does not establish a rule for the current MVP.
 
 ## Consequences
 
@@ -27,4 +27,4 @@ If boards are implemented, they should use one global timing source and quantize
 
 ## References
 
-- [Roadmap](../ROADMAP.md)
+- [Individual Board draft](../../specs/planned/individual-board.md)

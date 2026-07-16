@@ -10,7 +10,7 @@ The app is an MVP. A roadmap item is not necessarily implemented; see [the roadm
 
 - Xcode 26.5 or later
 - iOS 26.5 or later
-- A physical iPhone for camera, VisionKit, audio, and Apple Foundation Models validation
+- A physical iOS device for camera, VisionKit, audio, and Apple Foundation Models validation
 - Apple Intelligence and a supported current locale for pedal metadata generation
 
 The project uses Swift, SwiftUI, PhotosUI, AVFoundation, Vision, VisionKit, Apple Foundation Models, App Intents, and Swift Testing. The project is `snap-battle.xcodeproj`; its names remain from the pre-pivot project.
@@ -39,6 +39,8 @@ Implemented: camera or photo-library input, 2-bit cover processing, deterministi
 Not implemented: generator versioning, a persistent gallery, boards, sharing, collaboration, offline rendering, video export, and the roadmap's effect macro labels.
 
 ## Documentation
+
+`README.md` is onboarding and navigation only. `AGENTS.md` defines agent operating rules; `docs/PRODUCT_SPEC.md` defines the product; `docs/ARCHITECTURE.md` describes confirmed architecture; Accepted ADRs record durable decisions; `specs/current/` is the only location that can authorize implementation; `specs/planned/` and `docs/ROADMAP.md` do not authorize implementation.
 
 - [Agent instructions](AGENTS.md)
 - [Product specification](docs/PRODUCT_SPEC.md)

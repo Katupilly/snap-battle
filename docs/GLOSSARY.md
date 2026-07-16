@@ -2,11 +2,11 @@
 
 ## Pedal
 
-A `PhotoPedal`: one saved musical object generated from a source image. Current storage retains only the latest pedal.
+A `PhotoPedal`: one generated musical record derived from a source image. Current storage retains only the latest record; it is not yet a collection of saved pedals.
 
 ## Music Recipe
 
-The deterministic musical information needed to reproduce playback. No type with this name exists yet; current equivalent data is `PedalSequence`, `PedalHarmony`, `PedalNote`, and `PedalSoundProfile`.
+The musical information used to reproduce playback. No type with this name exists yet; the current equivalent is `PedalSequence`, `PedalHarmony`, `PedalNote`, and `PedalSoundProfile`. Deterministic transformation of those values does not imply byte-identical realtime audio output.
 
 ## Board
 

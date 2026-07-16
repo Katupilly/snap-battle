@@ -6,7 +6,7 @@ Photo Pedal transforms photos into playable and collectible musical objects.
 
 ## Target User Experience
 
-A person without music-production knowledge can capture or choose a photo, receive a 2-bit visual object, hear its generated sequence, choose reverb or distortion, adjust its intensity, and save/replay the latest result. Combining saved pedals into an ordered board is planned, not implemented.
+A person without music-production knowledge can capture or choose a photo, receive a 2-bit visual object, hear its generated sequence, choose reverb or distortion, adjust its intensity, and replay the latest result. Combining saved pedals into an ordered board is planned, not implemented.
 
 ## Product Principles
 
@@ -19,18 +19,26 @@ A person without music-production knowledge can capture or choose a photo, recei
 - Generated musical results remain stable after saving
 - Composition through ordering rather than detailed editing
 
-## Current MVP
+## Current Implementation Status
 
-| Capability | Status | Notes |
-| --- | --- | --- |
-| Capture and photo-library input | Implemented | `CaptureView` and `CameraScreen` |
-| 2-bit cover processing | Implemented | Four-tone retro output |
-| Image-to-music sequence | Implemented | 16 steps by 8 rows |
-| Reverb or distortion | Implemented | UI exposes a generic intensity slider |
-| Foundation Models name/description | Implemented | Unavailable models currently fail creation |
-| Save and replay | Partially implemented | Only the latest pedal is stored |
-| Gallery and reusable collection | Planned | No gallery model or UI |
-| Ordered board | Planned | No board model or playback |
+### Implemented
+
+- Photo-library input through `PedalCaptureView` and camera capture through `CameraScreen`.
+- Four-tone processed cover generation and a 16-step by 8-row image-to-music sequence.
+- Reverb or distortion selection with a generic intensity control.
+- Foundation Models-generated name and description; unavailable models currently fail creation.
+
+### Partially Implemented
+
+- The app stores and reloads only the latest pedal. Processing saves it automatically; there is no separate user save action or collection of pedals.
+- The latest pedal can be replayed, but it is not a persistent, reusable library item.
+
+### Planned
+
+- Generator versioning.
+- Complete pedal persistence and a gallery.
+- Board playback and ordering.
+- Sharing, collaboration, and video export.
 
 ## Non-Goals
 

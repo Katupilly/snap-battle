@@ -10,11 +10,25 @@ It uses stereo 44.1 kHz output, duplicates a mono rendered sample into both chan
 
 `PedalWaveform.square` and `.triangle` use lookup tables. A fixed attack/decay/release envelope is applied, notes are summed, and output is hard-clamped to +/-0.92. Both effects remain in the graph; the selected one receives its saved wet/dry mix and the other receives zero.
 
+## Session And Playback
+
+`PhotoPedalSynth.play(_:)` stops existing playback, configures `AVAudioSession` with category `.playback` and mode `.default`, activates the session, applies the selected effect, prepares the rendered buffer, and starts the engine.
+
+### Deterministic Musical Data
+
+The persisted sequence and sound-profile values sent to the synth can be deterministic under the image-to-music contract.
+
+### Playback Equivalence
+
+Realtime playback should be musically equivalent for the same persisted musical data, but it is not documented as byte-for-byte identical. Device hardware, audio route, latency, interruptions, scheduling, and audio-session state can affect runtime behavior.
+
 ## Controls And Limits
 
 The current UI selects reverb or distortion and adjusts the selected mix. It does not expose the planned Space, Drive, or Tone names. There is no pause/resume, seek, loop, tempo change during playback, board playback, polyphony cap, offline rendering, or export.
 
-The implementation does not establish an explicit `AVAudioSession` configuration, sample-rate negotiation policy, or route-change policy. Interruption handling calls `stop()`. Route-change recovery and lifecycle recovery require device validation before being documented as supported.
+The implementation has no documented sample-rate negotiation or route-change policy. It observes interruptions and calls `stop()` when an interruption begins; automatic recovery is not implemented in the current codebase.
+
+Route-change handling, playback concurrency policy, pause/resume, lifecycle recovery, board playback, and offline rendering are **not implemented in the current codebase**.
 
 ## Validation Boundary
 

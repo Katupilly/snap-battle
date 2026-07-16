@@ -10,12 +10,20 @@ Implementation is the source of truth for what currently exists. Report code/doc
 
 When documents conflict, use this precedence:
 
-1. An active specification in `specs/current/`
+1. A specification in `specs/current/` with status `Ready` or `In Progress`
 2. Accepted ADRs in `docs/decisions/`
 3. Architecture and domain contracts in `docs/`
 4. `docs/PRODUCT_SPEC.md`
 5. `docs/ROADMAP.md`
-6. `README.md` summaries
+6. Specifications in `specs/planned/`
+7. Legacy documents
+8. `README.md` summaries
+
+If sources conflict, stop implementation and record the divergence. Do not silently select an interpretation.
+
+Agents may only implement a specification located in `specs/current/` with status `Ready` or `In Progress`.
+
+Documents and ADRs marked `Proposed`, `Draft`, or `Planned` are not implementation authorization.
 
 ## Non-Negotiable Invariants
 
@@ -27,7 +35,7 @@ When documents conflict, use this precedence:
 - Persistent domain data must not be owned only by temporary view state.
 - Do not add third-party dependencies without explicit justification and approval.
 - Preserve accessibility behavior and Reduce Motion behavior where they exist; add equivalent support when introducing motion.
-- Do not implement roadmap work without an active specification.
+- Do not implement roadmap work without a `Ready` or `In Progress` specification in `specs/current/`.
 
 ## Before Editing
 
