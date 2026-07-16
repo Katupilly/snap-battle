@@ -43,12 +43,21 @@ final class PhotoPedalViewModel {
     func chooseEffect(_ effect: PedalEffect) {
         selectedEffect = effect
         guard var pedal, let cover else { return }
-        pedal = PhotoPedal(id: pedal.id, name: pedal.name, description: pedal.description, sequence: pedal.sequence, effect: effect, createdAt: pedal.createdAt, coverFilename: pedal.coverFilename)
+        pedal = pedal.updating(effect: effect)
         self.pedal = pedal
         try? PedalStore.save(pedal, cover: cover)
     }
 
-    func play() { guard let pedal else { return }; try? synth.play(pedal.sequence, effect: selectedEffect) }
+    func updateEffectMix(_ mix: Double) {
+        guard let pedal, let cover else { return }
+        let profile = pedal.sequence.soundProfile.updatingMix(mix, for: selectedEffect)
+        let updated = pedal.updating(soundProfile: profile)
+        self.pedal = updated
+        try? PedalStore.save(updated, cover: cover)
+    }
+
+    func effectMix(for effect: PedalEffect) -> Double { pedal?.sequence.soundProfile.mix(for: effect) ?? 0 }
+    func play() { guard let pedal else { return }; try? synth.play(pedal) }
     func playLast() { if pedal == nil, let latest = PedalStore.loadLatest() { pedal = latest.pedal; cover = latest.cover }; play() }
     func reset() { task?.cancel(); synth.stop(); pedal = nil; cover = nil; errorMessage = nil }
 }

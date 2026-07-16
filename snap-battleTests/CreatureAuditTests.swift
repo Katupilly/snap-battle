@@ -4,6 +4,51 @@ import UIKit
 @testable import snap_battle
 
 struct CreatureAuditTests {
+    @Test func circularHueVarianceTreatsRedBoundaryAsConcentrated() {
+        #expect(PhotoColorAnalyzer.circularVarianceDegrees([355, 5, 0]) < 10)
+        #expect(PhotoColorAnalyzer.circularVarianceDegrees([0, 120, 240]) > PedalHeuristics.highHueVarianceDegrees)
+    }
+
+    @Test func sobelDensitySeparatesFlatAndHardEdges() {
+        let flat = [Double](repeating: 0.5, count: 16)
+        let edge = (0 ..< 16).map { $0 % 4 < 2 ? 0.0 : 1.0 }
+        #expect(PhotoColorAnalyzer.sobelEdgeDensity(flat, width: 4, height: 4) == 0)
+        #expect(PhotoColorAnalyzer.sobelEdgeDensity(edge, width: 4, height: 4) > 0)
+        #expect(PedalHeuristics.gate(for: PedalHeuristics.highEdgeDensity) < PedalHeuristics.gate(for: PedalHeuristics.lowEdgeDensity))
+    }
+
+    @Test func imageParametersChooseModesAndRanges() {
+        let low = PhotoColorProfile(hue: 30, saturation: 0.8, luminance: 0.5, hueVarianceDegrees: 10, edgeDensity: 0.1)
+        let medium = PhotoColorProfile(hue: 30, saturation: 0.1, luminance: 0.5, hueVarianceDegrees: 45, edgeDensity: 0.1)
+        let high = PhotoColorProfile(hue: 30, saturation: 0.1, luminance: 0.5, hueVarianceDegrees: 90, edgeDensity: 0.1)
+        #expect(ImageSequenceGenerator.scale(for: low) == .majorPentatonic)
+        #expect(ImageSequenceGenerator.scale(for: medium) == .dorian)
+        #expect(ImageSequenceGenerator.scale(for: high) == .wholeTone)
+        #expect(ImageSequenceGenerator.octaveRange(for: 2) == 1)
+        #expect(ImageSequenceGenerator.octaveRange(for: 3) == 1.5)
+        #expect(ImageSequenceGenerator.octaveRange(for: 4) == 2)
+    }
+
+    @Test func soundProfileAndMixSurviveJSON() throws {
+        let profile = PedalSoundProfile(gate: 0.4, octaveRange: 1.5, waveform: .triangle, reverbPreset: .cathedral, distortionPreset: .drumsBitBrush, defaultReverbMix: 70, defaultDistortionMix: 60, reverbMix: 42, distortionMix: 66)
+        let sequence = PedalSequence(harmony: PedalHarmony(rootPitchClass: 0, scale: .dorian, bpm: 100), notes: [], soundProfile: profile)
+        let pedal = PhotoPedal(id: UUID(), name: "Test", description: "A test pedal.", sequence: sequence, effect: .reverb, createdAt: .now, coverFilename: "cover.png")
+        let decoded = try JSONDecoder().decode(PhotoPedal.self, from: JSONEncoder().encode(pedal))
+        #expect(decoded.sequence.soundProfile == profile)
+        #expect(decoded.updating(soundProfile: profile.updatingMix(88, for: .distortion)).sequence.soundProfile.distortionMix == 88)
+    }
+
+    @Test func fourSignificantRetroTonesCreateWideRange() async throws {
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 80, height: 20)).image { context in
+            for tone in 0 ..< 4 {
+                UIColor(white: CGFloat(tone) / 3, alpha: 1).setFill()
+                context.cgContext.fill(CGRect(x: tone * 20, y: 0, width: 20, height: 20))
+            }
+        }
+        let retro = try await RetroImageProcessor().process(image)
+        #expect(try ImageSequenceGenerator.significantToneCount(in: retro) == 4)
+    }
+
     @Test func imageFingerprintIsStableForSamePixels() throws {
         let renderer = UIGraphicsImageRenderer(size: CGSize(width: 80, height: 40))
         let image = renderer.image { context in

@@ -6,6 +6,7 @@ struct PedalResultView: View {
     let cover: UIImage
 
     var body: some View {
+        @Bindable var model = model
         ScrollView {
             VStack(spacing: 20) {
                 Image(uiImage: cover).resizable().interpolation(.none).scaledToFit().clipShape(.rect(cornerRadius: 20))
@@ -15,11 +16,17 @@ struct PedalResultView: View {
                 Text("\(pedal.sequence.harmony.rootName) · \(pedal.sequence.harmony.scale.displayName) · \(pedal.sequence.harmony.bpm) BPM")
                     .font(.subheadline.weight(.semibold))
                 StepGrid(sequence: pedal.sequence)
-                Picker("Efeito", selection: Bindable(model).selectedEffect) {
+                Picker("Efeito", selection: $model.selectedEffect) {
                     ForEach(PedalEffect.allCases) { effect in Text(effect.displayName).tag(effect) }
                 }
                 .pickerStyle(.segmented)
                 .onChange(of: model.selectedEffect) { _, effect in model.chooseEffect(effect) }
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack { Text("Intensidade"); Spacer(); Text("\(Int(model.effectMix(for: model.selectedEffect).rounded()))%") }
+                        .font(.subheadline.weight(.medium))
+                    Slider(value: Binding(get: { model.effectMix(for: model.selectedEffect) }, set: { model.updateEffectMix($0) }), in: 0 ... 100, step: 1)
+                        .accessibilityLabel("Intensidade de \(model.selectedEffect.displayName)")
+                }
                 Button("Tocar pedal", systemImage: "play.fill") { model.play() }.buttonStyle(.borderedProminent).controlSize(.large)
                 Button("Criar outro", systemImage: "camera") { model.reset() }.buttonStyle(.bordered)
             }

@@ -2,8 +2,7 @@ import AVFoundation
 import Foundation
 
 private final class PlaybackBuffer: @unchecked Sendable {
-    let samples: [Float]
-    var position = 0
+    let samples: [Float]; var position = 0
     init(samples: [Float]) { self.samples = samples }
 }
 
@@ -18,78 +17,70 @@ final class PhotoPedalSynth: NSObject {
     private(set) var isPlaying = false
 
     override init() {
-        super.init()
-        configureEngine()
+        super.init(); configureEngine()
         NotificationCenter.default.addObserver(self, selector: #selector(handleInterruption), name: AVAudioSession.interruptionNotification, object: AVAudioSession.sharedInstance())
     }
-
     deinit { NotificationCenter.default.removeObserver(self) }
 
-    func play(_ sequence: PedalSequence, effect: PedalEffect) throws {
+    func play(_ pedal: PhotoPedal) throws {
         stop()
         try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
         try AVAudioSession.sharedInstance().setActive(true)
-        setEffect(effect)
-        let buffer = PlaybackBuffer(samples: Self.renderSequence(sequence, sampleRate: Int(format.sampleRate)))
+        applyEffect(pedal.effect, profile: pedal.sequence.soundProfile)
+        let buffer = PlaybackBuffer(samples: Self.renderSequence(pedal.sequence, sampleRate: Int(format.sampleRate)))
         playback = buffer
         let source = AVAudioSourceNode(format: format) { _, _, frameCount, audioBufferList -> OSStatus in
             let buffers = UnsafeMutableAudioBufferListPointer(audioBufferList)
             for frame in 0 ..< Int(frameCount) {
                 let sample = buffer.position < buffer.samples.count ? buffer.samples[buffer.position] : 0
                 buffer.position += 1
-                for audioBuffer in buffers {
-                    guard let data = audioBuffer.mData else { continue }
-                    data.assumingMemoryBound(to: Float.self)[frame] = sample
-                }
+                for audioBuffer in buffers where audioBuffer.mData != nil { audioBuffer.mData!.assumingMemoryBound(to: Float.self)[frame] = sample }
             }
             return noErr
         }
         self.source = source
-        engine.attach(source)
-        engine.connect(source, to: reverb, format: format)
-        try engine.start()
-        isPlaying = true
+        engine.attach(source); engine.connect(source, to: reverb, format: format)
+        try engine.start(); isPlaying = true
     }
 
     func stop() {
         if let source { engine.disconnectNodeOutput(source); engine.detach(source) }
-        source = nil
-        playback = nil
-        engine.stop()
-        isPlaying = false
+        source = nil; playback = nil; engine.stop(); isPlaying = false
     }
 
     private func configureEngine() {
-        reverb.loadFactoryPreset(.mediumHall)
-        distortion.loadFactoryPreset(.multiDistortedSquared)
         engine.attach(reverb); engine.attach(distortion)
-        engine.connect(reverb, to: distortion, format: format)
-        engine.connect(distortion, to: engine.mainMixerNode, format: format)
+        engine.connect(reverb, to: distortion, format: format); engine.connect(distortion, to: engine.mainMixerNode, format: format)
     }
 
-    private func setEffect(_ effect: PedalEffect) {
-        reverb.wetDryMix = effect == .reverb ? 48 : 0
-        distortion.wetDryMix = effect == .distortion ? 55 : 0
+    private func applyEffect(_ effect: PedalEffect, profile: PedalSoundProfile) {
+        let reverbPreset: AVAudioUnitReverbPreset
+        switch profile.reverbPreset {
+        case .smallRoom: reverbPreset = .smallRoom
+        case .mediumRoom: reverbPreset = .mediumRoom
+        case .cathedral: reverbPreset = .cathedral
+        }
+        reverb.loadFactoryPreset(reverbPreset)
+        distortion.loadFactoryPreset(profile.distortionPreset == .drumsBitBrush ? .drumsBitBrush : .multiEcho1)
+        reverb.wetDryMix = effect == .reverb ? Float(profile.reverbMix) : 0
+        distortion.wetDryMix = effect == .distortion ? Float(profile.distortionMix) : 0
     }
 
     @objc private func handleInterruption(_ notification: Notification) {
-        guard let type = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
-              AVAudioSession.InterruptionType(rawValue: type) == .began else { return }
+        guard let type = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt, AVAudioSession.InterruptionType(rawValue: type) == .began else { return }
         stop()
     }
 
     private static func renderSequence(_ sequence: PedalSequence, sampleRate: Int) -> [Float] {
         let samplesPerStep = max(1, Int(Double(sampleRate) * 60 / Double(sequence.harmony.bpm) / 4))
-        let totalSamples = samplesPerStep * PedalSequence.steps
-        let wave = waveformTable(size: 512)
-        let envelope = envelopeTable(length: samplesPerStep)
-        var output = [Float](repeating: 0, count: totalSamples)
+        let gateSamples = max(1, Int(Double(samplesPerStep) * sequence.soundProfile.gate))
+        let wave = waveformTable(sequence.soundProfile.waveform, size: 512), envelope = envelopeTable(length: gateSamples)
+        var output = [Float](repeating: 0, count: samplesPerStep * PedalSequence.steps)
         let notesByStep = Dictionary(grouping: sequence.notes, by: \.step)
         for step in 0 ..< PedalSequence.steps {
             for note in notesByStep[step] ?? [] {
-                let frequency = 440.0 * pow(2, Double(note.midiNote - 69) / 12)
-                let phaseIncrement = frequency * Double(wave.count) / Double(sampleRate)
-                for sample in 0 ..< samplesPerStep {
+                let frequency = 440.0 * pow(2, Double(note.midiNote - 69) / 12), phaseIncrement = frequency * Double(wave.count) / Double(sampleRate)
+                for sample in 0 ..< gateSamples {
                     let phase = Int(Double(sample) * phaseIncrement) % wave.count
                     output[step * samplesPerStep + sample] += wave[phase] * envelope[sample] * note.velocity * 0.16
                 }
@@ -98,8 +89,11 @@ final class PhotoPedalSynth: NSObject {
         return output.map { max(-0.92, min(0.92, $0)) }
     }
 
-    private static func waveformTable(size: Int) -> [Float] {
-        (0 ..< size).map { $0 < size / 2 ? 1 : -1 }
+    private static func waveformTable(_ waveform: PedalWaveform, size: Int) -> [Float] {
+        switch waveform {
+        case .square: (0 ..< size).map { $0 < size / 2 ? 1 : -1 }
+        case .triangle: (0 ..< size).map { Float(1 - 4 * abs(Double($0) / Double(size) - 0.5)) }
+        }
     }
 
     private static func envelopeTable(length: Int) -> [Float] {
