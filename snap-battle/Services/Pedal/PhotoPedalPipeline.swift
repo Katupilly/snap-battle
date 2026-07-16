@@ -51,19 +51,30 @@ final class PhotoPedalPipeline {
         self.init(imagePreparer: ImageInputPreparer(), retroProcessor: RetroImageProcessor(), visionAnalyzer: visionAnalyzer, subjectService: subjectService, generator: generator)
     }
 
-    func run(image: UIImage, stage: @escaping (PedalProcessingStage) -> Void) async throws -> (pedal: PhotoPedal, cover: UIImage) {
+    func run(image: UIImage, runID: String? = nil, stage: @escaping (PedalProcessingStage) -> Void) async throws -> (pedal: PhotoPedal, cover: UIImage) {
+        let runID = runID ?? PerformanceDiagnostics.makeRunID()
         stage(.preparing)
-        let prepared = try imagePreparer.prepare(image)
+        let prepared = try PerformanceDiagnostics.measure("imagePreparation", runID: runID, details: "inputWidth=\(image.cgImage?.width ?? 0) inputHeight=\(image.cgImage?.height ?? 0)") {
+            try imagePreparer.prepare(image, diagnosticsRunID: runID)
+        }
         try Task.checkCancellation()
         stage(.makingCover)
-        let cover = try await retroProcessor.process(prepared.image)
-        let color = try PhotoColorAnalyzer.analyze(prepared.image)
-        let sequence = try ImageSequenceGenerator.makeSequence(retroImage: cover, colorProfile: color)
+        let cover = try await PerformanceDiagnostics.measure("retroProcessing", runID: runID, details: "inputWidth=\(prepared.processedSize.width) inputHeight=\(prepared.processedSize.height)") {
+            try await retroProcessor.process(prepared.image)
+        }
+        let color = try PerformanceDiagnostics.measure("colorAnalysis", runID: runID, details: "analysisSide=\(PedalHeuristics.analysisSide)") {
+            try PhotoColorAnalyzer.analyze(prepared.image)
+        }
+        let sequence = try PerformanceDiagnostics.measure("sequenceGeneration", runID: runID, details: "coverWidth=\(cover.cgImage?.width ?? 0) coverHeight=\(cover.cgImage?.height ?? 0)") {
+            try ImageSequenceGenerator.makeSequence(retroImage: cover, colorProfile: color)
+        }
         try Task.checkCancellation()
         stage(.naming)
         let subject: ExtractedSubject
         do {
-            subject = try await subjectService.extract(from: prepared.image)
+            subject = try await PerformanceDiagnostics.measure("subjectExtraction", runID: runID) {
+                try await subjectService.extract(from: prepared.image)
+            }
         } catch is CancellationError {
             throw CancellationError()
         } catch {
@@ -72,9 +83,15 @@ final class PhotoPedalPipeline {
 
         let draft: PedalDraft
         do {
-            let observation = try await visionAnalyzer.analyze(image: prepared.image, subject: subject)
-            let generated = try await generator.generate(observation: observation, harmony: sequence.harmony)
-            draft = try validator.validate(generated)
+            let observation = try await PerformanceDiagnostics.measure("objectAnalysis", runID: runID) {
+                try await visionAnalyzer.analyze(image: prepared.image, subject: subject)
+            }
+            let generated = try await PerformanceDiagnostics.measure("metadataGeneration", runID: runID) {
+                try await generator.generate(observation: observation, harmony: sequence.harmony)
+            }
+            draft = try PerformanceDiagnostics.measure("metadataValidation", runID: runID) {
+                try validator.validate(generated)
+            }
         } catch is CancellationError {
             throw CancellationError()
         } catch {

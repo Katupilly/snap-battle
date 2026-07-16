@@ -12,18 +12,21 @@ struct PreparedImage: @unchecked Sendable {
 struct ImageInputPreparer: Sendable {
     private let fingerprintSide = 32
 
-    func prepare(_ image: UIImage) throws -> PreparedImage {
+    func prepare(_ image: UIImage, diagnosticsRunID: String? = nil) throws -> PreparedImage {
+        let runID = diagnosticsRunID ?? PerformanceDiagnostics.makeRunID()
         guard let source = image.cgImage else { throw AppError.imageDecodeFailed }
         let originalSize = PixelSize(width: source.width, height: source.height)
         let normalized = try normalizedImage(image, source: source)
         guard let normalizedCGImage = normalized.cgImage else { throw AppError.imageDecodeFailed }
         let processedSize = PixelSize(width: normalizedCGImage.width, height: normalizedCGImage.height)
-        return PreparedImage(
+        let prepared = PreparedImage(
             image: normalized,
             originalSize: originalSize,
             processedSize: processedSize,
-            fingerprint: try fingerprint(of: normalizedCGImage)
+            fingerprint: try fingerprint(of: normalizedCGImage, runID: runID)
         )
+        PerformanceDiagnostics.event("imagePreparation", runID: runID, details: "originalWidth=\(originalSize.width) originalHeight=\(originalSize.height) processedWidth=\(processedSize.width) processedHeight=\(processedSize.height) executor=main")
+        return prepared
     }
 
     private func normalizedImage(_ image: UIImage, source: CGImage) throws -> UIImage {
@@ -45,7 +48,7 @@ struct ImageInputPreparer: Sendable {
         }
     }
 
-    private func fingerprint(of image: CGImage) throws -> String {
+    private func fingerprint(of image: CGImage, runID: String) throws -> String {
         let bytesPerPixel = 4
         let bytesPerRow = fingerprintSide * bytesPerPixel
         var pixels = [UInt8](repeating: 0, count: fingerprintSide * bytesPerRow)
@@ -65,6 +68,8 @@ struct ImageInputPreparer: Sendable {
         context.interpolationQuality = .high
         context.setBlendMode(.copy)
         context.draw(image, in: CGRect(x: 0, y: 0, width: fingerprintSide, height: fingerprintSide))
-        return SHA256.hash(data: Data(pixels)).map { String(format: "%02x", $0) }.joined()
+        return PerformanceDiagnostics.measure("fingerprint", runID: runID, details: "side=\(fingerprintSide)") {
+            SHA256.hash(data: Data(pixels)).map { String(format: "%02x", $0) }.joined()
+        }
     }
 }

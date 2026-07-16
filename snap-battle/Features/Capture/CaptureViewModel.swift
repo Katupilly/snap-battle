@@ -23,24 +23,33 @@ final class PhotoPedalViewModel {
     convenience init() { self.init(store: .shared) }
     init(store: PedalStore) { self.store = store }
 
-    func load(data: Data?) {
+    func load(data: Data?, runID: String? = nil) {
+        let runID = runID ?? PerformanceDiagnostics.makeRunID()
         do {
-            guard let data, let image = UIImage(data: data) else { throw AppError.imageDecodeFailed }
-            process(image)
+            guard let data else { throw AppError.imageDecodeFailed }
+            let image = try PerformanceDiagnostics.measure("imageDecode", runID: runID, details: "dataBytes=\(data.count)") {
+                guard let image = UIImage(data: data) else { throw AppError.imageDecodeFailed }
+                return image
+            }
+            PerformanceDiagnostics.event("imageDecodeCompleted", runID: runID, details: "width=\(image.cgImage?.width ?? 0) height=\(image.cgImage?.height ?? 0) executor=main")
+            process(image, runID: runID)
         } catch { errorMessage = "Não foi possível carregar esta foto." }
     }
 
-    func process(_ image: UIImage) {
+    func process(_ image: UIImage, runID: String? = nil) {
         guard !isProcessing else { return }
+        let runID = runID ?? PerformanceDiagnostics.makeRunID()
         errorMessage = nil; isProcessing = true
         task = Task {
             defer { isProcessing = false; task = nil }
             do {
-                let result = try await pipeline.run(image: image) { [weak self] stage in self?.stage = stage }
-                pendingPedal = result.pedal
-                pendingCover = result.cover
-                selectedEffect = result.pedal.effect
-                try savePendingResult()
+                try await PerformanceDiagnostics.measure("totalPipeline", runID: runID, details: "inputWidth=\(image.cgImage?.width ?? 0) inputHeight=\(image.cgImage?.height ?? 0)") {
+                    let result = try await pipeline.run(image: image, runID: runID) { [weak self] stage in self?.stage = stage }
+                    pendingPedal = result.pedal
+                    pendingCover = result.cover
+                    selectedEffect = result.pedal.effect
+                    try savePendingResult(runID: runID)
+                }
             } catch is CancellationError { }
             catch { errorMessage = error.localizedDescription }
         }
@@ -65,7 +74,7 @@ final class PhotoPedalViewModel {
     func effectMix(for effect: PedalEffect) -> Double { pedal?.sequence.soundProfile.mix(for: effect) ?? 0 }
     func play() { guard let pedal else { return }; try? synth.play(pedal) }
     func retrySave() {
-        do { try savePendingResult() }
+        do { try savePendingResult(runID: PerformanceDiagnostics.makeRunID()) }
         catch { saveErrorMessage = error.localizedDescription }
     }
 
@@ -75,9 +84,11 @@ final class PhotoPedalViewModel {
         task?.cancel(); synth.stop(); pedal = nil; cover = nil; pendingPedal = nil; pendingCover = nil; errorMessage = nil; saveErrorMessage = nil
     }
 
-    private func savePendingResult() throws {
+    private func savePendingResult(runID: String) throws {
         guard let pendingPedal, let pendingCover else { return }
-        try store.save(pendingPedal, cover: pendingCover)
+        try PerformanceDiagnostics.measure("persistence", runID: runID, details: "coverWidth=\(pendingCover.cgImage?.width ?? 0) coverHeight=\(pendingCover.cgImage?.height ?? 0)") {
+            try store.save(pendingPedal, cover: pendingCover, diagnosticsRunID: runID)
+        }
         pedal = pendingPedal
         cover = pendingCover
         self.pendingPedal = nil

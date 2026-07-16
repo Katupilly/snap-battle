@@ -57,7 +57,9 @@ nonisolated struct PedalStore {
         }
     }
 
-    func loadCollection() -> PedalStoreLoadResult {
+    func loadCollection(diagnosticsRunID: String? = nil) -> PedalStoreLoadResult {
+        let runID = diagnosticsRunID ?? PerformanceDiagnostics.makeRunID()
+        let started = ContinuousClock.now
         var issues: [String] = []
         do {
             try ensureCollectionDirectory()
@@ -68,7 +70,9 @@ nonisolated struct PedalStore {
         }
 
         guard fileManager.fileExists(atPath: collectionDirectory.path) else {
-            return PedalStoreLoadResult(pedals: [], issues: issues)
+            let result = PedalStoreLoadResult(pedals: [], issues: issues)
+            PerformanceDiagnostics.event("galleryReload", runID: runID, details: "pedals=0 issues=\(issues.count) durationMs=\(Self.milliseconds(started.duration(to: .now)))")
+            return result
         }
 
         do {
@@ -82,10 +86,14 @@ nonisolated struct PedalStore {
                 do { stored.append(try load(id: id)) }
                 catch { issues.append("Um pedal salvo não pôde ser carregado: \(error.localizedDescription)") }
             }
-            return PedalStoreLoadResult(pedals: Self.ordered(stored), issues: issues)
+            let result = PedalStoreLoadResult(pedals: Self.ordered(stored), issues: issues)
+            PerformanceDiagnostics.event("galleryReload", runID: runID, details: "pedals=\(result.pedals.count) issues=\(issues.count) durationMs=\(Self.milliseconds(started.duration(to: .now)))")
+            return result
         } catch {
             issues.append(error.localizedDescription)
-            return PedalStoreLoadResult(pedals: [], issues: issues)
+            let result = PedalStoreLoadResult(pedals: [], issues: issues)
+            PerformanceDiagnostics.event("galleryReload", runID: runID, details: "pedals=0 issues=\(issues.count) durationMs=\(Self.milliseconds(started.duration(to: .now)))")
+            return result
         }
     }
 
@@ -95,7 +103,9 @@ nonisolated struct PedalStore {
         return StoredPedal(pedal: pedal, cover: cover)
     }
 
-    func save(_ pedal: PhotoPedal, cover: UIImage) throws {
+    func save(_ pedal: PhotoPedal, cover: UIImage, diagnosticsRunID: String? = nil) throws {
+        let runID = diagnosticsRunID ?? PerformanceDiagnostics.makeRunID()
+        let started = ContinuousClock.now
         try ensureCollectionDirectory()
         let png = try pngData(from: cover)
         let json = try JSONEncoder().encode(pedal)
@@ -111,6 +121,7 @@ nonisolated struct PedalStore {
         try promote(temporaryPNG, to: pngURL(for: pedal.id), token: token)
         _ = try load(id: pedal.id)
         try? fileManager.removeItem(at: deletionMarkerURL(for: pedal.id))
+        PerformanceDiagnostics.event("persistenceCompleted", runID: runID, details: "jsonBytes=\(json.count) pngBytes=\(png.count) durationMs=\(Self.milliseconds(started.duration(to: .now)))")
     }
 
     func delete(id: UUID) throws {
@@ -182,6 +193,12 @@ nonisolated struct PedalStore {
     private func pngData(from cover: UIImage) throws -> Data {
         guard let data = cover.pngData() else { throw PedalStoreError.imageEncoding }
         return data
+    }
+
+    private static func milliseconds(_ duration: Duration) -> String {
+        let components = duration.components
+        let value = Double(components.seconds) * 1_000 + Double(components.attoseconds) / 1e15
+        return String(format: "%.1f", value)
     }
 
     private func validateTemporaryPair(id: UUID, jsonURL: URL, pngURL: URL) throws {

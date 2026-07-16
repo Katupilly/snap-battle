@@ -142,7 +142,15 @@ private struct CaptureFlowView: View {
             }
             .onChange(of: selectedItem) {
                 guard let selectedItem else { return }
-                Task { model.load(data: try? await selectedItem.loadTransferable(type: Data.self)) }
+                let runID = PerformanceDiagnostics.makeRunID()
+                PerformanceDiagnostics.signpostEvent("pickerSelection", runID: runID, details: "executor=main")
+                Task {
+                    let data = try? await PerformanceDiagnostics.measure("pickerTransfer", runID: runID) {
+                        try await selectedItem.loadTransferable(type: Data.self)
+                    }
+                    PerformanceDiagnostics.event("pickerTransferCompleted", runID: runID, details: "dataBytes=\(data?.count ?? 0)")
+                    model.load(data: data, runID: runID)
+                }
             }
         }
     }

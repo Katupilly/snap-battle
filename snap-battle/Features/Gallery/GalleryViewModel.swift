@@ -45,8 +45,11 @@ final class GalleryViewModel {
     func reloadAsync() async {
         state = .loading
         let store = store
+        let runID = PerformanceDiagnostics.makeRunID()
         let result = await Task.detached(priority: .userInitiated) {
-            store.loadCollection()
+            PerformanceDiagnostics.measure("galleryReload", runID: runID) {
+                store.loadCollection(diagnosticsRunID: runID)
+            }
         }.value
         apply(result)
     }
