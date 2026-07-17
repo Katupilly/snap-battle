@@ -3,8 +3,10 @@ import SwiftUI
 struct PedalDetailView: View {
     let itemID: UUID
     let model: GalleryViewModel
+    let transitionNamespace: Namespace.ID
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isConfirmingDeletion = false
 
     private var item: StoredPedal? {
@@ -21,13 +23,20 @@ struct PedalDetailView: View {
         }
         .navigationTitle("Pedal")
         .navigationBarTitleDisplayMode(.inline)
+        .modifier(DetailTransitionModifier(itemID: itemID, namespace: transitionNamespace, reduceMotion: reduceMotion))
     }
 
     @ViewBuilder
     private func detailContent(for item: StoredPedal) -> some View {
         ScrollView {
             VStack(spacing: 20) {
-                Image(uiImage: item.cover).resizable().interpolation(.none).scaledToFit().clipShape(.rect(cornerRadius: 20))
+                Image(uiImage: item.cover)
+                    .resizable()
+                    .interpolation(.none)
+                    .scaledToFill()
+                    .aspectRatio(1, contentMode: .fit)
+                    .frame(maxWidth: .infinity)
+                    .clipShape(.rect(cornerRadius: 20, style: .continuous))
                     .accessibilityLabel("Capa 2-bit de \(item.pedal.name)")
                 Text(item.pedal.name).font(.largeTitle.bold()).multilineTextAlignment(.center)
                 Text(item.pedal.description).foregroundStyle(.secondary).multilineTextAlignment(.center)
@@ -78,5 +87,20 @@ struct PedalDetailView: View {
     private func delete() {
         guard let item, model.delete(item) else { return }
         dismiss()
+    }
+}
+
+private struct DetailTransitionModifier: ViewModifier {
+    let itemID: UUID
+    let namespace: Namespace.ID
+    let reduceMotion: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if reduceMotion {
+            content
+        } else {
+            content.navigationTransition(.zoom(sourceID: itemID, in: namespace))
+        }
     }
 }

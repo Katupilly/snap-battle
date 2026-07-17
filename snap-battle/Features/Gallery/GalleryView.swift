@@ -4,14 +4,12 @@ struct GalleryView: View {
     let model: GalleryViewModel
     let beginCapture: () -> Void
     let thumbnailLoader: ThumbnailLoader
+    let transitionNamespace: Namespace.ID
     @State private var itemPendingDeletion: StoredPedal?
 
     var body: some View {
         content(for: model.state)
         .navigationTitle("Biblioteca")
-        .navigationDestination(for: UUID.self) { id in
-            PedalDetailView(itemID: id, model: model)
-        }
         .alert("Excluir pedal?", isPresented: Binding(get: { itemPendingDeletion != nil }, set: { if !$0 { itemPendingDeletion = nil } }), presenting: itemPendingDeletion) { item in
             Button("Excluir", role: .destructive) { model.delete(item); itemPendingDeletion = nil }
             Button("Cancelar", role: .cancel) { itemPendingDeletion = nil }
@@ -31,20 +29,23 @@ struct GalleryView: View {
                 LibraryGridView(
                     state: .loading,
                     thumbnailLoader: thumbnailLoader,
-                    assetProvider: model.thumbnailAsset(for:)
+                    assetProvider: model.thumbnailAsset(for:),
+                    transitionNamespace: transitionNamespace
                 )
             case .empty:
                 LibraryGridView(
                     state: .empty,
                     thumbnailLoader: thumbnailLoader,
-                    assetProvider: model.thumbnailAsset(for:)
+                    assetProvider: model.thumbnailAsset(for:),
+                    transitionNamespace: transitionNamespace
                 )
             case .blockingError(let message):
                 LibraryGridView(
                     state: .error(message: message),
                     onRetry: { Task { await model.reloadAsync() } },
                     thumbnailLoader: thumbnailLoader,
-                    assetProvider: model.thumbnailAsset(for:)
+                    assetProvider: model.thumbnailAsset(for:),
+                    transitionNamespace: transitionNamespace
                 )
             case .content(let pedals):
                 libraryGrid(state: .content(pedals))
@@ -58,7 +59,8 @@ struct GalleryView: View {
             state: state,
             onRetry: { Task { await model.reloadAsync() } },
             thumbnailLoader: thumbnailLoader,
-            assetProvider: model.thumbnailAsset(for:)
+            assetProvider: model.thumbnailAsset(for:),
+            transitionNamespace: transitionNamespace
         )
         .refreshable { await model.reloadAsync() }
     }

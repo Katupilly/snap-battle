@@ -34,6 +34,7 @@ struct LibraryGridView: View {
     let imageProvider: LibraryGridImageProvider
     let thumbnailLoader: ThumbnailLoader?
     let assetProvider: (UUID) -> PersistedImageAsset?
+    let transitionNamespace: Namespace.ID?
 
     @Environment(\.locale) private var locale
     @Environment(\.displayScale) private var displayScale
@@ -46,7 +47,8 @@ struct LibraryGridView: View {
         onRetry: (() -> Void)? = nil,
         imageProvider: LibraryGridImageProvider = .persistedCover,
         thumbnailLoader: ThumbnailLoader? = nil,
-        assetProvider: @escaping (UUID) -> PersistedImageAsset? = { _ in nil }
+        assetProvider: @escaping (UUID) -> PersistedImageAsset? = { _ in nil },
+        transitionNamespace: Namespace.ID? = nil
     ) {
         self.state = state
         self.calendar = calendar
@@ -54,6 +56,7 @@ struct LibraryGridView: View {
         self.imageProvider = imageProvider
         self.thumbnailLoader = thumbnailLoader
         self.assetProvider = assetProvider
+        self.transitionNamespace = transitionNamespace
     }
 
     init(
@@ -61,14 +64,16 @@ struct LibraryGridView: View {
         calendar: Calendar = .current,
         imageProvider: LibraryGridImageProvider = .persistedCover,
         thumbnailLoader: ThumbnailLoader? = nil,
-        assetProvider: @escaping (UUID) -> PersistedImageAsset? = { _ in nil }
+        assetProvider: @escaping (UUID) -> PersistedImageAsset? = { _ in nil },
+        transitionNamespace: Namespace.ID? = nil
     ) {
         self.init(
             state: pedals.isEmpty ? .empty : .content(pedals),
             calendar: calendar,
             imageProvider: imageProvider,
             thumbnailLoader: thumbnailLoader,
-            assetProvider: assetProvider
+            assetProvider: assetProvider,
+            transitionNamespace: transitionNamespace
         )
     }
 
@@ -155,7 +160,8 @@ struct LibraryGridView: View {
                                     displayScale: displayScale,
                                     imageProvider: imageProvider,
                                     thumbnailLoader: thumbnailLoader,
-                                    asset: assetProvider(item.id)
+                                    asset: assetProvider(item.id),
+                                    transitionNamespace: transitionNamespace
                                 )
                             }
                         }
@@ -212,32 +218,35 @@ private struct LibraryGridCell: View {
     let imageProvider: LibraryGridImageProvider
     let thumbnailLoader: ThumbnailLoader?
     let asset: PersistedImageAsset?
+    let transitionNamespace: Namespace.ID?
 
     @State private var loadedImage: UIImage?
     @State private var loadFailed = false
 
     var body: some View {
-        NavigationLink(value: item.id) {
+        NavigationLink(value: AppRoute.pedalDetail(item.id)) {
             GeometryReader { proxy in
                 let targetSize = CGSize(width: proxy.size.width, height: proxy.size.height)
-                ZStack {
-                    if let loadedImage {
-                        Image(uiImage: loadedImage)
-                            .resizable()
-                            .interpolation(.none)
-                            .scaledToFill()
-                            .accessibilityHidden(true)
-                    } else if thumbnailLoader == nil || asset == nil || loadFailed {
-                        if let fallback = imageProvider(item), !loadFailed {
-                            fallback.resizable().interpolation(.none).scaledToFill().accessibilityHidden(true)
+                transitionSource(
+                    ZStack {
+                        if let loadedImage {
+                            Image(uiImage: loadedImage)
+                                .resizable()
+                                .interpolation(.none)
+                                .scaledToFill()
+                                .accessibilityHidden(true)
+                        } else if thumbnailLoader == nil || asset == nil || loadFailed {
+                            if let fallback = imageProvider(item), !loadFailed {
+                                fallback.resizable().interpolation(.none).scaledToFill().accessibilityHidden(true)
+                            } else {
+                                unavailableCover
+                            }
                         } else {
-                            unavailableCover
+                            ProgressView().tint(.secondary)
                         }
-                    } else {
-                        ProgressView().tint(.secondary)
                     }
-                }
-                .frame(width: proxy.size.width, height: proxy.size.height)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+                )
                 .task(id: targetSize) {
                     guard let thumbnailLoader, let asset else { return }
                     do {
@@ -270,6 +279,15 @@ private struct LibraryGridCell: View {
                 .accessibilityHidden(true)
         }
         .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private func transitionSource<Content: View>(_ content: Content) -> some View {
+        if let transitionNamespace {
+            content.matchedTransitionSource(id: item.id, in: transitionNamespace)
+        } else {
+            content
+        }
     }
 
     private func accessibilityLabel(hasUnavailableCover: Bool) -> String {

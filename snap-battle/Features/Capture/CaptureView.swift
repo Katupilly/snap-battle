@@ -7,24 +7,32 @@ struct ContentView: View {
     @State private var gallery = GalleryViewModel()
     @State private var thumbnailLoader = ThumbnailLoader()
     @Namespace private var bottomBarNamespace
+    @Namespace private var libraryTransitionNamespace
 
     var body: some View {
         @Bindable var navigation = navigation
-        NavigationStack {
+        NavigationStack(path: $navigation.path) {
             Group {
                 switch navigation.selectedDestination {
                 case .gallery:
                     GalleryView(
                         model: gallery,
                         beginCapture: navigation.beginCapture,
-                        thumbnailLoader: thumbnailLoader
+                        thumbnailLoader: thumbnailLoader,
+                        transitionNamespace: libraryTransitionNamespace
                     )
                 case .jam: JamPlaceholderView()
                 }
             }
+            .navigationDestination(for: AppRoute.self) { route in
+                switch route {
+                case .pedalDetail(let id):
+                    PedalDetailView(itemID: id, model: gallery, transitionNamespace: libraryTransitionNamespace)
+                }
+            }
             .safeAreaInset(edge: .bottom) {
                 ContextualBottomBar(
-                    presentation: .root(selected: navigation.selectedDestination),
+                    presentation: .forNavigation(navigation),
                     namespace: bottomBarNamespace,
                     perform: { action in
                         switch action {

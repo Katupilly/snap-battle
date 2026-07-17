@@ -118,6 +118,41 @@ struct NavigationGalleryTests {
         #expect(configuration.destinations.map(\.accessibilityIdentifier).contains("bottomBar.destination.jam"))
     }
 
+    @Test func pedalDetailRouteHidesBottomBarWithoutChangingSelectedRoot() {
+        let navigation = AppNavigationModel()
+        let pedalID = UUID()
+        navigation.path = [.pedalDetail(pedalID)]
+
+        #expect(navigation.selectedDestination == .gallery)
+        #expect(navigation.path == [.pedalDetail(pedalID)])
+        #expect(BottomBarPresentation.forNavigation(navigation) == .hidden(.pedalDetail))
+
+        navigation.path.removeLast()
+        guard case .navigation(let configuration) = BottomBarPresentation.forNavigation(navigation) else {
+            Issue.record("Expected Library root presentation after returning from detail")
+            return
+        }
+        #expect(configuration.selectedDestination == .gallery)
+        #expect(configuration.captureAction?.id == .capture)
+    }
+
+    @Test func detailRouteUsesOnlyPersistentID() {
+        let pedalID = UUID()
+        let route = AppRoute.pedalDetail(pedalID)
+
+        #expect(route == .pedalDetail(pedalID))
+    }
+
+    @Test func captureKeepsPrecedenceOverRootAndDetailState() {
+        let navigation = AppNavigationModel()
+        navigation.path = [.pedalDetail(UUID())]
+        navigation.beginCapture()
+
+        #expect(navigation.path.isEmpty)
+        #expect(navigation.isPresentingCapture)
+        #expect(BottomBarPresentation.forNavigation(navigation) == .root(selected: .gallery))
+    }
+
     @Test func bottomBarCapturePhasesDeriveExpectedPresentations() {
         guard case .contextual(let picker) = BottomBarPresentation.captureFlow(.picker) else {
             Issue.record("Expected picker contextual presentation")

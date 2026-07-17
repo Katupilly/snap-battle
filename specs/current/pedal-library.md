@@ -589,7 +589,7 @@ Selecting another root clears the path. Capture state remains a separate transie
 
 ### Transition Namespace
 
-`LibraryView` owns a private `@Namespace` used by both the cell's `matchedTransitionSource` and the ID-based detail destination. It is distinct from the shell's existing bottom-bar namespace. The namespace must remain above the cell and destination subviews but below `ContentView`'s bottom-bar ownership.
+`ContentView` owns a dedicated `@Namespace` shared by the Library cells and the ID-based detail destination. It is distinct from the shell's existing bottom-bar namespace and is passed through `GalleryView`/`LibraryGridView`. This keeps the namespace in the common ancestor without recreating it per cell.
 
 The native transition is allowed without changing the navigation architecture: keep the existing value-based `NavigationStack`, push `AppRoute.pedalDetail(id)`, attach `.matchedTransitionSource(id:in:)` to the cell cover, and attach `.navigationTransition(.zoom(sourceID:in:))` to the detail destination. A Reduce Motion fallback remains required. The project deployment target is iOS 26.5, which satisfies the API availability; implementation should still retain an availability fallback if the deployment target changes.
 
@@ -741,10 +741,10 @@ This audit reflects the code present on 2026-07-17.
 - `PedalStore` owns collection loading, validation, ordering, save, metadata update, deletion, migration, and latest selection.
 - Current ordering is descending `createdAt`, then ascending UUID string, per the Ready navigation/gallery foundation spec.
 - `GalleryView` now presents the Library's dense three-column `LibraryGridView`.
-- `PedalDetailView` is a separate UUID-driven destination file and remains the existing detail surface.
-- Grid cells open by persisted UUID; playback and deletion remain available in the existing detail route.
+- `PedalDetailView` is a separate UUID-driven destination file and resolves the current item from `GalleryViewModel`.
+- Grid cells open by `AppRoute.pedalDetail(UUID)`; playback and deletion remain available in the existing detail route.
 - Current navigation uses one root `NavigationStack` in `ContentView`.
-- The bottom bar is owned by `ContextualBottomBar` and configured through `BottomBarPresentation`.
+- The bottom bar is owned by `ContextualBottomBar` and configured through `BottomBarPresentation.forNavigation`, which hides it for pedal detail while keeping Library selected.
 - Capture is a global/root action, not part of Gallery's internal layout.
 
 ### Missing Or Unresolved
@@ -756,8 +756,8 @@ This audit reflects the code present on 2026-07-17.
 - No multi-selection state exists.
 - `ThumbnailLoader` exists in `snap-battle/Services/ImageLoading/ThumbnailLoader.swift`; it downsamples persisted covers, uses an in-memory `NSCache`, propagates cancellation, and has compilable focused tests in `snap-battleTests/ThumbnailLoaderTests.swift`.
 - `PedalStore` still loads a full `UIImage` into `StoredPedal` for the existing detail/persistence contract; the Library now resolves the UUID-associated persisted asset through the store and uses `ThumbnailLoader` for grid presentation.
-- No matched/zoom transition exists between Gallery thumbnail and detail cover.
-- Current detail uses `scaledToFit`, while this spec requires matched `scaledToFill` crop continuity.
+- Native matched-source/zoom transition is implemented for the Library thumbnail and detail cover; Reduce Motion skips the spatial zoom.
+- The detail cover uses a square, padded, `scaledToFill` frame with a 20 pt continuous corner radius.
 - Current bottom bar does not know about future Gallery selection mode.
 - Current Ready spec excludes filters, favorites, and multi-selection; this remains compatible with Phase 1 and becomes relevant only for Phase 2/3.
 - Current Ready spec requires newest-first baseline ordering; Phase 1 intentionally separates visual Library order from latest selection.
@@ -776,7 +776,7 @@ This audit reflects the code present on 2026-07-17.
 | Visual ordering | Baseline Gallery lists newest first by `createdAt` descending, UUID ascending tie-break | Phase 1 grid shows oldest above and newest below using `createdAt` ascending | `PedalStore.ordered(_:)` sorts descending and tests assert latest behavior | Separate latest selection from Library visual ordering; Phase 1 should derive visual ascending order for presentation or introduce an explicit store API | Existing records need no migration; ordering tests need updates/additions |
 | Latest pedal | First item under current store order is latest | Latest remains newest even if visual grid is ascending | `loadLatest()` uses first collection item | Preserve latest selection as a persistence/app-intent contract | No data migration |
 | Layout | Baseline `List` with cards and visible text/actions | Dense 3-column visual grid | `GalleryView` delegates to `LibraryGridView`, which uses `LibraryProjection` and `LazyVGrid` | Phase 1 replaces visual surface only, keeping store/view-model boundaries | No data migration |
-| Detail route | Detail by UUID in `NavigationStack` | Detail by persisted ID with shared-element transition | `NavigationLink(value: item.id)` and `.navigationDestination(for: UUID.self)` remain in the same root `NavigationStack` | Continue value-based routing; do not route by index | No data migration |
+| Detail route | Detail by UUID in `NavigationStack` | Detail by persisted ID with shared-element transition | `AppRoute.pedalDetail(UUID)` is pushed in the same root `NavigationStack` and resolved at the shell | Keep typed value-based routing; do not route by index | No data migration |
 | Bottom bar | Root bottom bar inserted with `.safeAreaInset(edge: .bottom)` | Capture hidden while detail is open; root context restored on return | `ContextualBottomBar` is attached in root `ContentView`, independent of detail path | Add route/path-aware bottom bar presentation during implementation; avoid overlaying transition destination | No data migration |
 | Filters/favorites | Explicitly out of scope | Previously mixed into first Library draft | No favorite field, no filters | Move to Phase 2 | Future schema/migration decision required |
 | Multi-selection | Explicitly out of scope | Previously mixed into first Library draft | No selection state | Move to Phase 3 | No Phase 1 migration |
@@ -810,7 +810,7 @@ This audit reflects the code present on 2026-07-17.
 | Question | Audit result |
 | --- | --- |
 | Where should the namespace live? | In the Library/Gallery root view that owns both cell sources and `.navigationDestination`, likely `GalleryView` after it becomes the Library container. Keeping it below `ContentView` avoids mixing with the bottom-bar namespace and keeps source/destination in one navigation subtree. |
-| Does the destination use a persisted ID? | Yes. Current code routes with `NavigationLink(value: item.id)` and `.navigationDestination(for: UUID.self)`, where `StoredPedal.id` is `PhotoPedal.id`. This is compatible. |
+| Does the destination use a persisted ID? | Yes. `AppRoute.pedalDetail(UUID)` carries only `PhotoPedal.id`; the destination resolves the current item from `GalleryViewModel`. |
 | Does the bottom bar interfere? | Potentially. The root bottom bar is inserted with `safeAreaInset` in `ContentView` and currently remains while detail is pushed. Phase 1 should make bottom bar presentation route-aware so Capture is hidden on detail and the transition destination is not visually competing with the bar. |
 | Can the detail receive the standardized frame? | Yes. Current `PedalDetailView` is local to `GalleryView` and shows `Image(uiImage:)` inside a `ScrollView`. It can be extracted or refactored to use `scaledToFill`, `aspectRatio(1, contentMode: .fill)`, horizontal padding, and a 20 pt corner radius. |
 | Is swipe back preserved? | It should be preserved if Phase 1 keeps value-based `NavigationStack` navigation and applies native `.navigationTransition(.zoom(...))` to the destination instead of building a custom overlay navigation. |
