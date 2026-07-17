@@ -18,6 +18,8 @@
 		C30000000000000000000007 /* LibraryProjectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30000000000000000000008 /* LibraryProjectionTests.swift */; };
 		D40000000000000000000001 /* ThumbnailLoaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40000000000000000000002 /* ThumbnailLoaderTests.swift */; };
 		E50000000000000000000001 /* LibraryDebugFixturesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50000000000000000000002 /* LibraryDebugFixturesTests.swift */; };
+		F60000000000000000000001 /* PedalboardDomainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60000000000000000000002 /* PedalboardDomainTests.swift */; };
+		F60000000000000000000003 /* PedalboardStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60000000000000000000004 /* PedalboardStoreTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -44,6 +46,8 @@
 		C30000000000000000000008 /* LibraryProjectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryProjectionTests.swift; sourceTree = "<group>"; };
 		D40000000000000000000002 /* ThumbnailLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailLoaderTests.swift; sourceTree = "<group>"; };
 		E50000000000000000000002 /* LibraryDebugFixturesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryDebugFixturesTests.swift; sourceTree = "<group>"; };
+		F60000000000000000000002 /* PedalboardDomainTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PedalboardDomainTests.swift; sourceTree = "<group>"; };
+		F60000000000000000000004 /* PedalboardStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PedalboardStoreTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -104,6 +108,8 @@
 				C30000000000000000000008 /* LibraryProjectionTests.swift */,
 				D40000000000000000000002 /* ThumbnailLoaderTests.swift */,
 				E50000000000000000000002 /* LibraryDebugFixturesTests.swift */,
+				F60000000000000000000002 /* PedalboardDomainTests.swift */,
+				F60000000000000000000004 /* PedalboardStoreTests.swift */,
 			);
 			path = "snap-battleTests";
 			sourceTree = "<group>";
@@ -218,6 +224,8 @@
 				C30000000000000000000007 /* LibraryProjectionTests.swift in Sources */,
 				D40000000000000000000001 /* ThumbnailLoaderTests.swift in Sources */,
 				E50000000000000000000001 /* LibraryDebugFixturesTests.swift in Sources */,
+				F60000000000000000000001 /* PedalboardDomainTests.swift in Sources */,
+				F60000000000000000000003 /* PedalboardStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
