@@ -66,6 +66,21 @@ final class GalleryViewModel {
         Task { await reloadAsync() }
     }
 
+    func updateExistingPedal(_ updated: StoredPedal) {
+        let current = state.pedals
+        guard let index = current.firstIndex(where: { $0.id == updated.id }) else { return }
+        var pedals = current
+        pedals[index] = updated
+        switch state {
+        case .content:
+            state = .content(pedals)
+        case .partialError(_, let message):
+            state = .partialError(pedals, message)
+        case .loading, .empty, .blockingError:
+            break
+        }
+    }
+
     func quickPlay(_ item: StoredPedal) {
         do {
             try player.play(item.pedal)

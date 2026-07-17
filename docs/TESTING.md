@@ -2,9 +2,9 @@
 
 ## Current Test Structure
 
-The `snap-battleTests` target uses Swift Testing and currently has 62 tests in 6 suites.
+The `snap-battleTests` target uses Swift Testing and currently has 83 tests in 8 suites.
 
-The current suite includes legacy game coverage plus focused Photo Pedal coverage for deterministic generation, metadata fallback through the `PedalMetadataGenerating` seam, collection persistence/migration, navigation state, audio lifecycle coordination, and App Intent routing where it is testable without framework/device invocation. Camera UI, audible playback, route changes, Siri/Shortcuts framework integration, and live Foundation Models behavior remain device-validation items.
+The current suite includes legacy game coverage plus focused Photo Pedal coverage for deterministic generation, progressive fallback-before-enrichment metadata, metadata-only store updates, metadata fallback through the `PedalMetadataGenerating` seam, collection persistence/migration, navigation state, audio lifecycle coordination, and App Intent routing where it is testable without framework/device invocation. Camera UI, audible playback, route changes, Siri/Shortcuts framework integration, and live Foundation Models behavior remain device-validation items.
 
 Run the shared scheme against an installed simulator:
 

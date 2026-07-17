@@ -26,17 +26,18 @@ A person without music-production knowledge can capture or choose a photo, recei
 - Photo-library input through `PedalCaptureView` and camera capture through `CameraScreen`.
 - Four-tone processed cover generation and a 16-step by 8-row image-to-music sequence.
 - Reverb or distortion selection with a generic intensity control.
-- Foundation Models-generated name and description, with fallback metadata when Foundation Models generation is unavailable, refused, failed, empty, or invalid after the musical result exists.
+- Local collection persistence with Gallery browsing, detail, delete, and playback.
+- Immediate playable result presentation with valid fallback metadata.
+- Foundation Models-generated name and description as post-result enrichment, with fallback metadata retained when generation is unavailable, refused, failed, empty, invalid, stale, or unable to update the stored record.
 
 ### Partially Implemented
 
-- The app stores and reloads only the latest pedal. Processing saves it automatically; there is no separate user save action or collection of pedals.
-- The latest pedal can be replayed, but it is not a persistent, reusable library item.
+- Processing saves automatically; there is no separate user save action.
+- `PlayLastPedalIntent` uses the newest valid persisted pedal from the collection.
 
 ### Planned
 
 - Generator versioning.
-- Complete pedal persistence and a gallery.
 - Board playback and ordering.
 - Sharing, collaboration, and video export.
 

@@ -9,7 +9,7 @@ Replaying a saved pedal must not depend on recalculating its notes.
 
 ## Decision
 
-Persist the final `PhotoPedal` sequence and sound profile with its processed cover. The current implementation retains only `latest-pedal.json` and `latest-pedal.png`.
+Persist the final `PhotoPedal` sequence and sound profile with its processed cover. The current implementation stores UUID-associated JSON/PNG collection records and preserves the legacy `latest-pedal.json`/`latest-pedal.png` pair only as a reversible migration fallback.
 
 ## Consequences
 
@@ -19,7 +19,7 @@ Persist the final `PhotoPedal` sequence and sound profile with its processed cov
 
 ### Negative
 
-- There is no gallery, generator version, or migration strategy yet.
+- There is no generator version yet.
 
 ## Alternatives Considered
 

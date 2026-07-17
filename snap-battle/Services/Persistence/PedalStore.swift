@@ -124,6 +124,27 @@ nonisolated struct PedalStore {
         PerformanceDiagnostics.event("persistenceCompleted", runID: runID, details: "jsonBytes=\(json.count) pngBytes=\(png.count) durationMs=\(Self.milliseconds(started.duration(to: .now)))")
     }
 
+    func updateMetadata(id: UUID, name: String, description: String, diagnosticsRunID: String? = nil) throws -> StoredPedal {
+        let runID = diagnosticsRunID ?? PerformanceDiagnostics.makeRunID()
+        let started = ContinuousClock.now
+        try ensureCollectionDirectory()
+        guard !isDeletionMarked(id) else { throw PedalStoreError.missingRecord }
+        let current = try load(id: id)
+        let draft = try PedalDraftValidator().validate(PedalDraft(name: name, description: description))
+        let updated = current.pedal.updatingMetadata(name: draft.name, description: draft.description)
+        let json = try JSONEncoder().encode(updated)
+        let token = UUID().uuidString
+        let temporaryJSON = temporaryURL(for: id, ext: "json", token: "metadata-\(token)")
+        defer { try? fileManager.removeItem(at: temporaryJSON) }
+
+        try writeData(json, temporaryJSON)
+        try validateMetadataUpdateTemporaryJSON(id: id, original: current.pedal, jsonURL: temporaryJSON)
+        try promote(temporaryJSON, to: jsonURL(for: id), token: token)
+        let stored = try load(id: id)
+        PerformanceDiagnostics.event("semanticMetadataUpdate", runID: runID, details: "pedalID=\(id.uuidString) jsonBytes=\(json.count) durationMs=\(Self.milliseconds(started.duration(to: .now)))")
+        return stored
+    }
+
     func delete(id: UUID) throws {
         let json = jsonURL(for: id), png = pngURL(for: id)
         guard fileManager.fileExists(atPath: json.path) || fileManager.fileExists(atPath: png.path) else { throw PedalStoreError.missingRecord }
@@ -204,6 +225,18 @@ nonisolated struct PedalStore {
     private func validateTemporaryPair(id: UUID, jsonURL: URL, pngURL: URL) throws {
         let decoded = try JSONDecoder().decode(PhotoPedal.self, from: Data(contentsOf: jsonURL))
         guard decoded.id == id, UIImage(contentsOfFile: pngURL.path) != nil else { throw PedalStoreError.validationFailed }
+    }
+
+    private func validateMetadataUpdateTemporaryJSON(id: UUID, original: PhotoPedal, jsonURL: URL) throws {
+        let decoded = try JSONDecoder().decode(PhotoPedal.self, from: Data(contentsOf: jsonURL))
+        guard decoded.id == id,
+              decoded.createdAt == original.createdAt,
+              decoded.sequence == original.sequence,
+              decoded.effect == original.effect,
+              decoded.coverFilename == original.coverFilename else {
+            throw PedalStoreError.validationFailed
+        }
+        _ = try PedalDraftValidator().validate(PedalDraft(name: decoded.name, description: decoded.description))
     }
 
     private func promote(_ temporary: URL, to final: URL, token: String) throws {

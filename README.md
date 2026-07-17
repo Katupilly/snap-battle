@@ -2,7 +2,7 @@
 
 Photo Pedal is an iOS prototype that turns a captured or imported photo into a playable musical object. The current flow is:
 
-`photo input -> image preparation -> 2-bit cover -> deterministic note sequence -> name and description or metadata fallback -> synth playback -> saved pedal`
+`photo input -> image preparation -> 2-bit cover -> deterministic note sequence -> fallback metadata -> saved pedal -> playable result -> enriched name and description when available`
 
 The app is an MVP. A roadmap item is not necessarily implemented; see [the roadmap](docs/ROADMAP.md) and active specifications before starting feature work.
 
@@ -34,9 +34,9 @@ Device-only integrations require manual validation. See [Testing](docs/TESTING.m
 
 ## MVP Status
 
-Implemented: camera or photo-library input, 2-bit cover processing, deterministic music generation, local synth playback, reverb/distortion selection, locally persisted latest pedal, Foundation Models metadata with static fallback, and two App Intents.
+Implemented: camera or photo-library input, 2-bit cover processing, deterministic music generation, local synth playback, reverb/distortion selection, local collection persistence, Gallery browsing/detail/delete/playback, Foundation Models metadata enrichment with static fallback, and two App Intents.
 
-Not implemented: generator versioning, a persistent gallery, boards, sharing, collaboration, offline rendering, video export, and the roadmap's effect macro labels.
+Not implemented: generator versioning, boards, sharing, collaboration, offline rendering, video export, and the roadmap's effect macro labels.
 
 ## Documentation
 

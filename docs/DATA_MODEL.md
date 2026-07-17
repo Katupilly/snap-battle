@@ -6,14 +6,14 @@
 
 | Type | Purpose | Status |
 | --- | --- | --- |
-| `PhotoPedal` | One saved generated result | Persisted as the latest pedal |
+| `PhotoPedal` | One saved generated result | Persisted as a UUID-associated collection record |
 | `PedalSequence` | Musical result and sound profile | Persisted inside `PhotoPedal` |
 | `PedalHarmony` | Root pitch class, scale, BPM | Persisted |
 | `PedalNote` | One grid note: step, row, MIDI note, velocity | Persisted |
 | `PedalSoundProfile` | Gate, octave range, waveform, effect presets and mixes | Persisted |
 | `PedalDraft` | Foundation Models or fallback name/description output | Transient |
 
-`PhotoPedal` stores `id`, `name`, `description`, `sequence`, `effect`, `createdAt`, and `coverFilename`. The selected effect and both stored effect mixes are saved. `updating` creates a replacement value rather than mutating the model.
+`PhotoPedal` stores `id`, `name`, `description`, `sequence`, `effect`, `createdAt`, and `coverFilename`. The selected effect and both stored effect mixes are saved. `updating` creates a replacement value rather than mutating the model. Semantic enrichment may replace only `name` and `description` for an existing `id`.
 
 ## Identity And Metadata Boundaries
 
@@ -31,7 +31,7 @@
 
 ### Semantic Metadata
 
-`PhotoPedal.name` and `PhotoPedal.description` originate from `PedalDraft` after Foundation Models generation and validation. If Foundation Models metadata is unavailable, refused, failed, empty, or invalid after the musical result exists, the pipeline uses fallback metadata: name `Photo Pedal`; description `A photo-generated sound pedal.`. These values do not define the musical result.
+`PhotoPedal.name` and `PhotoPedal.description` are initially the valid fallback metadata: name `Photo Pedal`; description `A photo-generated sound pedal.`. The fallback record is persisted and playable before semantic enrichment runs. If Foundation Models metadata later succeeds and validates, `PedalStore` updates only `name` and `description` for the same `PhotoPedal.id`. If enrichment is unavailable, refused, failed, empty, invalid, stale, cancelled, or unable to update the existing record, the fallback remains. These values do not define the musical result.
 
 ## Serialization And Storage
 

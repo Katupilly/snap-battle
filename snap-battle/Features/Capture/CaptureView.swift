@@ -26,7 +26,8 @@ struct ContentView: View {
                 onComplete: {
                     navigation.completeCapture()
                     gallery.insertedSavedPedal()
-                }
+                },
+                onMetadataUpdate: { gallery.updateExistingPedal($0) }
             )
         }
         .onChange(of: AppIntentRouter.shared.request, initial: true) { _, request in
@@ -109,10 +110,16 @@ struct PressFeedbackButtonStyle: ButtonStyle {
 private struct CaptureFlowView: View {
     let onCancel: () -> Void
     let onComplete: () -> Void
-    @State private var model = PhotoPedalViewModel()
+    @State private var model: PhotoPedalViewModel
     @State private var selectedItem: PhotosPickerItem?
     @State private var showingCamera = false
     @Environment(\.dismiss) private var dismiss
+
+    init(onCancel: @escaping () -> Void, onComplete: @escaping () -> Void, onMetadataUpdate: @escaping (StoredPedal) -> Void) {
+        self.onCancel = onCancel
+        self.onComplete = onComplete
+        _model = State(initialValue: PhotoPedalViewModel(metadataUpdateHandler: onMetadataUpdate))
+    }
 
     var body: some View {
         NavigationStack {

@@ -5,6 +5,7 @@ struct PedalResultView: View {
     let pedal: PhotoPedal
     let cover: UIImage
     let onDone: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         @Bindable var model = model
@@ -12,8 +13,13 @@ struct PedalResultView: View {
             VStack(spacing: 20) {
                 Image(uiImage: cover).resizable().interpolation(.none).scaledToFit().clipShape(.rect(cornerRadius: 20))
                     .accessibilityLabel("Capa 2-bit do pedal")
-                Text(pedal.name).font(.largeTitle.bold())
-                Text(pedal.description).multilineTextAlignment(.center).foregroundStyle(.secondary)
+                VStack(spacing: 8) {
+                    Text(pedal.name).font(.largeTitle.bold()).multilineTextAlignment(.center)
+                    Text(pedal.description).multilineTextAlignment(.center).foregroundStyle(.secondary)
+                    enrichmentStatus(model.semanticEnrichmentState)
+                }
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: pedal.name)
+                .accessibilityElement(children: .combine)
                 Text("\(pedal.sequence.harmony.rootName) · \(pedal.sequence.harmony.scale.displayName) · \(pedal.sequence.harmony.bpm) BPM")
                     .font(.subheadline.weight(.semibold))
                 StepGrid(sequence: pedal.sequence)
@@ -32,6 +38,28 @@ struct PedalResultView: View {
                 Button("Ver na Gallery", systemImage: "square.grid.2x2") { onDone() }.buttonStyle(.bordered)
             }
             .padding(24)
+        }
+    }
+
+    @ViewBuilder
+    private func enrichmentStatus(_ state: PhotoPedalViewModel.SemanticEnrichmentState) -> some View {
+        switch state {
+        case .loading:
+            HStack(spacing: 8) {
+                ProgressView()
+                    .controlSize(.mini)
+                Text("Refinando nome...")
+                    .font(.footnote.weight(.medium))
+            }
+            .foregroundStyle(.secondary)
+            .accessibilityLabel("Refinando nome e descrição")
+        case .succeeded:
+            Text("Nome atualizado")
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Nome e descrição atualizados")
+        case .failed, .cancelled, .staleIgnored, .notStarted:
+            EmptyView()
         }
     }
 }

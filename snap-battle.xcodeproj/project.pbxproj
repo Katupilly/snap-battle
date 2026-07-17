@@ -14,6 +14,7 @@
 		B20000000000000000000007 /* BattleViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000000000008 /* BattleViewModelTests.swift */; };
 		C30000000000000000000001 /* PhotoPedalStabilizationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30000000000000000000002 /* PhotoPedalStabilizationTests.swift */; };
 		C30000000000000000000003 /* NavigationGalleryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30000000000000000000004 /* NavigationGalleryTests.swift */; };
+		C30000000000000000000005 /* ProgressivePedalMetadataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30000000000000000000006 /* ProgressivePedalMetadataTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -36,6 +37,7 @@
 		B20000000000000000000008 /* BattleViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BattleViewModelTests.swift; sourceTree = "<group>"; };
 		C30000000000000000000002 /* PhotoPedalStabilizationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPedalStabilizationTests.swift; sourceTree = "<group>"; };
 		C30000000000000000000004 /* NavigationGalleryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGalleryTests.swift; sourceTree = "<group>"; };
+		C30000000000000000000006 /* ProgressivePedalMetadataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressivePedalMetadataTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -92,6 +94,7 @@
 				B20000000000000000000008 /* BattleViewModelTests.swift */,
 				C30000000000000000000002 /* PhotoPedalStabilizationTests.swift */,
 				C30000000000000000000004 /* NavigationGalleryTests.swift */,
+				C30000000000000000000006 /* ProgressivePedalMetadataTests.swift */,
 			);
 			path = "snap-battleTests";
 			sourceTree = "<group>";
@@ -202,6 +205,7 @@
 				B20000000000000000000007 /* BattleViewModelTests.swift in Sources */,
 				C30000000000000000000001 /* PhotoPedalStabilizationTests.swift in Sources */,
 				C30000000000000000000003 /* NavigationGalleryTests.swift in Sources */,
+				C30000000000000000000005 /* ProgressivePedalMetadataTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

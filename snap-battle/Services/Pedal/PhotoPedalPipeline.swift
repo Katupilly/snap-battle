@@ -1,5 +1,11 @@
 import UIKit
 
+struct PedalEssentialResult {
+    let pedal: PhotoPedal
+    let cover: UIImage
+    let preparedImage: PreparedImage
+}
+
 @MainActor
 final class PhotoPedalPipeline {
     private let imagePreparer: ImageInputPreparer
@@ -54,7 +60,7 @@ final class PhotoPedalPipeline {
         self.init(imagePreparer: ImageInputPreparer(), retroProcessor: RetroImageProcessor(), visionAnalyzer: visionAnalyzer, subjectService: subjectService, generator: generator)
     }
 
-    func run(image: UIImage, runID: String? = nil, stage: @escaping (PedalProcessingStage) -> Void) async throws -> (pedal: PhotoPedal, cover: UIImage) {
+    func runEssential(image: UIImage, runID: String? = nil, stage: @escaping (PedalProcessingStage) -> Void) async throws -> PedalEssentialResult {
         let runID = runID ?? PerformanceDiagnostics.makeRunID()
         stage(.preparing)
         try Task.checkCancellation()
@@ -77,7 +83,16 @@ final class PhotoPedalPipeline {
             try ImageSequenceGenerator.makeSequence(retroImage: cover, colorProfile: color)
         }
         try Task.checkCancellation()
-        stage(.naming)
+        let draft = try validator.validate(PedalDraftValidator.fallback)
+        let pedal = PhotoPedal(id: UUID(), name: draft.name, description: draft.description, sequence: sequence, effect: .reverb, createdAt: .now, coverFilename: "latest-pedal.png")
+        PerformanceDiagnostics.signpostEvent("essentialResultReady", runID: runID, details: "pedalID=\(pedal.id.uuidString)")
+        PerformanceDiagnostics.event("timeToMusicalResult", runID: runID, details: "pedalID=\(pedal.id.uuidString)")
+        return PedalEssentialResult(pedal: pedal, cover: cover, preparedImage: prepared)
+    }
+
+    func generateSemanticMetadata(preparedImage prepared: PreparedImage, harmony: PedalHarmony, runID: String? = nil) async throws -> PedalDraft {
+        let runID = runID ?? PerformanceDiagnostics.makeRunID()
+        PerformanceDiagnostics.signpostEvent("semanticEnrichmentStarted", runID: runID)
         let subject: ExtractedSubject
         do {
             subject = try await PerformanceDiagnostics.measure("subjectExtraction", runID: runID) {
@@ -95,7 +110,7 @@ final class PhotoPedalPipeline {
                 try await visionAnalyzer.analyze(image: prepared.image, subject: subject)
             }
             let generated = try await PerformanceDiagnostics.measure("metadataGeneration", runID: runID) {
-                try await generator.generate(observation: observation, harmony: sequence.harmony)
+                try await generator.generate(observation: observation, harmony: harmony)
             }
             draft = try PerformanceDiagnostics.measure("metadataValidation", runID: runID) {
                 try validator.validate(generated)
@@ -103,10 +118,26 @@ final class PhotoPedalPipeline {
         } catch is CancellationError {
             throw CancellationError()
         } catch {
-            draft = try validator.validate(PedalDraft(name: "Photo Pedal", description: "A photo-generated sound pedal."))
+            PerformanceDiagnostics.event("semanticEnrichmentFailed", runID: runID, details: "reason=semanticStage")
+            throw error
         }
-        let pedal = PhotoPedal(id: UUID(), name: draft.name, description: draft.description, sequence: sequence, effect: .reverb, createdAt: .now, coverFilename: "latest-pedal.png")
-        return (pedal, cover)
+        PerformanceDiagnostics.signpostEvent("semanticEnrichmentSucceeded", runID: runID)
+        PerformanceDiagnostics.event("totalSemanticTime", runID: runID)
+        return draft
+    }
+
+    func run(image: UIImage, runID: String? = nil, stage: @escaping (PedalProcessingStage) -> Void) async throws -> (pedal: PhotoPedal, cover: UIImage) {
+        let runID = runID ?? PerformanceDiagnostics.makeRunID()
+        let essential = try await runEssential(image: image, runID: runID, stage: stage)
+        stage(.naming)
+        do {
+            let draft = try await generateSemanticMetadata(preparedImage: essential.preparedImage, harmony: essential.pedal.sequence.harmony, runID: runID)
+            return (essential.pedal.updatingMetadata(name: draft.name, description: draft.description), essential.cover)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch {
+            return (essential.pedal, essential.cover)
+        }
     }
 }
 

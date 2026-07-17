@@ -90,6 +90,10 @@ nonisolated struct PhotoPedal: Codable, Sendable, Equatable, Identifiable {
     func updating(effect: PedalEffect? = nil, soundProfile: PedalSoundProfile? = nil) -> Self {
         Self(id: id, name: name, description: description, sequence: PedalSequence(harmony: sequence.harmony, notes: sequence.notes, soundProfile: soundProfile ?? sequence.soundProfile), effect: effect ?? self.effect, createdAt: createdAt, coverFilename: coverFilename)
     }
+
+    func updatingMetadata(name: String, description: String) -> Self {
+        Self(id: id, name: name, description: description, sequence: sequence, effect: effect, createdAt: createdAt, coverFilename: coverFilename)
+    }
 }
 
 @Generable(description: "A concise, evocative name and one-sentence description for a photo-generated sound pedal.")
@@ -98,7 +102,9 @@ struct PedalDraft: Sendable, Equatable {
     @Guide(description: "One poetic, family-friendly sentence describing the pedal sound, at most 140 characters") var description: String
 }
 
-struct PedalDraftValidator: Sendable {
+nonisolated struct PedalDraftValidator: Sendable {
+    static let fallback = PedalDraft(name: "Photo Pedal", description: "A photo-generated sound pedal.")
+
     func validate(_ draft: PedalDraft) throws -> PedalDraft {
         let name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines), description = draft.description.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty, name.count <= 24, !description.isEmpty, description.count <= 140 else { throw AppError.invalidDraft }
