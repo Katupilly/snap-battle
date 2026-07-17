@@ -14,7 +14,27 @@ Decisão: **Phase 2 Step 1: Unblocked, sem dívida funcional**.
 
 ## Divergência documental registrada
 
-O briefing inicial afirmava "o commit `7172001` está no HEAD". Na inspeção real do repositório o HEAD da branch `codex/pedalboard-phase2-foundation` é `6c76249 feat(library): add gallery canvas grid background` e `7172001 docs(pedalboard): define phase 2 foundation` é seu parent. O push inicial foi feito a partir desse HEAD real, sem force push, e a Etapa 1 foi commitada em cima dele. Nenhuma premissa foi silenciosamente substituída.
+O briefing inicial afirmava "o commit `7172001` está no HEAD". Na inspeção real do repositório o HEAD da branch `codex/pedalboard-phase2-foundation` era `6c76249 feat(library): add gallery canvas grid background` e `7172001 docs(pedalboard): define phase 2 foundation` era seu parent. O push inicial foi feito a partir desse HEAD real, sem force push, e a Etapa 1 foi commitada em cima dele. Nenhuma premissa foi silenciosamente substituída.
+
+Em uma revisão independente posterior, esse mesmo commit `6c76249` (canvas grid da Biblioteca) foi reclassificado como **Unrelated commit** porque não pertence ao escopo do Pedalboard: ele toca apenas `snap-battle/Features/Gallery/GalleryView.swift` e `snap-battle/Features/Library/CanvasGridBackground.swift`, sem dependência funcional nem textual com o domínio ou a persistência do Pedalboard. A branch da Phase 2 foi então reconstruída:
+
+- Tag de backup local: `backup/pedalboard-phase2-pre-cleanup-2026-07-17` apontando para o HEAD anterior (`259a31a`).
+- Branch dedicada publicada: `codex/library-canvas-grid` em `e7d7afb` (reaplicação limpa de `6c76249` sobre `origin/main`).
+- Branch da Phase 2 reconstruída via `git reset --hard origin/main` + `git cherry-pick 25a7ee2 7172001 259a31a`, preservando o conteúdo e mensagens de cada commit mas com hashes novos (`53b171f`, `9bc8050`, `7185953`).
+- Push aplicado com `--force-with-lease` na branch da Phase 2 (nunca em `main`).
+
+Estado final do histórico:
+
+```text
+* 7185953 (HEAD -> codex/pedalboard-phase2-foundation, origin/codex/pedalboard-phase2-foundation) feat(pedalboard): add domain model and persistence
+* 9bc8050 docs(pedalboard): define phase 2 foundation
+* 53b171f docs: add skill routing guidance
+* 19cb922 (origin/main, origin/HEAD, main) feat(library): complete chronological gallery phase (#1)
+* 3a2fd1c Finalize contextual bottom bar increment
+* …
+```
+
+`git diff --check origin/main...HEAD` passou após a reconstrução, com 9 arquivos modificados (1756 inserções, 2 deleções) — apenas Phase 2, sem o canvas grid da Biblioteca.
 
 ## Arquivos implementados
 
