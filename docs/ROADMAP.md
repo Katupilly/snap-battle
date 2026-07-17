@@ -136,9 +136,9 @@ These profiles should be treated as part of the app’s musical identity, not as
 
 ---
 
-# Phase 1 — Data Model and Gallery (Planned)
+# Phase 1 — Data Model and Gallery (Ready)
 
-Draft: [Gallery specification](../specs/planned/gallery.md).
+Ready: [Photo Pedal Library specification](../specs/current/pedal-library.md). The older [Gallery specification](../specs/planned/gallery.md) is superseded.
 
 **Priority: Highest**
 **Complexity: Medium**

@@ -5,6 +5,7 @@ import UIKit
 struct ContentView: View {
     @State private var navigation = AppNavigationModel()
     @State private var gallery = GalleryViewModel()
+    @State private var thumbnailLoader = ThumbnailLoader()
     @Namespace private var bottomBarNamespace
 
     var body: some View {
@@ -12,7 +13,12 @@ struct ContentView: View {
         NavigationStack {
             Group {
                 switch navigation.selectedDestination {
-                case .gallery: GalleryView(model: gallery, beginCapture: navigation.beginCapture)
+                case .gallery:
+                    GalleryView(
+                        model: gallery,
+                        beginCapture: navigation.beginCapture,
+                        thumbnailLoader: thumbnailLoader
+                    )
                 case .jam: JamPlaceholderView()
                 }
             }
@@ -118,21 +124,9 @@ private struct ContextualBottomBar: View {
     }
 
     private func largeNavigationPiece(_ configuration: NavigationBarConfiguration) -> some View {
-        HStack(spacing: 8) {
-            ForEach(configuration.destinations) { destination in
-                let isSelected = configuration.selectedDestination == destination
-                Button {
-                    selectDestination(destination)
-                } label: {
-                    destinationLabel(destination, isSelected: isSelected)
-                }
-                .buttonStyle(PressFeedbackButtonStyle(reduceMotion: reduceMotion))
-                .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
-                .accessibilityLabel(destination.title)
-                .accessibilityHint("Shows \(destination.title)")
-                .accessibilityAddTraits(isSelected ? [.isSelected] : [])
-                .accessibilityIdentifier(destination.accessibilityIdentifier)
-            }
+        ViewThatFits(in: .horizontal) {
+            destinationButtons(configuration, showsTitles: true)
+            destinationButtons(configuration, showsTitles: false)
         }
         .padding(.horizontal, 8)
         .frame(maxWidth: .infinity)
@@ -146,23 +140,54 @@ private struct ContextualBottomBar: View {
         .accessibilityIdentifier("bottomBar.root")
     }
 
-    private func destinationLabel(_ destination: RootDestination, isSelected: Bool) -> some View {
-        ViewThatFits(in: .horizontal) {
+    private func destinationButtons(_ configuration: NavigationBarConfiguration, showsTitles: Bool) -> some View {
+        HStack(spacing: 8) {
+            ForEach(configuration.destinations) { destination in
+                let isSelected = configuration.selectedDestination == destination
+                Button {
+                    selectDestination(destination)
+                } label: {
+                    destinationLabel(destination, isSelected: isSelected, showsTitle: showsTitles)
+                }
+                .buttonStyle(PressFeedbackButtonStyle(reduceMotion: reduceMotion))
+                .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+                .accessibilityLabel(destination.title)
+                .accessibilityHint("Shows \(destination.title)")
+                .accessibilityAddTraits(isSelected ? [.isSelected] : [])
+                .accessibilityIdentifier(destination.accessibilityIdentifier)
+            }
+        }
+        .fixedSize(horizontal: showsTitles, vertical: false)
+    }
+
+    @ViewBuilder
+    private func destinationLabel(_ destination: RootDestination, isSelected: Bool, showsTitle: Bool) -> some View {
+        if showsTitle {
             Label(destination.title, systemImage: destination.systemImage)
+                .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
+                .font(.subheadline.weight(isSelected ? .semibold : .medium))
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .padding(.horizontal, 8)
+                .background(isSelected ? Color.accentColor.opacity(0.14) : Color.clear, in: .capsule)
+                .overlay {
+                    Capsule()
+                        .stroke(isSelected ? Color.accentColor.opacity(0.45) : Color.clear, lineWidth: 1)
+                }
+                .contentShape(.rect)
+        } else {
             Image(systemName: destination.systemImage)
                 .imageScale(.medium)
                 .accessibilityHidden(true)
+                .font(.subheadline.weight(isSelected ? .semibold : .medium))
+                .frame(width: 44, height: 44)
+                .background(isSelected ? Color.accentColor.opacity(0.14) : Color.clear, in: .capsule)
+                .overlay {
+                    Capsule()
+                        .stroke(isSelected ? Color.accentColor.opacity(0.45) : Color.clear, lineWidth: 1)
+                }
+                .contentShape(.rect)
         }
-        .font(.subheadline.weight(isSelected ? .semibold : .medium))
-        .frame(maxWidth: .infinity, minHeight: 44)
-        .padding(.horizontal, 8)
-        .background(isSelected ? Color.accentColor.opacity(0.14) : Color.clear, in: .capsule)
-        .overlay {
-            Capsule()
-                .stroke(isSelected ? Color.accentColor.opacity(0.45) : Color.clear, lineWidth: 1)
-        }
-        .contentShape(.rect)
     }
 
     private func largeActionPiece(_ action: BottomBarAction) -> some View {
@@ -192,19 +217,9 @@ private struct ContextualBottomBar: View {
         Button(role: action.role.buttonRole) {
             perform(action.id)
         } label: {
-            HStack(spacing: 8) {
-                if action.isLoading {
-                    ProgressView()
-                        .controlSize(.small)
-                        .accessibilityHidden(true)
-                } else {
-                    Image(systemName: action.systemImage)
-                        .accessibilityHidden(true)
-                }
-                Text(action.title)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                    .minimumScaleFactor(0.82)
+            ViewThatFits(in: .horizontal) {
+                actionLabel(action, showsTitle: true)
+                actionLabel(action, showsTitle: false)
             }
             .frame(maxWidth: .infinity, minHeight: 44)
             .contentShape(.rect)
@@ -214,6 +229,35 @@ private struct ContextualBottomBar: View {
         .accessibilityLabel(action.accessibilityLabel ?? action.title)
         .accessibilityHint(action.accessibilityHint ?? "")
         .accessibilityIdentifier(identifier(for: action, fallback: "bottomBar.action.\(action.id)"))
+    }
+
+    @ViewBuilder
+    private func actionLabel(_ action: BottomBarAction, showsTitle: Bool) -> some View {
+        if showsTitle {
+            HStack(spacing: 8) {
+                actionIcon(action)
+                Text(action.title)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.86)
+            }
+            .fixedSize(horizontal: true, vertical: false)
+        } else {
+            actionIcon(action)
+                .frame(width: 44, height: 44)
+        }
+    }
+
+    @ViewBuilder
+    private func actionIcon(_ action: BottomBarAction) -> some View {
+        if action.isLoading {
+            ProgressView()
+                .controlSize(.small)
+                .accessibilityHidden(true)
+        } else {
+            Image(systemName: action.systemImage)
+                .accessibilityHidden(true)
+        }
     }
 
     private func identifier(for action: BottomBarAction, fallback: String) -> String {

@@ -3,24 +3,14 @@ import SwiftUI
 struct GalleryView: View {
     let model: GalleryViewModel
     let beginCapture: () -> Void
+    let thumbnailLoader: ThumbnailLoader
     @State private var itemPendingDeletion: StoredPedal?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         content(for: model.state)
-        .navigationTitle("Gallery")
+        .navigationTitle("Biblioteca")
         .navigationDestination(for: UUID.self) { id in
-            if let item = model.state.pedals.first(where: { $0.id == id }) {
-                PedalDetailView(
-                    item: item,
-                    isPlaying: model.playingID == item.id,
-                    play: { model.quickPlay(item) },
-                    stop: { model.stop(item) },
-                    delete: { model.delete(item) }
-                )
-            } else {
-                ContentUnavailableView("Pedal indisponível", systemImage: "exclamationmark.triangle")
-            }
+            PedalDetailView(itemID: id, model: model)
         }
         .alert("Excluir pedal?", isPresented: Binding(get: { itemPendingDeletion != nil }, set: { if !$0 { itemPendingDeletion = nil } }), presenting: itemPendingDeletion) { item in
             Button("Excluir", role: .destructive) { model.delete(item); itemPendingDeletion = nil }
@@ -38,132 +28,39 @@ struct GalleryView: View {
     private func content(for state: GalleryViewModel.State) -> some View {
         switch state {
             case .loading:
-                ProgressView("Carregando pedais")
-                    .accessibilityLabel("Carregando pedais")
+                LibraryGridView(
+                    state: .loading,
+                    thumbnailLoader: thumbnailLoader,
+                    assetProvider: model.thumbnailAsset(for:)
+                )
             case .empty:
-                ContentUnavailableView {
-                    Label("Sua Gallery está vazia", systemImage: "square.grid.2x2")
-                } description: {
-                    Text("Crie um pedal para encontrá-lo aqui.")
-                } actions: {
-                    Button("Criar pedal", systemImage: "camera.fill", action: beginCapture)
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .accessibilityHint("Abre a câmera ou a biblioteca de fotos para criar um pedal")
-                }
+                LibraryGridView(
+                    state: .empty,
+                    thumbnailLoader: thumbnailLoader,
+                    assetProvider: model.thumbnailAsset(for:)
+                )
             case .blockingError(let message):
-                VStack(spacing: 16) {
-                    ContentUnavailableView("Não foi possível carregar a Gallery", systemImage: "exclamationmark.triangle", description: Text(message))
-                    Button("Tentar novamente") { Task { await model.reloadAsync() } }
-                        .buttonStyle(PressFeedbackButtonStyle(reduceMotion: reduceMotion))
-                }
+                LibraryGridView(
+                    state: .error(message: message),
+                    onRetry: { Task { await model.reloadAsync() } },
+                    thumbnailLoader: thumbnailLoader,
+                    assetProvider: model.thumbnailAsset(for:)
+                )
             case .content(let pedals):
-                galleryList(pedals)
+                libraryGrid(state: .content(pedals))
             case .partialError(let pedals, let message):
-                VStack(spacing: 0) {
-                    Label("Alguns pedais não puderam ser carregados.", systemImage: "exclamationmark.triangle")
-                        .font(.footnote).padding().frame(maxWidth: .infinity, alignment: .leading)
-                        .background(.yellow.opacity(0.15)).accessibilityLabel(message)
-                    galleryList(pedals)
-                }
+                libraryGrid(state: .partialError(pedals, message: message))
         }
     }
 
-    @ViewBuilder
-    private func galleryList(_ pedals: [StoredPedal]) -> some View {
-        List(pedals) { item in
-            GalleryCard(item: item, isPlaying: model.playingID == item.id, play: { model.quickPlay(item) }, delete: { itemPendingDeletion = item })
-                .swipeActions(edge: .trailing) {
-                    Button("Excluir", systemImage: "trash", role: .destructive) {
-                        itemPendingDeletion = item
-                    }
-                    .accessibilityLabel("Excluir \(item.pedal.name)")
-                }
-        }
+    private func libraryGrid(state: LibraryGridState) -> some View {
+        LibraryGridView(
+            state: state,
+            onRetry: { Task { await model.reloadAsync() } },
+            thumbnailLoader: thumbnailLoader,
+            assetProvider: model.thumbnailAsset(for:)
+        )
         .refreshable { await model.reloadAsync() }
-    }
-}
-
-private struct PedalDetailView: View {
-    let item: StoredPedal
-    let isPlaying: Bool
-    let play: () -> Void
-    let stop: () -> Void
-    let delete: () -> Bool
-    @Environment(\.dismiss) private var dismiss
-    @State private var isConfirmingDeletion = false
-
-    var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                Image(uiImage: item.cover).resizable().interpolation(.none).scaledToFit().clipShape(.rect(cornerRadius: 20))
-                    .accessibilityLabel("Capa 2-bit de \(item.pedal.name)")
-                Text(item.pedal.name).font(.largeTitle.bold()).multilineTextAlignment(.center)
-                Text(item.pedal.description).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                Text("\(item.pedal.effect.displayName) selecionado").font(.subheadline.weight(.semibold))
-                Text(isPlaying ? "Reprodução em andamento" : "Pronto para tocar")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel(isPlaying ? "Reprodução em andamento" : "Pronto para tocar")
-                HStack(spacing: 12) {
-                    Button("Tocar", systemImage: "play.fill", action: play)
-                        .buttonStyle(.borderedProminent)
-                    Button("Parar", systemImage: "stop.fill", action: stop)
-                        .buttonStyle(.bordered)
-                        .disabled(!isPlaying)
-                }
-                .controlSize(.large)
-                Button("Excluir", systemImage: "trash", role: .destructive) {
-                    isConfirmingDeletion = true
-                }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-                    .accessibilityHint("Pede confirmação antes de remover este pedal")
-            }
-            .padding(24)
-        }
-        .navigationTitle("Pedal")
-        .navigationBarTitleDisplayMode(.inline)
-        .alert("Excluir pedal?", isPresented: $isConfirmingDeletion) {
-            Button("Excluir", role: .destructive) {
-                if delete() {
-                    dismiss()
-                }
-            }
-            Button("Cancelar", role: .cancel) {}
-        } message: {
-            Text("\(item.pedal.name) será removido da Gallery.")
-        }
-    }
-}
-
-private struct GalleryCard: View {
-    let item: StoredPedal
-    let isPlaying: Bool
-    let play: () -> Void
-    let delete: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(uiImage: item.cover).resizable().interpolation(.none).scaledToFill().frame(width: 72, height: 72).clipShape(.rect(cornerRadius: 12))
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 5) {
-                NavigationLink(value: item.id) {
-                    Text(item.pedal.name).font(.headline).multilineTextAlignment(.leading)
-                }
-                .accessibilityLabel("Abrir detalhes de \(item.pedal.name)")
-                Text(isPlaying ? "Tocando" : "Pronto para tocar").font(.footnote).foregroundStyle(.secondary)
-                    .accessibilityLabel(isPlaying ? "Reprodução em andamento" : "Pronto para tocar")
-                HStack {
-                    Button("Tocar", systemImage: "play.fill", action: play)
-                        .accessibilityLabel("Tocar \(item.pedal.name)")
-                    Button("Excluir", systemImage: "trash", role: .destructive, action: delete)
-                        .accessibilityLabel("Excluir \(item.pedal.name)")
-                }
-                .buttonStyle(.borderless)
-            }
-        }
-        .padding(.vertical, 4)
     }
 }
 

@@ -103,6 +103,15 @@ nonisolated struct PedalStore {
         return StoredPedal(pedal: pedal, cover: cover)
     }
 
+    /// Returns the persisted cover identity used by the Library thumbnail loader.
+    /// The store remains the owner of the collection path; callers never build
+    /// file URLs from a grid index or from display data.
+    func thumbnailAsset(for id: UUID) -> PersistedImageAsset? {
+        let url = pngURL(for: id)
+        guard fileManager.fileExists(atPath: url.path) else { return nil }
+        return PersistedImageAsset(identity: id.uuidString, fileURL: url)
+    }
+
     func save(_ pedal: PhotoPedal, cover: UIImage, diagnosticsRunID: String? = nil) throws {
         let runID = diagnosticsRunID ?? PerformanceDiagnostics.makeRunID()
         let started = ContinuousClock.now

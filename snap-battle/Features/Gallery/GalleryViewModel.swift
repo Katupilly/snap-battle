@@ -81,6 +81,10 @@ final class GalleryViewModel {
         }
     }
 
+    func thumbnailAsset(for id: UUID) -> PersistedImageAsset? {
+        store.thumbnailAsset(for: id)
+    }
+
     func quickPlay(_ item: StoredPedal) {
         do {
             try player.play(item.pedal)

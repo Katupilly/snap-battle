@@ -2,7 +2,7 @@
 
 Status: Ready
 Priority: P0
-Last updated: 2026-07-16
+Last updated: 2026-07-17
 
 ## Context
 
@@ -11,6 +11,14 @@ The active Photo Pedal vertical slice captures or imports an image, creates a fo
 `PhotoPedalViewModel.process(_:)` in `snap-battle/Features/Capture/CaptureViewModel.swift` blocks duplicate processing with `isProcessing`, runs `PhotoPedalPipeline`, updates in-memory state, and calls `PedalStore.save(_:cover:)`. `PedalStore` currently writes only `latest-pedal.json` and `latest-pedal.png` in Application Support. `PhotoPedal` in `snap-battle/Domain/Pedal/Pedal.swift` already has UUID identity, creation date, final sequence, effect, sound settings, metadata, and a cover filename.
 
 This work follows [ADR 0001](../../docs/decisions/0001-deterministic-local-music-generation.md), [ADR 0002](../../docs/decisions/0002-persist-generated-musical-results.md), and [ADR 0003](../../docs/decisions/0003-foundation-models-for-semantic-metadata.md). `docs/ROADMAP.md` mentions original-image retention and `generatorVersion`; those are lower-precedence planned direction and are intentionally excluded. The current model, ADR 0002, and this specification persist only the processed cover and final musical data.
+
+## Authority Boundary
+
+This specification remains the source of truth for the implemented navigation and persistence foundation: persistent Gallery and Jam roots, transient Capture, automatic save/result completion, collection storage, legacy migration, safe writes, deletion, playback coordination, App Intent routing, and shared latest-pedal selection.
+
+It is no longer the source of truth for the future visual Library experience. The future Photos-like Library grid, chronological visual order, month grouping, initial scroll position, shared-element transition, standardized detail cover frame, and scroll preservation are governed by [Photo Pedal Library](pedal-library.md).
+
+Until that promotion happens, the implemented Gallery list remains valid current behavior. Do not use the baseline list/card requirements in this foundation spec to block or override the future Library feature spec.
 
 ## Problem
 
@@ -32,7 +40,7 @@ A pedal is one photo-generated record: processed cover, persisted final musical 
 
 ### Gallery
 
-Gallery is the persistent collection of pedals, not an alias for the latest pedal. Its initial order is newest first under the shared deterministic ordering rule.
+Gallery is the persistent collection of pedals, not an alias for the latest pedal. This foundation established a baseline newest-first list under the shared deterministic ordering rule. A future Library visual layer may present the same persisted collection in a different visual order when authorized by a later current specification.
 
 ### Jam
 
@@ -66,11 +74,11 @@ The app has two persistent destinations, Gallery and Jam. Capture is one central
 - Dismissing the result after automatic persistence keeps the saved pedal; it does not delete it.
 - Native `TabView` is acceptable. A custom composition is allowed only if it preserves these behaviors and the accessibility requirements; no visual tab-bar design or pixel values are prescribed.
 
-## Gallery Model
+## Baseline Gallery Model
 
-Gallery supports persisted-pedal browsing, detail, quick playback, creation, deletion, and an understandable empty state. It orders valid pedals by `createdAt` descending, then `id.uuidString` ascending when dates tie.
+Gallery supports persisted-pedal browsing, detail, quick playback, creation, deletion, and an understandable empty state. The foundation baseline orders valid pedals by `createdAt` descending, then `id.uuidString` ascending when dates tie.
 
-Each card shows at least the processed cover, name, and an accessible playback state or action. Quick play and opening detail are separate discoverable controls; no essential function depends only on a hidden gesture. Gallery does not require BPM, scale, MIDI, HSL, fingerprint, or `generatorVersion` presentation.
+Each baseline card shows at least the processed cover, name, and an accessible playback state or action. Quick play and opening detail are separate discoverable controls in the baseline implementation; a later Library spec may replace the card/list interaction model. Gallery does not require BPM, scale, MIDI, HSL, fingerprint, or `generatorVersion` presentation.
 
 ## Capture Action Model
 
@@ -84,7 +92,7 @@ Jam presents an accessible empty state communicating an individual outcome equiv
 
 - Main navigation shell with persistent Gallery and Jam destinations and a transient Capture action.
 - Gallery collection persistence, idempotent legacy migration, and a Gallery UI/state owner.
-- Gallery cards, empty/loading/content/error states, detail, quick play, and deletion.
+- Baseline Gallery cards, empty/loading/content/error states, detail, quick play, and deletion.
 - Result completion/dismiss integration after existing automatic save.
 - Shared latest-pedal selection for storage and `PlayLastPedalIntent`.
 - Focused persistence, navigation, Gallery, playback-coordination, and App Intent routing tests.
@@ -100,7 +108,7 @@ Jam presents an accessible empty state communicating an individual outcome equiv
 ## Functional Requirements
 
 - Provide persistent Gallery and Jam destinations plus one nonpersistent Capture action.
-- List every valid persisted pedal under the shared deterministic ordering rule.
+- List every valid persisted pedal under the foundation's shared deterministic ordering rule.
 - Allow creating, quick-playing, inspecting, and deleting a pedal from Gallery.
 - Open and play a pedal using its persisted sequence and sound profile without re-running image or music generation.
 - Retain `PedalResultView` after automatic persistence and provide a completion path to Gallery without a misleading Save action.
@@ -125,8 +133,8 @@ Jam presents an accessible empty state communicating an individual outcome equiv
 - Promote both validated temporary files to their final UUID-associated locations only after validation. A failed write must not surface an incomplete record as valid.
 - Safe cleanup may remove abandoned temporary artifacts, never a valid final pair or legacy pair.
 - Collection loading independently validates each record pair. Missing, unreadable, mismatched, or malformed pairs are invalid and excluded from valid results.
-- Gallery and latest selection use one shared order: `createdAt` descending, then `id.uuidString` ascending.
-- The storage API owns ordering and latest selection; intents, view models, and views must not duplicate it.
+- The foundation storage API owns baseline ordering and latest selection; intents, view models, and views must not duplicate latest-selection logic.
+- The current latest-pedal selection remains newest by `createdAt` descending, then `id.uuidString` ascending. A future Library visual order may differ from latest selection and must document that separation explicitly.
 
 ## Gallery Requirements
 
@@ -224,7 +232,7 @@ Validate manually: main navigation and Capture control, camera, library import, 
 - [ ] Successful processing automatically persists before `PedalResultView` appears.
 - [ ] `PedalResultView` remains after auto-save and has a semantic completion action without Save label.
 - [ ] Completing result selects Gallery and reveals the pedal; dismissing does not delete it.
-- [ ] Gallery lists multiple valid pedals by descending `createdAt`, then ascending UUID string.
+- [ ] Baseline Gallery lists multiple valid pedals by descending `createdAt`, then ascending UUID string.
 - [ ] Each pedal has a validated UUID-associated JSON/PNG pair and plays stored music without regeneration.
 - [ ] Repeated actions do not duplicate a pedal.
 - [ ] Legacy data migrates idempotently, preserves UUID, and is never deleted by migration.
@@ -239,7 +247,7 @@ Validate manually: main navigation and Capture control, camera, library import, 
 
 | Area | Scenario | Expected result |
 | --- | --- | --- |
-| Collection | Valid records with tied dates | UUID string breaks the newest-first tie |
+| Collection | Valid records with tied dates | UUID string breaks the newest-first foundation tie |
 | Collection | One malformed pair among valid pairs | Valid pedals remain visible with recoverable error |
 | Write integrity | JSON or PNG validation fails | No valid incomplete collection record appears |
 | Migration | Valid legacy UUID already in collection | No duplicate migration record |
@@ -300,7 +308,7 @@ Validate manually: main navigation and Capture control, camera, library import, 
 
 ## Open Questions
 
-None. Automatic persistence, post-save behavior, Gallery as initial destination, no cover sharing, Jam empty state, migration, safe writes, latest ordering, and accessibility requirements are resolved.
+None for this foundation. Automatic persistence, post-save behavior, Gallery as initial destination, no cover sharing, Jam empty state, migration, safe writes, latest selection, and foundation accessibility requirements are resolved. Future visual Library behavior is governed by [Photo Pedal Library](pedal-library.md).
 
 ## Verification
 
