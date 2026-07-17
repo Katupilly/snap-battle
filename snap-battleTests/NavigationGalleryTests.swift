@@ -91,6 +91,61 @@ struct NavigationGalleryTests {
         #expect(!navigation.isPresentingCapture)
     }
 
+    @Test func bottomBarRootIncludesGalleryAndJamDestinations() {
+        let presentation = BottomBarPresentation.root(selected: .gallery)
+
+        guard case .navigation(let configuration) = presentation else {
+            Issue.record("Expected navigation presentation")
+            return
+        }
+        #expect(configuration.destinations == [.gallery, .jam])
+        #expect(configuration.selectedDestination == .gallery)
+        #expect(configuration.captureAction?.id == .capture)
+        #expect(RootDestination(.jam) == .jam)
+        #expect(configuration.destinations.map(\.accessibilityIdentifier) == ["bottomBar.destination.gallery", "bottomBar.destination.jam"])
+    }
+
+    @Test func bottomBarRootKeepsJamPlaceholderInNavigation() {
+        let presentation = BottomBarPresentation.root(selected: .jam)
+
+        guard case .navigation(let configuration) = presentation else {
+            Issue.record("Expected navigation presentation for Jam placeholder")
+            return
+        }
+        #expect(configuration.destinations == [.gallery, .jam])
+        #expect(configuration.selectedDestination == .jam)
+        #expect(configuration.captureAction?.id == .capture)
+        #expect(configuration.destinations.map(\.accessibilityIdentifier).contains("bottomBar.destination.jam"))
+    }
+
+    @Test func bottomBarCapturePhasesDeriveExpectedPresentations() {
+        guard case .contextual(let picker) = BottomBarPresentation.captureFlow(.picker) else {
+            Issue.record("Expected picker contextual presentation")
+            return
+        }
+        #expect(picker.primaryAction?.id == .openCamera)
+        #expect(picker.secondaryAction?.id == .cancel)
+
+        #expect(BottomBarPresentation.captureFlow(.processing) == .hidden(.processing))
+        #expect(BottomBarPresentation.captureFlow(.camera) == .hidden(.camera))
+
+        guard case .contextual(let retry) = BottomBarPresentation.captureFlow(.saveRetry) else {
+            Issue.record("Expected retry contextual presentation")
+            return
+        }
+        #expect(retry.primaryAction?.id == .tryAgain)
+        #expect(retry.secondaryAction?.id == .discard)
+        #expect(retry.secondaryAction?.role == .destructive)
+
+        guard case .contextual(let result) = BottomBarPresentation.captureFlow(.result) else {
+            Issue.record("Expected result contextual presentation")
+            return
+        }
+        #expect(result.primaryAction?.id == .savePedal)
+        #expect(result.secondaryAction?.id == .retake)
+        #expect(result.primaryAction?.isEnabled == true)
+    }
+
     @Test func galleryStateReloadQuickPlayAndDelete() throws {
         let directory = temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

@@ -4,7 +4,6 @@ struct PedalResultView: View {
     let model: PhotoPedalViewModel
     let pedal: PhotoPedal
     let cover: UIImage
-    let onDone: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -35,7 +34,7 @@ struct PedalResultView: View {
                         .accessibilityLabel("Intensidade de \(model.selectedEffect.displayName)")
                 }
                 Button("Tocar pedal", systemImage: "play.fill") { model.play() }.buttonStyle(.borderedProminent).controlSize(.large)
-                Button("Ver na Gallery", systemImage: "square.grid.2x2") { onDone() }.buttonStyle(.bordered)
+                    .accessibilityIdentifier("pedalResult.playPreview")
             }
             .padding(24)
         }
