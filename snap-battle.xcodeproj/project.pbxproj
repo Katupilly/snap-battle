@@ -15,6 +15,9 @@
 		C30000000000000000000001 /* PhotoPedalStabilizationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30000000000000000000002 /* PhotoPedalStabilizationTests.swift */; };
 		C30000000000000000000003 /* NavigationGalleryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30000000000000000000004 /* NavigationGalleryTests.swift */; };
 		C30000000000000000000005 /* ProgressivePedalMetadataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30000000000000000000006 /* ProgressivePedalMetadataTests.swift */; };
+		C30000000000000000000007 /* LibraryProjectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C30000000000000000000008 /* LibraryProjectionTests.swift */; };
+		D40000000000000000000001 /* ThumbnailLoaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D40000000000000000000002 /* ThumbnailLoaderTests.swift */; };
+		E50000000000000000000001 /* LibraryDebugFixturesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50000000000000000000002 /* LibraryDebugFixturesTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -38,6 +41,9 @@
 		C30000000000000000000002 /* PhotoPedalStabilizationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPedalStabilizationTests.swift; sourceTree = "<group>"; };
 		C30000000000000000000004 /* NavigationGalleryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NavigationGalleryTests.swift; sourceTree = "<group>"; };
 		C30000000000000000000006 /* ProgressivePedalMetadataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressivePedalMetadataTests.swift; sourceTree = "<group>"; };
+		C30000000000000000000008 /* LibraryProjectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryProjectionTests.swift; sourceTree = "<group>"; };
+		D40000000000000000000002 /* ThumbnailLoaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailLoaderTests.swift; sourceTree = "<group>"; };
+		E50000000000000000000002 /* LibraryDebugFixturesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryDebugFixturesTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -95,6 +101,9 @@
 				C30000000000000000000002 /* PhotoPedalStabilizationTests.swift */,
 				C30000000000000000000004 /* NavigationGalleryTests.swift */,
 				C30000000000000000000006 /* ProgressivePedalMetadataTests.swift */,
+				C30000000000000000000008 /* LibraryProjectionTests.swift */,
+				D40000000000000000000002 /* ThumbnailLoaderTests.swift */,
+				E50000000000000000000002 /* LibraryDebugFixturesTests.swift */,
 			);
 			path = "snap-battleTests";
 			sourceTree = "<group>";
@@ -206,6 +215,9 @@
 				C30000000000000000000001 /* PhotoPedalStabilizationTests.swift in Sources */,
 				C30000000000000000000003 /* NavigationGalleryTests.swift in Sources */,
 				C30000000000000000000005 /* ProgressivePedalMetadataTests.swift in Sources */,
+				C30000000000000000000007 /* LibraryProjectionTests.swift in Sources */,
+				D40000000000000000000001 /* ThumbnailLoaderTests.swift in Sources */,
+				E50000000000000000000001 /* LibraryDebugFixturesTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

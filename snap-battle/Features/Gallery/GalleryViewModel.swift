@@ -26,6 +26,7 @@ final class GalleryViewModel {
 
     private let store: PedalStore
     private let player: any PedalPlaying
+    private var thumbnailAssets: [UUID: PersistedImageAsset] = [:]
 
     convenience init() {
         self.init(store: .shared, player: PhotoPedalSynth())
@@ -36,10 +37,12 @@ final class GalleryViewModel {
         self.player = player
     }
 
-    func reload() {
+    @discardableResult
+    func reload() -> PedalStoreLoadResult {
         state = .loading
         let result = store.loadCollection()
         apply(result)
+        return result
     }
 
     func reloadAsync() async {
@@ -55,6 +58,7 @@ final class GalleryViewModel {
     }
 
     private func apply(_ result: PedalStoreLoadResult) {
+        thumbnailAssets = store.thumbnailAssets(for: result.pedals)
         if result.pedals.isEmpty {
             state = result.issues.isEmpty ? .empty : .blockingError(result.issues.joined(separator: " "))
         } else {
@@ -79,6 +83,10 @@ final class GalleryViewModel {
         case .loading, .empty, .blockingError:
             break
         }
+    }
+
+    func thumbnailAsset(for id: UUID) -> PersistedImageAsset? {
+        thumbnailAssets[id]
     }
 
     func quickPlay(_ item: StoredPedal) {

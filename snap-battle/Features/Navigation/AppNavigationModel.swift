@@ -1,4 +1,9 @@
 import Observation
+import Foundation
+
+enum AppRoute: Hashable {
+    case pedalDetail(UUID)
+}
 
 @MainActor
 @Observable
@@ -6,10 +11,12 @@ final class AppNavigationModel {
     enum Destination: Hashable { case gallery, jam }
 
     var selectedDestination: Destination = .gallery
+    var path: [AppRoute] = []
     var isPresentingCapture = false
     private(set) var destinationBeforeCapture: Destination = .gallery
 
     func beginCapture() {
+        path.removeAll()
         destinationBeforeCapture = selectedDestination
         isPresentingCapture = true
     }
@@ -22,6 +29,13 @@ final class AppNavigationModel {
     func completeCapture() {
         isPresentingCapture = false
         selectedDestination = .gallery
+    }
+
+    var isShowingPedalDetail: Bool {
+        path.contains { route in
+            if case .pedalDetail = route { return true }
+            return false
+        }
     }
 }
 
@@ -109,6 +123,7 @@ struct ContextualBarConfiguration: Equatable {
 enum BottomBarHiddenReason: Equatable {
     case camera
     case processing
+    case pedalDetail
     case unavailable
 }
 
@@ -125,6 +140,11 @@ enum BottomBarPresentation: Equatable {
                 captureAction: .capture
             )
         )
+    }
+
+    static func forNavigation(_ navigation: AppNavigationModel) -> Self {
+        if navigation.isShowingPedalDetail { return .hidden(.pedalDetail) }
+        return .root(selected: navigation.selectedDestination)
     }
 
     static func captureFlow(

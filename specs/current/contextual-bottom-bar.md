@@ -137,7 +137,7 @@ This means the project uses the Xcode/toolchain 26.5 era and an iOS 26.5 deploym
   - Reduce Motion fallback;
   - focused state/model tests and integrated transition tests for these flows.
 - The first implementation must not include:
-  - Jam creation, persistence, playback, collaboration, active session behavior, or final contextual Jam actions;
+  - real Jam creation, persistence, playback, collaboration, active session behavior, or final contextual Jam actions beyond the existing root placeholder;
   - pedalboards;
   - collaborative sessions;
   - selection modes;
@@ -221,7 +221,7 @@ For result review:
 
 Hidden mode applies to `CameraScreen` in the first implementation. The camera already owns a close button and shutter control at `snap-battle/Features/Capture/CaptureView.swift:258-264`, and starts/stops the camera at `snap-battle/Features/Capture/CaptureView.swift:269-270`.
 
-Future active Jam sessions, immersive experiences, or keyboard-heavy editors must not show camera, but those flows are not part of the first increment.
+The Jam root placeholder remains a `navigation` state in this increment. Future active Jam sessions, immersive experiences, or keyboard-heavy editors must not show camera, but those flows are not part of the first increment and their contextual or hidden bar behavior remains undefined until a separate approved spec.
 
 ## Screen And State Matrix
 
@@ -236,7 +236,7 @@ Future active Jam sessions, immersive experiences, or keyboard-heavy editors mus
 | Newly created result | Implemented, in scope | `contextual` | `Save Pedal` | `Retake` | No | `Play` remains a content preview control. |
 | Jam placeholder | Implemented placeholder, in scope | `navigation` | Root destination selection in large piece | `Capture` in small piece | Yes | Root placeholder remains navigable; no Jam creation, playback, collaboration, or active session behavior is introduced. |
 | Board/Pedalboard | Planned | Not in first implementation | Undefined | Undefined | No | Requires a separate Ready/In Progress spec. |
-| Collaborative Jam/session | Planned | Not in first implementation | Undefined | Undefined | No | Requires a separate Ready/In Progress spec. |
+| Active Jam session | Planned | Not in first implementation | Undefined, contextual or hidden to be defined later | Undefined | No | Requires a separate Ready/In Progress spec; this does not affect the root placeholder. |
 
 ## Data Model Changes
 
@@ -448,7 +448,7 @@ This spec must preserve `specs/current/progressive-pedal-metadata.md`: VoiceOver
 ## Non-Goals
 
 - Do not implement code as part of this specification update.
-- Do not implement Jam creation, persistence, playback, collaboration, active session behavior, or final contextual Jam actions.
+- Do not implement real Jam creation, persistence, playback, collaboration, active session behavior, or final contextual Jam actions beyond the existing root placeholder.
 - Do not define final Jam actions without a separate spec.
 - Do not show camera in a future active Jam/session.
 - Do not implement Home, Library/Pedals renaming, Profile, Board, Pedalboard, collaboration, sharing, video export, search, favorites, cloud sync, or multi-selection.

@@ -118,6 +118,41 @@ struct NavigationGalleryTests {
         #expect(configuration.destinations.map(\.accessibilityIdentifier).contains("bottomBar.destination.jam"))
     }
 
+    @Test func pedalDetailRouteHidesBottomBarWithoutChangingSelectedRoot() {
+        let navigation = AppNavigationModel()
+        let pedalID = UUID()
+        navigation.path = [.pedalDetail(pedalID)]
+
+        #expect(navigation.selectedDestination == .gallery)
+        #expect(navigation.path == [.pedalDetail(pedalID)])
+        #expect(BottomBarPresentation.forNavigation(navigation) == .hidden(.pedalDetail))
+
+        navigation.path.removeLast()
+        guard case .navigation(let configuration) = BottomBarPresentation.forNavigation(navigation) else {
+            Issue.record("Expected Library root presentation after returning from detail")
+            return
+        }
+        #expect(configuration.selectedDestination == .gallery)
+        #expect(configuration.captureAction?.id == .capture)
+    }
+
+    @Test func detailRouteUsesOnlyPersistentID() {
+        let pedalID = UUID()
+        let route = AppRoute.pedalDetail(pedalID)
+
+        #expect(route == .pedalDetail(pedalID))
+    }
+
+    @Test func captureKeepsPrecedenceOverRootAndDetailState() {
+        let navigation = AppNavigationModel()
+        navigation.path = [.pedalDetail(UUID())]
+        navigation.beginCapture()
+
+        #expect(navigation.path.isEmpty)
+        #expect(navigation.isPresentingCapture)
+        #expect(BottomBarPresentation.forNavigation(navigation) == .root(selected: .gallery))
+    }
+
     @Test func bottomBarCapturePhasesDeriveExpectedPresentations() {
         guard case .contextual(let picker) = BottomBarPresentation.captureFlow(.picker) else {
             Issue.record("Expected picker contextual presentation")
@@ -225,6 +260,22 @@ struct NavigationGalleryTests {
         await model.reloadAsync()
 
         #expect(model.state.pedals.map(\.id) == [item.id])
+    }
+
+    @Test func galleryThumbnailAssetIsCachedAfterReload() throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalStore(directory: directory)
+        let item = pedal(name: "Cached Asset")
+        try store.save(item, cover: cover(.blue))
+        let model = GalleryViewModel(store: store, player: PlayerDouble())
+
+        model.reload()
+        let cachedAsset = try #require(model.thumbnailAsset(for: item.id))
+        try FileManager.default.removeItem(at: directory.appendingPathComponent("pedals").appendingPathComponent("\(item.id.uuidString).png"))
+
+        #expect(store.thumbnailAsset(for: item.id) == nil)
+        #expect(model.thumbnailAsset(for: item.id) == cachedAsset)
     }
 
     @Test func galleryStopOnlyStopsCurrentPedal() throws {

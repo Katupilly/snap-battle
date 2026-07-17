@@ -30,6 +30,7 @@ Date: YYYY-MM-DD
 - [0001 Deterministic local music generation](0001-deterministic-local-music-generation.md)
 - [0002 Persist generated musical results](0002-persist-generated-musical-results.md)
 - [0003 Foundation Models for semantic metadata](0003-foundation-models-for-semantic-metadata.md)
+- [0005 Image processing concurrency boundary](0005-image-processing-concurrency-boundary.md)
 
 ## Proposed Decisions
 

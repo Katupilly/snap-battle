@@ -1,6 +1,6 @@
 # Image Preparation Executor Boundary
 
-Status: Draft
+Status: Ready
 Priority: P0
 Last updated: 2026-07-16
 
@@ -15,10 +15,11 @@ maximum of 394.5 ms for `imagePreparation` on the main executor. This spec does
 not target the approximately 4.5 s end-to-end wall-clock time: `pickerTransfer`
 and semantic metadata are separate performance concerns.
 
-## Status rationale and blocker
+## Status rationale and resolved decision
 
-This remains `Draft`, so it does not authorize implementation. Inspection found
-two unresolved decisions:
+This specification is `Ready` because ADR 0005 resolves the two previously
+blocking decisions without changing project settings or requiring a compiler
+experiment to choose between representations:
 
 1. `PhotoPedalPipeline` and `PhotoPedalViewModel` are `@MainActor`, while
    `PreparedImage` crosses the existing boundary as `@unchecked Sendable` and
@@ -31,9 +32,12 @@ two unresolved decisions:
    validate the boundary under the current language mode or separately migrate
    strict concurrency. This spec does not authorize that migration.
 
-Before changing the status to `Ready`, resolve these decisions and prove the
-chosen representation with the project's compiler and SDK. Do not solve the
-blocker with `Task.detached` indiscriminately or a new `@unchecked Sendable`.
+ADR 0005 selects an owned RGBA sRGB `ImagePixelBuffer` as the canonical
+representation, confines UIKit materialization to MainActor adapters, and
+keeps the current Swift 5 language mode, Xcode 26.5 compiler, and iOS 26.5 SDK
+unchanged. Implementation must still validate the explicit equivalence and
+executor contracts listed below. Do not solve the boundary with
+`Task.detached` indiscriminately or a new `@unchecked Sendable`.
 
 ## Current context
 
@@ -79,22 +83,16 @@ Relevant contracts are defined by [Architecture](../../docs/ARCHITECTURE.md),
 [the import audit](../../docs/audits/photo-pedal-import-and-legacy-audit.md),
 the current vertical-slice and navigation specs, and ADRs 0001, 0002, and 0003.
 
-## Proposed boundary, pending resolution
+## Approved boundary
 
-The preferred minimal design is a dedicated serial image-preparation service
-or actor. It must accept only an explicitly immutable, compiler-accepted image
-representation and return an immutable prepared value plus value metadata.
+The approved design is the dedicated serial image-preparation service or actor
+defined by [ADR 0005](../../docs/decisions/0005-image-processing-concurrency-boundary.md).
+It accepts only `ImagePixelBuffer` and returns an immutable prepared value plus
+value metadata.
 
-The implementation investigation should evaluate, in this order:
-
-1. A `Sendable` service operating on an immutable `CGImage` boundary, if the
-   current SDK/compiler accepts that boundary without project-local
-   `@unchecked Sendable`.
-2. Otherwise, an immutable byte-buffer representation with explicit color,
-   dimensions, and orientation metadata, only if it preserves current pixels
-   and does not retain unnecessary full-resolution copies.
-3. A dedicated actor around the selected service if serialization or ownership
-   is required. The actor must not run independent pipeline stages concurrently.
+The implementation must use the immutable byte-buffer representation and
+dedicated serial actor approved by ADR 0005. The actor must not run independent
+pipeline stages concurrently.
 
 `UIImage` must be created or consumed only on the side of the boundary where
 the platform contract permits it. The existing `PreparedImage` type must not
@@ -269,20 +267,17 @@ stages, progressive metadata, post-result Foundation Models work, persistence
 change, UIKit migration, legacy cleanup, broad pipeline rewrite, dependency,
 or automatic commit is authorized.
 
-## Open questions / promotion gate
+## Resolved promotion gate
 
-Resolve and document:
+Resolved and documented in ADR 0005:
 
-1. Is an immutable `CGImage` boundary accepted by the current SDK and compiler
-   without a project-local unsafe conformance?
-2. If not, what immutable bytes representation preserves the exact current
-   normalized pixels, orientation, dimensions, and color semantics without
-   redundant full-resolution retention?
-3. Does this boundary need a dedicated actor, or can a `Sendable` service with
-   an async nonisolated method provide the same serialized ownership?
-4. Will the implementation be validated under the project's current Swift 5.0
-   setting, or is a separately approved language-mode migration required?
+1. `CGImage` is not the canonical cross-executor contract because its
+   Sendability is SDK/toolchain-dependent in the current Swift 5 configuration.
+2. The canonical representation is owned RGBA8 sRGB premultiplied-last bytes
+   with explicit dimensions, row stride, and `.up` orientation. It preserves
+   current normalized pixels by contract and does not authorize a new format or
+   resolution.
 
-Promote this document to `specs/current/` with `Status: Ready` only after these
-questions are resolved and a compile-checked boundary is selected. Until then,
-this Draft is not implementation authorization.
+See [ADR 0005](../../docs/decisions/0005-image-processing-concurrency-boundary.md)
+for the full decision, matrix, effective build settings, and compatibility
+boundary.

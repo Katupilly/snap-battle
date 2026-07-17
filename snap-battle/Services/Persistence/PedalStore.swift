@@ -1,10 +1,10 @@
 import Foundation
 import UIKit
 
-struct StoredPedal: Identifiable {
+nonisolated struct StoredPedal: Identifiable {
     let pedal: PhotoPedal
     let cover: UIImage
-    var id: UUID { pedal.id }
+    nonisolated var id: UUID { pedal.id }
 }
 
 struct PedalStoreLoadResult {
@@ -35,18 +35,25 @@ nonisolated struct PedalStore {
     private let rootDirectory: URL
     private let fileManager: FileManager
     private let writeData: (Data, URL) throws -> Void
+    private let loadCollectionDidRun: (() -> Void)?
 
     init(
         directory: URL? = nil,
         fileManager: FileManager = .default,
-        writeData: @escaping (Data, URL) throws -> Void = { data, url in try data.write(to: url, options: .atomic) }
+        writeData: @escaping (Data, URL) throws -> Void = { data, url in try data.write(to: url, options: .atomic) },
+        loadCollectionDidRun: (() -> Void)? = nil
     ) {
         rootDirectory = directory ?? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         self.fileManager = fileManager
         self.writeData = writeData
+        self.loadCollectionDidRun = loadCollectionDidRun
     }
 
     private var collectionDirectory: URL { rootDirectory.appendingPathComponent("pedals", isDirectory: true) }
+
+    #if DEBUG
+    var debugCollectionDirectory: URL { collectionDirectory }
+    #endif
     private var legacyJSONURL: URL { rootDirectory.appendingPathComponent("latest-pedal.json") }
     private var legacyPNGURL: URL { rootDirectory.appendingPathComponent("latest-pedal.png") }
 
@@ -58,6 +65,7 @@ nonisolated struct PedalStore {
     }
 
     func loadCollection(diagnosticsRunID: String? = nil) -> PedalStoreLoadResult {
+        loadCollectionDidRun?()
         let runID = diagnosticsRunID ?? PerformanceDiagnostics.makeRunID()
         let started = ContinuousClock.now
         var issues: [String] = []
@@ -101,6 +109,21 @@ nonisolated struct PedalStore {
         let pedal = try JSONDecoder().decode(PhotoPedal.self, from: Data(contentsOf: jsonURL(for: id)))
         guard pedal.id == id, let cover = UIImage(contentsOfFile: pngURL(for: id).path) else { throw PedalStoreError.validationFailed }
         return StoredPedal(pedal: pedal, cover: cover)
+    }
+
+    /// Returns the persisted cover identity used by the Library thumbnail loader.
+    /// The store remains the owner of the collection path; callers never build
+    /// file URLs from a grid index or from display data.
+    func thumbnailAsset(for id: UUID) -> PersistedImageAsset? {
+        let url = pngURL(for: id)
+        guard fileManager.fileExists(atPath: url.path) else { return nil }
+        return PersistedImageAsset(identity: id.uuidString, fileURL: url)
+    }
+
+    func thumbnailAssets(for pedals: [StoredPedal]) -> [UUID: PersistedImageAsset] {
+        Dictionary(uniqueKeysWithValues: pedals.map { pedal in
+            (pedal.id, PersistedImageAsset(identity: pedal.id.uuidString, fileURL: pngURL(for: pedal.id)))
+        })
     }
 
     func save(_ pedal: PhotoPedal, cover: UIImage, diagnosticsRunID: String? = nil) throws {
