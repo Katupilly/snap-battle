@@ -127,7 +127,11 @@ enum BottomBarPresentation: Equatable {
         )
     }
 
-    static func captureFlow(_ phase: CaptureFlowPhase) -> Self {
+    static func captureFlow(
+        _ phase: CaptureFlowPhase,
+        canCompleteResult: Bool = true,
+        isCompletingResult: Bool = false
+    ) -> Self {
         switch phase {
         case .picker:
             .contextual(
@@ -148,7 +152,10 @@ enum BottomBarPresentation: Equatable {
         case .result:
             .contextual(
                 ContextualBarConfiguration(
-                    primaryAction: .savePedal,
+                    primaryAction: BottomBarAction.savePedal.configured(
+                        isEnabled: canCompleteResult,
+                        isLoading: isCompletingResult
+                    ),
                     secondaryAction: .retake
                 )
             )
@@ -167,6 +174,13 @@ enum CaptureFlowPhase: Equatable {
 }
 
 extension BottomBarAction {
+    func configured(isEnabled: Bool, isLoading: Bool = false) -> Self {
+        var copy = self
+        copy.isEnabled = isEnabled
+        copy.isLoading = isLoading
+        return copy
+    }
+
     static let capture = BottomBarAction(
         id: .capture,
         title: "Capture",

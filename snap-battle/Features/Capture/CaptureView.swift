@@ -74,7 +74,7 @@ private struct ContextualBottomBar: View {
         switch presentation {
         case .navigation(let configuration):
             visibleBar(modeIdentifier: "bottomBar.mode.navigation", label: "Navegação principal") {
-                HStack(alignment: .center, spacing: 14) {
+                HStack(alignment: .center, spacing: 12) {
                     largeNavigationPiece(configuration)
                     if let captureAction = configuration.captureAction {
                         smallActionPiece(captureAction)
@@ -83,7 +83,7 @@ private struct ContextualBottomBar: View {
             }
         case .contextual(let configuration):
             visibleBar(modeIdentifier: "bottomBar.mode.contextual", label: "Ações contextuais") {
-                HStack(alignment: .center, spacing: 14) {
+                HStack(alignment: .center, spacing: 12) {
                     if let secondary = configuration.secondaryAction {
                         smallActionPiece(secondary)
                     }
@@ -120,24 +120,21 @@ private struct ContextualBottomBar: View {
     private func largeNavigationPiece(_ configuration: NavigationBarConfiguration) -> some View {
         HStack(spacing: 8) {
             ForEach(configuration.destinations) { destination in
+                let isSelected = configuration.selectedDestination == destination
                 Button {
                     selectDestination(destination)
                 } label: {
-                    Label(destination.title, systemImage: destination.systemImage)
-                        .font(.subheadline.weight(configuration.selectedDestination == destination ? .semibold : .medium))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
-                        .frame(maxWidth: .infinity, minHeight: 44)
+                    destinationLabel(destination, isSelected: isSelected)
                 }
                 .buttonStyle(PressFeedbackButtonStyle(reduceMotion: reduceMotion))
-                .foregroundStyle(configuration.selectedDestination == destination ? Color.accentColor : Color.primary)
+                .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
                 .accessibilityLabel(destination.title)
                 .accessibilityHint("Shows \(destination.title)")
-                .accessibilityAddTraits(configuration.selectedDestination == destination ? [.isSelected] : [])
+                .accessibilityAddTraits(isSelected ? [.isSelected] : [])
                 .accessibilityIdentifier(destination.accessibilityIdentifier)
             }
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 8)
         .frame(maxWidth: .infinity)
         .frame(height: 56)
         .background(.regularMaterial, in: .rect(cornerRadius: 22, style: .continuous))
@@ -147,6 +144,25 @@ private struct ContextualBottomBar: View {
         }
         .matchedGeometryEffect(id: "large-piece", in: namespace)
         .accessibilityIdentifier("bottomBar.root")
+    }
+
+    private func destinationLabel(_ destination: RootDestination, isSelected: Bool) -> some View {
+        ViewThatFits(in: .horizontal) {
+            Label(destination.title, systemImage: destination.systemImage)
+                .fixedSize(horizontal: true, vertical: false)
+            Image(systemName: destination.systemImage)
+                .imageScale(.medium)
+                .accessibilityHidden(true)
+        }
+        .font(.subheadline.weight(isSelected ? .semibold : .medium))
+        .frame(maxWidth: .infinity, minHeight: 44)
+        .padding(.horizontal, 8)
+        .background(isSelected ? Color.accentColor.opacity(0.14) : Color.clear, in: .capsule)
+        .overlay {
+            Capsule()
+                .stroke(isSelected ? Color.accentColor.opacity(0.45) : Color.clear, lineWidth: 1)
+        }
+        .contentShape(.rect)
     }
 
     private func largeActionPiece(_ action: BottomBarAction) -> some View {
@@ -268,7 +284,10 @@ private struct CaptureFlowView: View {
             .navigationTitle("Photo Pedal")
             .safeAreaInset(edge: .bottom) {
                 ContextualBottomBar(
-                    presentation: BottomBarPresentation.captureFlow(phase),
+                    presentation: BottomBarPresentation.captureFlow(
+                        phase,
+                        canCompleteResult: model.canCompleteResult
+                    ),
                     namespace: bottomBarNamespace,
                     perform: handleBottomBarAction
                 )
@@ -318,7 +337,7 @@ private struct CaptureFlowView: View {
             showingCamera = false
             model.reset()
         case .savePedal:
-            guard model.pedal != nil, model.cover != nil else { return }
+            guard model.pedal != nil, model.cover != nil, model.canCompleteResult else { return }
             onComplete()
             dismiss()
         case .capture:
@@ -344,6 +363,22 @@ private struct PedalCaptureView: View {
             else {
                 PhotosPicker(selection: $selectedItem, matching: .images) { Label("Escolher foto", systemImage: "photo.on.rectangle") }
                     .buttonStyle(.bordered).controlSize(.large)
+                #if DEBUG
+                Button("Open Debug Result", systemImage: "wrench.and.screwdriver") {
+                    model.loadDebugResultForBottomBarValidation()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .accessibilityIdentifier("debug.openPedalResult")
+                .accessibilityHint("Opens a deterministic local result fixture for bottom bar validation")
+                Button("Open Disabled Debug Result", systemImage: "nosign") {
+                    model.loadDebugResultForBottomBarValidation(canComplete: false)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .accessibilityIdentifier("debug.openDisabledPedalResult")
+                .accessibilityHint("Opens a deterministic local result fixture with Save Pedal disabled")
+                #endif
             }
             if let error = model.errorMessage { Text(error).font(.footnote).foregroundStyle(.red).multilineTextAlignment(.center) }
             Spacer()

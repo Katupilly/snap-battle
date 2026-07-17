@@ -28,6 +28,7 @@ final class PhotoPedalViewModel {
     var pendingCover: UIImage?
     var saveErrorMessage: String?
     var semanticEnrichmentState: SemanticEnrichmentState = .notStarted
+    private(set) var canCompleteResult = false
 
     private let pipeline: PhotoPedalPipeline
     private let synth = PhotoPedalSynth()
@@ -72,7 +73,7 @@ final class PhotoPedalViewModel {
     func process(_ image: UIImage, runID: String? = nil) {
         guard !isProcessing else { return }
         let runID = runID ?? PerformanceDiagnostics.makeRunID()
-        errorMessage = nil; isProcessing = true; semanticEnrichmentState = .notStarted
+        errorMessage = nil; isProcessing = true; semanticEnrichmentState = .notStarted; canCompleteResult = false
         enrichmentToken = nil
         enrichmentTask?.cancel()
         let processingToken = UUID()
@@ -124,12 +125,12 @@ final class PhotoPedalViewModel {
         catch { saveErrorMessage = error.localizedDescription }
     }
 
-    func discardPendingResult() { pendingPedal = nil; pendingCover = nil; saveErrorMessage = nil }
+    func discardPendingResult() { pendingPedal = nil; pendingCover = nil; saveErrorMessage = nil; canCompleteResult = false }
 
     func reset() {
         processingToken = nil
         enrichmentToken = nil
-        task?.cancel(); enrichmentTask?.cancel(); enrichmentTask = nil; synth.stop(); pedal = nil; cover = nil; pendingPedal = nil; pendingCover = nil; errorMessage = nil; saveErrorMessage = nil; semanticEnrichmentState = .notStarted
+        task?.cancel(); enrichmentTask?.cancel(); enrichmentTask = nil; synth.stop(); pedal = nil; cover = nil; pendingPedal = nil; pendingCover = nil; errorMessage = nil; saveErrorMessage = nil; semanticEnrichmentState = .notStarted; canCompleteResult = false
     }
 
     private func savePendingResult(runID: String) throws {
@@ -143,6 +144,7 @@ final class PhotoPedalViewModel {
         self.pendingPedal = nil
         self.pendingCover = nil
         saveErrorMessage = nil
+        canCompleteResult = true
         PerformanceDiagnostics.signpostEvent("resultPresented", runID: runID, details: "pedalID=\(pendingPedal.id.uuidString)")
     }
 
@@ -191,3 +193,49 @@ final class PhotoPedalViewModel {
         }
     }
 }
+
+#if DEBUG
+extension PhotoPedalViewModel {
+    func loadDebugResultForBottomBarValidation(canComplete: Bool = true) {
+        reset()
+        pedal = Self.debugPedal
+        cover = Self.debugCover
+        selectedEffect = Self.debugPedal.effect
+        semanticEnrichmentState = .notStarted
+        canCompleteResult = canComplete
+    }
+
+    private static var debugPedal: PhotoPedal {
+        let notes = (0 ..< PedalSequence.steps).compactMap { step -> PedalNote? in
+            let row = step % PedalSequence.rows
+            return PedalNote(step: step, row: row, midiNote: 60 + row, velocity: step.isMultiple(of: 3) ? 0.95 : 0.55)
+        }
+        let sequence = PedalSequence(
+            harmony: PedalHarmony(rootPitchClass: 0, scale: .majorPentatonic, bpm: 112),
+            notes: notes,
+            soundProfile: .legacy
+        )
+        return PhotoPedal(
+            id: UUID(uuidString: "00000000-0000-0000-0000-00000000D06F")!,
+            name: "Debug Pedal",
+            description: "A deterministic local fixture for validating the contextual bottom bar.",
+            sequence: sequence,
+            effect: .reverb,
+            createdAt: Date(timeIntervalSince1970: 1_800_000_000),
+            coverFilename: "debug-pedal.png"
+        )
+    }
+
+    private static var debugCover: UIImage {
+        UIGraphicsImageRenderer(size: CGSize(width: 96, height: 96)).image { context in
+            let colors: [UIColor] = [.black, .systemTeal, .systemYellow, .white]
+            for y in 0 ..< 12 {
+                for x in 0 ..< 12 {
+                    colors[(x + y * 2) % colors.count].setFill()
+                    context.cgContext.fill(CGRect(x: CGFloat(x * 8), y: CGFloat(y * 8), width: 8, height: 8))
+                }
+            }
+        }
+    }
+}
+#endif

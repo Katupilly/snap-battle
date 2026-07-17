@@ -144,7 +144,39 @@ struct NavigationGalleryTests {
         #expect(result.primaryAction?.id == .savePedal)
         #expect(result.secondaryAction?.id == .retake)
         #expect(result.primaryAction?.isEnabled == true)
+
+        guard case .contextual(let disabledResult) = BottomBarPresentation.captureFlow(.result, canCompleteResult: false) else {
+            Issue.record("Expected disabled result contextual presentation")
+            return
+        }
+        #expect(disabledResult.primaryAction?.id == .savePedal)
+        #expect(disabledResult.primaryAction?.isEnabled == false)
+
+        guard case .contextual(let loadingResult) = BottomBarPresentation.captureFlow(.result, isCompletingResult: true) else {
+            Issue.record("Expected loading result contextual presentation")
+            return
+        }
+        #expect(loadingResult.primaryAction?.id == .savePedal)
+        #expect(loadingResult.primaryAction?.isLoading == true)
     }
+
+    #if DEBUG
+    @Test func debugResultFixtureOpensResultWithoutCompletionAvailability() {
+        let model = PhotoPedalViewModel(store: PedalStore(directory: temporaryDirectory()))
+
+        model.loadDebugResultForBottomBarValidation(canComplete: false)
+
+        #expect(model.pedal?.name == "Debug Pedal")
+        #expect(model.cover != nil)
+        #expect(model.canCompleteResult == false)
+
+        model.loadDebugResultForBottomBarValidation()
+
+        #expect(model.pedal?.name == "Debug Pedal")
+        #expect(model.cover != nil)
+        #expect(model.canCompleteResult == true)
+    }
+    #endif
 
     @Test func galleryStateReloadQuickPlayAndDelete() throws {
         let directory = temporaryDirectory()
