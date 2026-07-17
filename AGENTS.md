@@ -46,25 +46,6 @@ Documents and ADRs marked `Proposed`, `Draft`, or `Planned` are not implementati
 5. Identify affected invariants.
 6. Prefer localized changes over rewrites.
 
-## Skill Routing
-
-Skills are execution tools, not product sources of truth. `AGENTS.md`, current specs, ADRs, and repository architecture documentation keep precedence for Photo Pedal decisions.
-
-Before using a skill, confirm it is available in the session. Use only the skills relevant to the current task, and do not copy global skills into the repository. For cross-domain tasks, combine skills only when each has a clear responsibility. Do not silently combine conflicting guidance; follow repository-specific documentation and record the divergence.
-
-- `swiftui-ui-patterns`: creating new screens, SwiftUI components, navigation, layout composition, UI states, and controls.
-- `swiftui-view-refactor`: splitting large views, reorganizing state ownership, improving data flow, or reducing structural coupling.
-- `swiftui-performance-audit`: excessive rendering, scrolling jank, expensive updates, or suspected SwiftUI performance problems.
-- `ios-ettrace-performance`: only when runtime profiling evidence is needed.
-- `ios-memgraph-leaks`: suspected leaks, persistent memory growth, or retain cycles.
-- `ios-app-intents`: creating or modifying App Intents, App Entities, App Shortcuts, Siri, Spotlight, widgets, or controls.
-- `ios-debugger-agent`: building, running, and debugging the app in Simulator, inspecting logs, or reproducing runtime issues.
-- `ios-simulator-browser`: when visual inspection or direct Simulator UI interaction provides relevant evidence.
-- `swiftui-liquid-glass`: implementing, reviewing, or correcting interfaces that use Liquid Glass on iOS 26+.
-- `photokit`: modifying photo import, authorization, loading, metadata, or Photos library access.
-- `vision-framework`: modifying image processing, visual analysis, or Vision APIs.
-- `foundation-models-on-device`: modifying on-device generation, schemas, sessions, prompts, availability, or Foundation Models fallbacks.
-
 ## Scope Control
 
 Do not implement unrelated roadmap work. Current non-goals include manual piano-roll editing, multitrack DAW behavior, cloud sync, effects outside approved scope, automatic social publishing, and speculative collaboration abstractions.

@@ -94,6 +94,8 @@ nonisolated struct PedalboardStore {
                 boards.append(try load(id: id))
             } catch let PedalboardStoreError.unsupportedSchemaVersion(version) {
                 issues.append("Pedalboard com schema \(version) ignorado: \(url.lastPathComponent)")
+            } catch let PedalboardStoreError.validationFailed(detail) {
+                issues.append("Pedalboard \(url.lastPathComponent) inválido: \(detail)")
             } catch {
                 issues.append("Um pedalboard salvo não pôde ser carregado: \(error.localizedDescription)")
             }

@@ -330,6 +330,70 @@ struct PedalboardStoreTests {
         #expect(calls == 2)
     }
 
+    @Test func truncatedJSONProducesIssueAndPreservesValidBoards() throws {
+        let directory = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalboardStore(directory: directory)
+        let valid = makeBoard(name: "Valid")
+        try store.save(valid)
+
+        let truncatedID = UUID()
+        let truncatedURL = store.debugCollectionDirectory.appendingPathComponent("\(truncatedID.uuidString).json")
+        try Data(#"{"schemaVersion":1,"pedalboard":{"id":"\#(truncatedID.uuidString)","name":"T"#.utf8).write(to: truncatedURL)
+
+        let result = store.loadCollection()
+
+        #expect(result.boards.map(\.id) == [valid.id])
+        #expect(result.issues.count == 1)
+        #expect(result.hasPartialError)
+        #expect(FileManager.default.fileExists(atPath: truncatedURL.path))
+        let preserved = try Data(contentsOf: truncatedURL)
+        #expect(preserved == Data(#"{"schemaVersion":1,"pedalboard":{"id":"\#(truncatedID.uuidString)","name":"T"#.utf8))
+    }
+
+    @Test func pedalboardIdMismatchWithFilenameProducesIssueAndPreservesFile() throws {
+        let directory = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalboardStore(directory: directory)
+        let valid = makeBoard(name: "Valid")
+        try store.save(valid)
+
+        let filenameID = UUID()
+        let declaredID = UUID()
+        let divergent = Pedalboard(id: declaredID, name: "Divergent", createdAt: Date(timeIntervalSince1970: 1), updatedAt: Date(timeIntervalSince1970: 1), entries: [])
+        let document = PedalboardDocument(pedalboard: divergent)
+        let url = store.debugCollectionDirectory.appendingPathComponent("\(filenameID.uuidString).json")
+        try JSONEncoder().encode(document).write(to: url)
+
+        let result = store.loadCollection()
+
+        #expect(result.boards.map(\.id) == [valid.id])
+        #expect(result.issues.count == 1)
+        #expect(result.issues[0].contains(filenameID.uuidString))
+        let reloaded = try Data(contentsOf: url)
+        let reloadedDoc = try JSONDecoder().decode(PedalboardDocument.self, from: reloaded)
+        #expect(reloadedDoc == document)
+        #expect(throws: PedalboardStoreError.self) { try store.load(id: filenameID) }
+    }
+
+    @Test func orphanBackupIsCleanedByLoadCollectionWithoutAffectingValidBoards() throws {
+        let directory = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalboardStore(directory: directory)
+        let valid = makeBoard(name: "Valid")
+        try store.save(valid)
+
+        let orphanID = UUID()
+        let orphanURL = store.debugCollectionDirectory.appendingPathComponent("\(orphanID.uuidString).tmp-backup-orphan.json")
+        try Data(#"{"schemaVersion":1,"pedalboard":{"id":"\#(orphanID.uuidString)","name":"Orphan","entries":[]}}"#.utf8).write(to: orphanURL)
+
+        let result = store.loadCollection()
+
+        #expect(result.boards.map(\.id) == [valid.id])
+        #expect(result.issues.isEmpty)
+        #expect(!FileManager.default.fileExists(atPath: orphanURL.path))
+    }
+
     private func makeTempDirectory() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     }
