@@ -6,8 +6,8 @@ enum PerformanceDiagnostics {
     private static let subsystem = Bundle.main.bundleIdentifier ?? "snap-battle"
 
     #if DEBUG
-    private static let log = OSLog(subsystem: subsystem, category: "Performance")
-    private static let logger = Logger(subsystem: subsystem, category: "Performance")
+    private nonisolated static let log = OSLog(subsystem: subsystem, category: "Performance")
+    private nonisolated static let logger = Logger(subsystem: subsystem, category: "Performance")
     #endif
 
     nonisolated static func makeRunID() -> String {
@@ -66,7 +66,7 @@ enum PerformanceDiagnostics {
         #endif
     }
 
-    private static func milliseconds(_ duration: Duration) -> String {
+    private nonisolated static func milliseconds(_ duration: Duration) -> String {
         let components = duration.components
         let value = Double(components.seconds) * 1_000 + Double(components.attoseconds) / 1e15
         return String(format: "%.1f", value)

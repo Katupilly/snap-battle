@@ -1,10 +1,10 @@
 import Foundation
 import UIKit
 
-struct StoredPedal: Identifiable {
+nonisolated struct StoredPedal: Identifiable {
     let pedal: PhotoPedal
     let cover: UIImage
-    var id: UUID { pedal.id }
+    nonisolated var id: UUID { pedal.id }
 }
 
 struct PedalStoreLoadResult {
@@ -47,6 +47,10 @@ nonisolated struct PedalStore {
     }
 
     private var collectionDirectory: URL { rootDirectory.appendingPathComponent("pedals", isDirectory: true) }
+
+    #if DEBUG
+    var debugCollectionDirectory: URL { collectionDirectory }
+    #endif
     private var legacyJSONURL: URL { rootDirectory.appendingPathComponent("latest-pedal.json") }
     private var legacyPNGURL: URL { rootDirectory.appendingPathComponent("latest-pedal.png") }
 

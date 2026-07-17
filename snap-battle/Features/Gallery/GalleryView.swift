@@ -5,7 +5,25 @@ struct GalleryView: View {
     let beginCapture: () -> Void
     let thumbnailLoader: ThumbnailLoader
     let transitionNamespace: Namespace.ID
+    let imageProvider: LibraryGridImageProvider
+    let assetProvider: ((UUID) -> PersistedImageAsset?)?
     @State private var itemPendingDeletion: StoredPedal?
+
+    init(
+        model: GalleryViewModel,
+        beginCapture: @escaping () -> Void,
+        thumbnailLoader: ThumbnailLoader,
+        transitionNamespace: Namespace.ID,
+        imageProvider: LibraryGridImageProvider = .persistedCover,
+        assetProvider: ((UUID) -> PersistedImageAsset?)? = nil
+    ) {
+        self.model = model
+        self.beginCapture = beginCapture
+        self.thumbnailLoader = thumbnailLoader
+        self.transitionNamespace = transitionNamespace
+        self.imageProvider = imageProvider
+        self.assetProvider = assetProvider
+    }
 
     var body: some View {
         content(for: model.state)
@@ -28,23 +46,26 @@ struct GalleryView: View {
             case .loading:
                 LibraryGridView(
                     state: .loading,
+                    imageProvider: imageProvider,
                     thumbnailLoader: thumbnailLoader,
-                    assetProvider: model.thumbnailAsset(for:),
+                    assetProvider: asset(for:),
                     transitionNamespace: transitionNamespace
                 )
             case .empty:
                 LibraryGridView(
                     state: .empty,
+                    imageProvider: imageProvider,
                     thumbnailLoader: thumbnailLoader,
-                    assetProvider: model.thumbnailAsset(for:),
+                    assetProvider: asset(for:),
                     transitionNamespace: transitionNamespace
                 )
             case .blockingError(let message):
                 LibraryGridView(
                     state: .error(message: message),
                     onRetry: { Task { await model.reloadAsync() } },
+                    imageProvider: imageProvider,
                     thumbnailLoader: thumbnailLoader,
-                    assetProvider: model.thumbnailAsset(for:),
+                    assetProvider: asset(for:),
                     transitionNamespace: transitionNamespace
                 )
             case .content(let pedals):
@@ -58,11 +79,16 @@ struct GalleryView: View {
         LibraryGridView(
             state: state,
             onRetry: { Task { await model.reloadAsync() } },
+            imageProvider: imageProvider,
             thumbnailLoader: thumbnailLoader,
-            assetProvider: model.thumbnailAsset(for:),
+            assetProvider: asset(for:),
             transitionNamespace: transitionNamespace
         )
         .refreshable { await model.reloadAsync() }
+    }
+
+    private func asset(for id: UUID) -> PersistedImageAsset? {
+        assetProvider?(id) ?? model.thumbnailAsset(for: id)
     }
 }
 

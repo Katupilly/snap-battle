@@ -6,6 +6,9 @@ struct ContentView: View {
     @State private var navigation = AppNavigationModel()
     @State private var gallery = GalleryViewModel()
     @State private var thumbnailLoader = ThumbnailLoader()
+    #if DEBUG
+    @State private var showingLibraryDebug = false
+    #endif
     @Namespace private var bottomBarNamespace
     @Namespace private var libraryTransitionNamespace
 
@@ -30,6 +33,20 @@ struct ContentView: View {
                     PedalDetailView(itemID: id, model: gallery, transitionNamespace: libraryTransitionNamespace)
                 }
             }
+            #if DEBUG
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Library Debug", systemImage: "wrench.and.screwdriver") {
+                        showingLibraryDebug = true
+                    }
+                    .accessibilityHint("Abre datasets determinísticos para validar a Biblioteca")
+                    .accessibilityIdentifier("debug.openLibrary")
+                }
+            }
+            .navigationDestination(isPresented: $showingLibraryDebug) {
+                LibraryDebugLauncher()
+            }
+            #endif
             .safeAreaInset(edge: .bottom) {
                 ContextualBottomBar(
                     presentation: .forNavigation(navigation),

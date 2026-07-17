@@ -1,0 +1,72 @@
+#if DEBUG
+import SwiftUI
+
+struct LibraryDebugLauncher: View {
+    @State private var dataset: LibraryDebugDataset = .small
+    @State private var model: GalleryViewModel
+    @State private var unavailableIDs: Set<UUID> = []
+    @State private var status = "Nenhum dataset carregado"
+    @Namespace private var transitionNamespace
+
+    private let fixtures = LibraryDebugFixtureStore()
+    private let thumbnailLoader = ThumbnailLoader()
+
+    init() {
+        _model = State(initialValue: GalleryViewModel(store: LibraryDebugFixtureStore().store(for: .small), player: PhotoPedalSynth()))
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Form {
+                Section("Dataset") {
+                    Picker("Conteúdo", selection: $dataset) {
+                        ForEach(LibraryDebugDataset.allCases) { item in Text(item.title).tag(item) }
+                    }
+                    Button("Carregar dataset", systemImage: "arrow.clockwise") { load(dataset) }
+                    Button("Limpar fixtures", systemImage: "trash", role: .destructive) { clear(dataset) }
+                    Text(status).font(.footnote).foregroundStyle(.secondary)
+                }
+                Section {
+                    Text("Somente DEBUG. Os dados ficam em Application Support/debug-library-fixtures e não compartilham a coleção real.")
+                }
+            }
+            Divider()
+            GalleryView(
+                model: model,
+                beginCapture: {},
+                thumbnailLoader: thumbnailLoader,
+                transitionNamespace: transitionNamespace,
+                imageProvider: LibraryGridImageProvider { item in
+                    unavailableIDs.contains(item.id) ? nil : Image(uiImage: item.cover)
+                },
+                assetProvider: { id in
+                    unavailableIDs.contains(id) ? nil : model.thumbnailAsset(for: id)
+                }
+            )
+        }
+        .navigationTitle("Library Debug")
+        .onAppear { load(dataset) }
+    }
+
+    private func load(_ dataset: LibraryDebugDataset) {
+        do {
+            let store = try fixtures.install(dataset)
+            let loaded = store.loadCollection()
+            unavailableIDs = Set(loaded.pedals.enumerated().compactMap { $0.offset % 23 == 0 ? $0.element.id : nil })
+            model = GalleryViewModel(store: store, player: PhotoPedalSynth())
+            model.reload()
+            status = "\(loaded.pedals.count) válidos; \(unavailableIDs.count) capas simuladas indisponíveis; \(loaded.issues.count) corrupção isolada"
+        } catch {
+            status = "Falha ao preparar fixtures: \(error.localizedDescription)"
+        }
+    }
+
+    private func clear(_ dataset: LibraryDebugDataset) {
+        fixtures.reset(dataset: dataset)
+        model = GalleryViewModel(store: fixtures.store(for: dataset), player: PhotoPedalSynth())
+        model.reload()
+        unavailableIDs = []
+        status = "Fixtures de \(dataset.title) removidas; dados reais preservados"
+    }
+}
+#endif

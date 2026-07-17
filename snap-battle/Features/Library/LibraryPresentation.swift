@@ -1,6 +1,6 @@
 import Foundation
 
-struct YearMonth: Hashable, Comparable, Sendable {
+nonisolated struct YearMonth: Hashable, Comparable, Sendable {
     let year: Int
     let month: Int
 
@@ -21,7 +21,7 @@ struct YearMonth: Hashable, Comparable, Sendable {
     }
 }
 
-struct LibrarySection: Identifiable, Equatable {
+nonisolated struct LibrarySection: Identifiable, Equatable {
     let id: YearMonth
     let items: [StoredPedal]
 
