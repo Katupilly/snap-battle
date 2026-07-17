@@ -22,18 +22,21 @@ enum LibraryDebugDataset: String, CaseIterable, Identifiable, Sendable {
 
 struct LibraryDebugFixtureStore {
     let rootDirectory: URL
+    private let makeStore: (URL) -> PedalStore
 
-    init(fileManager: FileManager = .default) {
+    init(fileManager: FileManager = .default, makeStore: @escaping (URL) -> PedalStore = { PedalStore(directory: $0) }) {
         let support = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         rootDirectory = support.appendingPathComponent("debug-library-fixtures", isDirectory: true)
+        self.makeStore = makeStore
     }
 
-    init(rootDirectory: URL) {
+    init(rootDirectory: URL, makeStore: @escaping (URL) -> PedalStore = { PedalStore(directory: $0) }) {
         self.rootDirectory = rootDirectory.appendingPathComponent("debug-library-fixtures", isDirectory: true)
+        self.makeStore = makeStore
     }
 
     func store(for dataset: LibraryDebugDataset) -> PedalStore {
-        PedalStore(directory: rootDirectory.appendingPathComponent(dataset.rawValue, isDirectory: true))
+        makeStore(rootDirectory.appendingPathComponent(dataset.rawValue, isDirectory: true))
     }
 
     func reset(dataset: LibraryDebugDataset) {
@@ -50,6 +53,15 @@ struct LibraryDebugFixtureStore {
         }
         try installCorruptSentinel(in: store)
         return store
+    }
+
+    @MainActor
+    func installAndLoad(_ dataset: LibraryDebugDataset) throws -> LibraryDebugLoadedDataset {
+        let store = try install(dataset)
+        let model = GalleryViewModel(store: store, player: PhotoPedalSynth())
+        let loaded = model.reload()
+        let unavailableIDs = Set(loaded.pedals.enumerated().compactMap { $0.offset % 23 == 0 ? $0.element.id : nil })
+        return LibraryDebugLoadedDataset(model: model, loadResult: loaded, unavailableIDs: unavailableIDs)
     }
 
     static func stableID(index: Int) -> UUID {
@@ -131,6 +143,13 @@ struct LibraryDebugFixtureStore {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try Data("corrupt debug fixture".utf8).write(to: directory.appendingPathComponent("D06B0000-0000-4000-8000-FFFFFFFFFFFF.json"))
     }
+}
+
+@MainActor
+struct LibraryDebugLoadedDataset {
+    let model: GalleryViewModel
+    let loadResult: PedalStoreLoadResult
+    let unavailableIDs: Set<UUID>
 }
 
 #endif

@@ -80,5 +80,35 @@ struct LibraryDebugFixturesTests {
         #expect(result.issues.count == 1)
         #expect(result.hasPartialError)
     }
+
+    @MainActor
+    @Test(arguments: LibraryDebugDataset.allCases)
+    func installAndLoadPerformsOneCollectionLoad(_ dataset: LibraryDebugDataset) throws {
+        let base = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: base) }
+        let counter = LoadCounter()
+        let fixtures = LibraryDebugFixtureStore(rootDirectory: base) { directory in
+            PedalStore(directory: directory, loadCollectionDidRun: { counter.increment() })
+        }
+
+        let loaded = try fixtures.installAndLoad(dataset)
+
+        #expect(counter.value == 1)
+        #expect(loaded.loadResult.pedals.count == dataset.count)
+        #expect(loaded.loadResult.issues.count == 1)
+    }
+}
+
+private final class LoadCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    var value: Int {
+        lock.withLock { count }
+    }
+
+    func increment() {
+        lock.withLock { count += 1 }
+    }
 }
 #endif

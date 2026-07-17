@@ -50,12 +50,10 @@ struct LibraryDebugLauncher: View {
 
     private func load(_ dataset: LibraryDebugDataset) {
         do {
-            let store = try fixtures.install(dataset)
-            let loaded = store.loadCollection()
-            unavailableIDs = Set(loaded.pedals.enumerated().compactMap { $0.offset % 23 == 0 ? $0.element.id : nil })
-            model = GalleryViewModel(store: store, player: PhotoPedalSynth())
-            model.reload()
-            status = "\(loaded.pedals.count) válidos; \(unavailableIDs.count) capas simuladas indisponíveis; \(loaded.issues.count) corrupção isolada"
+            let loaded = try fixtures.installAndLoad(dataset)
+            unavailableIDs = loaded.unavailableIDs
+            model = loaded.model
+            status = "\(loaded.loadResult.pedals.count) válidos; \(unavailableIDs.count) capas simuladas indisponíveis; \(loaded.loadResult.issues.count) corrupção isolada"
         } catch {
             status = "Falha ao preparar fixtures: \(error.localizedDescription)"
         }
