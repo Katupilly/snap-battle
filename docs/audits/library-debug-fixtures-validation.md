@@ -1,6 +1,6 @@
 # Validação das fixtures DEBUG da Biblioteca
 
-Status: concluída com dívida documentada  
+Status: concluída com dívida documentada<br>
 Data: 2026-07-17
 
 ## Resumo executivo
