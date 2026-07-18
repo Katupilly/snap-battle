@@ -64,6 +64,7 @@ nonisolated struct PedalboardStore {
         var issues: [String] = []
         do {
             try ensureCollectionDirectory()
+            recoverInterruptedPromotions(issues: &issues)
             cleanupTemporaryArtifacts()
             cleanupDeletionMarkers()
         } catch {
@@ -108,15 +109,7 @@ nonisolated struct PedalboardStore {
         guard fileManager.fileExists(atPath: url.path) else {
             throw PedalboardStoreError.missingRecord
         }
-        let data = try Data(contentsOf: url)
-        let document = try JSONDecoder().decode(PedalboardDocument.self, from: data)
-        guard document.pedalboard.id == id else {
-            throw PedalboardStoreError.validationFailed("id mismatch")
-        }
-        guard document.schemaVersion == PedalboardDocument.currentSchemaVersion else {
-            throw PedalboardStoreError.unsupportedSchemaVersion(document.schemaVersion)
-        }
-        return document.pedalboard
+        return try loadValidatedPedalboard(id: id, url: url)
     }
 
     func save(_ board: Pedalboard) throws {
@@ -170,7 +163,7 @@ nonisolated struct PedalboardStore {
 
     private func cleanupTemporaryArtifacts() {
         guard let urls = try? fileManager.contentsOfDirectory(at: collectionDirectory, includingPropertiesForKeys: nil) else { return }
-        for url in urls where url.lastPathComponent.contains(".tmp-") {
+        for url in urls where commonTemporaryFileID(for: url) != nil {
             try? fileManager.removeItem(at: url)
         }
     }
@@ -201,14 +194,99 @@ nonisolated struct PedalboardStore {
     }
 
     private func validateTemporaryJSON(id: UUID, url: URL) throws {
+        _ = try loadValidatedPedalboard(id: id, url: url)
+    }
+
+    private func loadValidatedPedalboard(id: UUID, url: URL) throws -> Pedalboard {
         let data = try Data(contentsOf: url)
         let document = try JSONDecoder().decode(PedalboardDocument.self, from: data)
-        guard document.pedalboard.id == id else {
-            throw PedalboardStoreError.validationFailed("temporary file id mismatch")
+        do {
+            return try document.validatedPedalboard(expectedID: id)
+        } catch PedalboardDocumentValidationError.unsupportedSchemaVersion(let version) {
+            throw PedalboardStoreError.unsupportedSchemaVersion(version)
+        } catch let error as PedalboardDocumentValidationError {
+            throw PedalboardStoreError.validationFailed(error.detail)
         }
-        guard document.schemaVersion == PedalboardDocument.currentSchemaVersion else {
-            throw PedalboardStoreError.unsupportedSchemaVersion(document.schemaVersion)
+    }
+
+    private func recoverInterruptedPromotions(issues: inout [String]) {
+        guard let urls = try? fileManager.contentsOfDirectory(at: collectionDirectory, includingPropertiesForKeys: nil) else { return }
+        let backupsByID = Dictionary(grouping: urls.compactMap(promotionBackup(for:)), by: \.id)
+        for id in backupsByID.keys.sorted(by: { $0.uuidString < $1.uuidString }) {
+            guard let backups = backupsByID[id] else { continue }
+            let final = jsonURL(for: id)
+            let finalState = validateExistingFinal(id: id, final: final)
+            if finalState.isValid {
+                backups.forEach { try? fileManager.removeItem(at: $0.url) }
+                continue
+            }
+
+            let validBackups = backups.compactMap { backup -> ValidPromotionBackup? in
+                do {
+                    let board = try loadValidatedPedalboard(id: id, url: backup.url)
+                    return ValidPromotionBackup(url: backup.url, board: board)
+                } catch {
+                    return nil
+                }
+            }
+
+            guard let selected = selectBackupToRestore(from: validBackups) else {
+                if !finalState.exists {
+                    issues.append("Backup de pedalboard \(id.uuidString) inválido; restauração ignorada.")
+                }
+                continue
+            }
+
+            do {
+                if finalState.exists {
+                    let invalid = final.deletingLastPathComponent()
+                        .appendingPathComponent("\(final.lastPathComponent).invalid-\(UUID().uuidString)")
+                    try? fileManager.removeItem(at: invalid)
+                    try fileManager.moveItem(at: final, to: invalid)
+                    issues.append("Pedalboard \(final.lastPathComponent) inválido substituído por backup válido.")
+                }
+                try fileManager.moveItem(at: selected.url, to: final)
+                backups
+                    .filter { $0.url != selected.url }
+                    .forEach { try? fileManager.removeItem(at: $0.url) }
+            } catch {
+                issues.append("Backup de pedalboard \(id.uuidString) não pôde ser restaurado: \(error.localizedDescription)")
+            }
         }
+    }
+
+    private func validateExistingFinal(id: UUID, final: URL) -> (exists: Bool, isValid: Bool) {
+        guard fileManager.fileExists(atPath: final.path) else { return (false, false) }
+        do {
+            _ = try loadValidatedPedalboard(id: id, url: final)
+            return (true, true)
+        } catch {
+            return (true, false)
+        }
+    }
+
+    private func selectBackupToRestore(from backups: [ValidPromotionBackup]) -> ValidPromotionBackup? {
+        backups.sorted { lhs, rhs in
+            if lhs.board.updatedAt != rhs.board.updatedAt { return lhs.board.updatedAt > rhs.board.updatedAt }
+            if lhs.board.createdAt != rhs.board.createdAt { return lhs.board.createdAt > rhs.board.createdAt }
+            return lhs.url.lastPathComponent < rhs.url.lastPathComponent
+        }.first
+    }
+
+    private func promotionBackup(for url: URL) -> PromotionBackup? {
+        let marker = ".json.tmp-backup-"
+        let name = url.lastPathComponent
+        guard let range = name.range(of: marker) else { return nil }
+        let idText = String(name[..<range.lowerBound])
+        guard let id = UUID(uuidString: idText) else { return nil }
+        return PromotionBackup(id: id, url: url)
+    }
+
+    private func commonTemporaryFileID(for url: URL) -> UUID? {
+        let name = url.lastPathComponent
+        guard name.hasSuffix(".json"), let range = name.range(of: ".tmp-") else { return nil }
+        let idText = String(name[..<range.lowerBound])
+        return UUID(uuidString: idText)
     }
 
     private func promote(_ temporary: URL, to final: URL, token: String) throws {
@@ -226,4 +304,14 @@ nonisolated struct PedalboardStore {
             throw error
         }
     }
+}
+
+private struct PromotionBackup {
+    let id: UUID
+    let url: URL
+}
+
+private struct ValidPromotionBackup {
+    let url: URL
+    let board: Pedalboard
 }

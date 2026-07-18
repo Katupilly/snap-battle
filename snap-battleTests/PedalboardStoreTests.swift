@@ -394,6 +394,239 @@ struct PedalboardStoreTests {
         #expect(!FileManager.default.fileExists(atPath: orphanURL.path))
     }
 
+    @Test func validPromotionBackupIsRestoredWhenFinalFileIsMissing() throws {
+        let directory = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalboardStore(directory: directory)
+        let board = makeBoard(name: "Recover Me")
+        try FileManager.default.createDirectory(at: store.debugCollectionDirectory, withIntermediateDirectories: true)
+        let backupURL = promotionBackupURL(for: board.id, token: "a", in: store)
+        let expectedData = try writeDocument(for: board, to: backupURL)
+
+        let result = store.loadCollection()
+
+        let finalURL = finalURL(for: board.id, in: store)
+        #expect(result.boards == [board])
+        #expect(result.issues.isEmpty)
+        #expect(!FileManager.default.fileExists(atPath: backupURL.path))
+        #expect(try Data(contentsOf: finalURL) == expectedData)
+    }
+
+    @Test func validFinalFileWinsOverPromotionBackup() throws {
+        let directory = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalboardStore(directory: directory)
+        let finalBoard = makeBoard(name: "Newest", updatedAt: Date(timeIntervalSince1970: 2_000))
+        let backupBoard = makeBoard(name: "Older", id: finalBoard.id, updatedAt: Date(timeIntervalSince1970: 1_000))
+        try store.save(finalBoard)
+        let finalURL = finalURL(for: finalBoard.id, in: store)
+        let finalData = try Data(contentsOf: finalURL)
+        let backupURL = promotionBackupURL(for: finalBoard.id, token: "b", in: store)
+        try writeDocument(for: backupBoard, to: backupURL)
+
+        let result = store.loadCollection()
+
+        #expect(result.boards == [finalBoard])
+        #expect(result.issues.isEmpty)
+        #expect(try Data(contentsOf: finalURL) == finalData)
+        #expect(!FileManager.default.fileExists(atPath: backupURL.path))
+    }
+
+    @Test func invalidPromotionBackupWithoutFinalProducesIssueAndIsPreserved() throws {
+        let directory = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalboardStore(directory: directory)
+        let boardID = UUID()
+        try FileManager.default.createDirectory(at: store.debugCollectionDirectory, withIntermediateDirectories: true)
+        let backupURL = promotionBackupURL(for: boardID, token: "bad", in: store)
+        let invalidData = Data("not a pedalboard document".utf8)
+        try invalidData.write(to: backupURL)
+
+        let result = store.loadCollection()
+
+        #expect(result.boards.isEmpty)
+        #expect(result.issues.count == 1)
+        #expect(result.issues[0].contains(boardID.uuidString))
+        #expect(FileManager.default.fileExists(atPath: backupURL.path))
+        #expect(try Data(contentsOf: backupURL) == invalidData)
+    }
+
+    @Test func validPromotionBackupRestoresOverInvalidFinalFile() throws {
+        let directory = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalboardStore(directory: directory)
+        let board = makeBoard(name: "Recovered")
+        try FileManager.default.createDirectory(at: store.debugCollectionDirectory, withIntermediateDirectories: true)
+        let finalURL = finalURL(for: board.id, in: store)
+        let invalidFinal = Data("truncated".utf8)
+        try invalidFinal.write(to: finalURL)
+        let backupURL = promotionBackupURL(for: board.id, token: "c", in: store)
+        let expectedData = try writeDocument(for: board, to: backupURL)
+
+        let result = store.loadCollection()
+
+        #expect(result.boards == [board])
+        #expect(result.issues.count == 1)
+        #expect(result.issues[0].contains("substituído por backup válido"))
+        #expect(try Data(contentsOf: finalURL) == expectedData)
+        #expect(!FileManager.default.fileExists(atPath: backupURL.path))
+        let preservedInvalid = try FileManager.default.contentsOfDirectory(atPath: store.debugCollectionDirectory.path)
+            .filter { $0.hasPrefix("\(board.id.uuidString).json.invalid-") }
+        #expect(preservedInvalid.count == 1)
+        #expect(try Data(contentsOf: store.debugCollectionDirectory.appendingPathComponent(preservedInvalid[0])) == invalidFinal)
+    }
+
+    @Test func repeatedPromotionBackupRecoveryIsIdempotent() throws {
+        let directory = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalboardStore(directory: directory)
+        let board = makeBoard(name: "Once")
+        try FileManager.default.createDirectory(at: store.debugCollectionDirectory, withIntermediateDirectories: true)
+        let backupURL = promotionBackupURL(for: board.id, token: "d", in: store)
+        let expectedData = try writeDocument(for: board, to: backupURL)
+
+        let first = store.loadCollection()
+        let second = store.loadCollection()
+
+        let finalURL = finalURL(for: board.id, in: store)
+        #expect(first.boards == [board])
+        #expect(second.boards == [board])
+        #expect(first.issues.isEmpty)
+        #expect(second.issues.isEmpty)
+        #expect(try Data(contentsOf: finalURL) == expectedData)
+    }
+
+    @Test func promotionBackupForOneBoardDoesNotAffectAnotherBoard() throws {
+        let directory = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalboardStore(directory: directory)
+        let recovered = makeBoard(name: "Recovered", updatedAt: Date(timeIntervalSince1970: 2_000))
+        let untouched = makeBoard(name: "Untouched", updatedAt: Date(timeIntervalSince1970: 1_000))
+        try store.save(untouched)
+        let untouchedData = try Data(contentsOf: finalURL(for: untouched.id, in: store))
+        let backupURL = promotionBackupURL(for: recovered.id, token: "e", in: store)
+        try writeDocument(for: recovered, to: backupURL)
+
+        let result = store.loadCollection()
+
+        #expect(result.boards.map(\.id) == [recovered.id, untouched.id])
+        #expect(result.issues.isEmpty)
+        #expect(try Data(contentsOf: finalURL(for: untouched.id, in: store)) == untouchedData)
+    }
+
+    @Test func commonTemporaryFilesAreCleanedWithoutDeletingRecoverableBackup() throws {
+        let directory = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalboardStore(directory: directory)
+        let board = makeBoard(name: "Recoverable")
+        try FileManager.default.createDirectory(at: store.debugCollectionDirectory, withIntermediateDirectories: true)
+        let commonTemp = store.debugCollectionDirectory.appendingPathComponent("\(UUID().uuidString).tmp-common.json")
+        try Data("partial".utf8).write(to: commonTemp)
+        let backupURL = promotionBackupURL(for: board.id, token: "f", in: store)
+        let expectedData = try writeDocument(for: board, to: backupURL)
+
+        let result = store.loadCollection()
+
+        #expect(result.boards == [board])
+        #expect(result.issues.isEmpty)
+        #expect(!FileManager.default.fileExists(atPath: commonTemp.path))
+        #expect(!FileManager.default.fileExists(atPath: backupURL.path))
+        #expect(try Data(contentsOf: finalURL(for: board.id, in: store)) == expectedData)
+    }
+
+    @Test func duplicateEntryIDWithDifferentPedalsIsRejectedAndPreserved() throws {
+        let directory = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalboardStore(directory: directory)
+        let duplicateID = UUID()
+        let board = makeBoard(
+            name: "Duplicate Different Pedals",
+            entries: [
+                PedalboardEntry(id: duplicateID, pedalID: UUID()),
+                PedalboardEntry(id: duplicateID, pedalID: UUID())
+            ]
+        )
+        try FileManager.default.createDirectory(at: store.debugCollectionDirectory, withIntermediateDirectories: true)
+        let url = finalURL(for: board.id, in: store)
+        let originalData = try writeDocument(for: board, to: url)
+
+        let result = store.loadCollection()
+
+        #expect(result.boards.isEmpty)
+        #expect(result.issues.count == 1)
+        #expect(result.issues[0].contains("duplicate entry id"))
+        #expect(result.issues[0].contains(duplicateID.uuidString))
+        #expect(try Data(contentsOf: url) == originalData)
+    }
+
+    @Test func duplicateEntryIDWithSamePedalIsRejected() throws {
+        let directory = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalboardStore(directory: directory)
+        let duplicateID = UUID()
+        let pedalID = UUID()
+        let board = makeBoard(
+            name: "Duplicate Same Pedal",
+            entries: [
+                PedalboardEntry(id: duplicateID, pedalID: pedalID),
+                PedalboardEntry(id: duplicateID, pedalID: pedalID)
+            ]
+        )
+        try FileManager.default.createDirectory(at: store.debugCollectionDirectory, withIntermediateDirectories: true)
+        try writeDocument(for: board, to: finalURL(for: board.id, in: store))
+
+        let result = store.loadCollection()
+
+        #expect(result.boards.isEmpty)
+        #expect(result.issues.count == 1)
+        #expect(result.issues[0].contains("duplicate entry id"))
+    }
+
+    @Test func repeatedPedalIDWithDistinctEntryIDsRemainsValid() throws {
+        let directory = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalboardStore(directory: directory)
+        let pedalID = UUID()
+        let board = makeBoard(
+            name: "Same Pedal",
+            entries: [
+                PedalboardEntry(id: UUID(), pedalID: pedalID),
+                PedalboardEntry(id: UUID(), pedalID: pedalID)
+            ]
+        )
+        try store.save(board)
+
+        let result = store.loadCollection()
+
+        #expect(result.boards == [board])
+        #expect(result.issues.isEmpty)
+    }
+
+    @Test func invalidDuplicateEntryBoardIsIsolatedFromValidBoard() throws {
+        let directory = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalboardStore(directory: directory)
+        let valid = makeBoard(name: "Valid")
+        try store.save(valid)
+        let duplicateID = UUID()
+        let invalid = makeBoard(
+            name: "Invalid",
+            entries: [
+                PedalboardEntry(id: duplicateID, pedalID: UUID()),
+                PedalboardEntry(id: duplicateID, pedalID: UUID())
+            ]
+        )
+        let invalidURL = finalURL(for: invalid.id, in: store)
+        let invalidData = try writeDocument(for: invalid, to: invalidURL)
+
+        let result = store.loadCollection()
+
+        #expect(result.boards == [valid])
+        #expect(result.issues.count == 1)
+        #expect(result.hasPartialError)
+        #expect(try Data(contentsOf: invalidURL) == invalidData)
+    }
+
     private func makeTempDirectory() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
     }
@@ -423,5 +656,30 @@ struct PedalboardStoreTests {
     ) -> Pedalboard {
         let entries = pedalIDs.map { PedalboardEntry(pedalID: $0) }
         return Pedalboard(id: id, name: name, createdAt: createdAt, updatedAt: updatedAt, entries: entries)
+    }
+
+    private func makeBoard(
+        name: String,
+        id: UUID = UUID(),
+        entries: [PedalboardEntry],
+        createdAt: Date = Date(timeIntervalSince1970: 1_700_000_000),
+        updatedAt: Date = Date(timeIntervalSince1970: 1_700_000_000)
+    ) -> Pedalboard {
+        Pedalboard(id: id, name: name, createdAt: createdAt, updatedAt: updatedAt, entries: entries)
+    }
+
+    @discardableResult
+    private func writeDocument(for board: Pedalboard, to url: URL) throws -> Data {
+        let data = try JSONEncoder().encode(PedalboardDocument(pedalboard: board))
+        try data.write(to: url)
+        return data
+    }
+
+    private func finalURL(for id: UUID, in store: PedalboardStore) -> URL {
+        store.debugCollectionDirectory.appendingPathComponent("\(id.uuidString).json")
+    }
+
+    private func promotionBackupURL(for id: UUID, token: String, in store: PedalboardStore) -> URL {
+        store.debugCollectionDirectory.appendingPathComponent("\(id.uuidString).json.tmp-backup-\(token)")
     }
 }

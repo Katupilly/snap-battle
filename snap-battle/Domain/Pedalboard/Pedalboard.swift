@@ -51,6 +51,39 @@ nonisolated struct PedalboardDocument: Codable, Equatable, Sendable {
     }
 }
 
+enum PedalboardDocumentValidationError: Error, Equatable, Sendable {
+    case idMismatch
+    case unsupportedSchemaVersion(Int)
+    case duplicateEntryID(UUID)
+
+    var detail: String {
+        switch self {
+        case .idMismatch:
+            return "id mismatch"
+        case .unsupportedSchemaVersion(let version):
+            return "unsupported schema \(version)"
+        case .duplicateEntryID(let id):
+            return "duplicate entry id \(id.uuidString)"
+        }
+    }
+}
+
+extension PedalboardDocument {
+    nonisolated func validatedPedalboard(expectedID: UUID) throws -> Pedalboard {
+        guard pedalboard.id == expectedID else {
+            throw PedalboardDocumentValidationError.idMismatch
+        }
+        guard schemaVersion == Self.currentSchemaVersion else {
+            throw PedalboardDocumentValidationError.unsupportedSchemaVersion(schemaVersion)
+        }
+        var entryIDs: Set<PedalboardEntry.ID> = []
+        for entry in pedalboard.entries where !entryIDs.insert(entry.id).inserted {
+            throw PedalboardDocumentValidationError.duplicateEntryID(entry.id)
+        }
+        return pedalboard
+    }
+}
+
 enum PedalboardMutation {
     static func make(
         name: String,
