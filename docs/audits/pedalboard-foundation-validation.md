@@ -1,7 +1,7 @@
 # Pedalboard Foundation — Validação da Etapa 1
 
 Status: concluída sem dívida funcional após correção dos P2 do PR #2
-Data: 2026-07-17
+Data: 2026-07-18
 Escopo: domínio `Pedalboard` + `PedalboardStore` isolado, validação determinística, sem playback nem UI.
 
 ## Resumo executivo
@@ -51,6 +51,7 @@ Ambos foram corrigidos no escopo de domínio e persistência do Pedalboard, sem 
 - backup válido + final válido preserva o final e remove o backup;
 - backup inválido + final ausente não carrega board, registra issue e preserva o backup;
 - final inválido + backup válido restaura o backup e preserva o final inválido renomeado;
+- múltiplos backups válidos usam desempate determinístico por `updatedAt`, `createdAt` e filename;
 - recuperação repetida é idempotente;
 - backup de um board não afeta outro board;
 - temporários comuns continuam sendo limpos sem apagar backup recuperável;
@@ -62,13 +63,28 @@ Ambos foram corrigidos no escopo de domínio e persistência do Pedalboard, sem 
 
 ### Resultados desta atualização
 
-- Testes focados `PedalboardDomainTests` + `PedalboardStoreTests`: 55/55 passaram.
-- Suíte completa no Simulator (iPhone 17 Pro / iOS 26.5): 164/164 passaram.
+- Testes focados `PedalboardDomainTests` + `PedalboardStoreTests`: 56/56 passaram.
+- Suíte completa no Simulator (iPhone 17 Pro / iOS 26.5): 165/165 passaram.
 - Build Debug para iOS Simulator: passou.
 - Build Release para iOS Simulator: passou.
 - `git diff --check`: passou.
 
 Risco residual: backups de deleção (`<uuid>.tmp-delete-<token>.json`) continuam seguindo a semântica existente de deleção com marker e não foram reclassificados como backups de promoção nesta correção, para manter o escopo restrito aos dois P2 abertos.
+
+### Atualização final de bloqueios do PR #2
+
+O bloqueio residual de cobertura foi fechado com um teste dedicado de múltiplos promotion backups no filesystem real. O teste cria final ausente, quatro backups válidos para o mesmo UUID e outro board válido no mesmo diretório, comprovando que a recuperação seleciona exatamente por:
+
+1. `updatedAt` descendente;
+2. `createdAt` descendente em empate de `updatedAt`;
+3. filename ascendente em empate de `updatedAt` e `createdAt`.
+
+O backup escolhido passa a ser o arquivo final byte a byte, os backups restantes são removidos, uma segunda execução de `loadCollection()` mantém o mesmo resultado e o outro board permanece intacto.
+
+As duas threads P2 do PR #2 foram respondidas com causa raiz, correção, cobertura de regressão e commit correspondente, e depois resolvidas explicitamente:
+
+- **Restore backups left by interrupted promotion**
+- **Reject boards with duplicate entry IDs**
 
 ## Divergência documental registrada
 
@@ -101,7 +117,7 @@ Estado final do histórico:
 | `snap-battle/Domain/Pedalboard/Pedalboard.swift` | `Pedalboard`, `PedalboardEntry`, `PedalboardDocument`, enum `PedalboardMutation` |
 | `snap-battle/Services/Persistence/PedalboardStore.swift` | Store isolado, `PedalboardStoreLoadResult`, `PedalboardStoreError` |
 | `snap-battleTests/PedalboardDomainTests.swift` | 19 testes determinísticos de domínio |
-| `snap-battleTests/PedalboardStoreTests.swift` | 36 testes determinísticos de persistência |
+| `snap-battleTests/PedalboardStoreTests.swift` | 37 testes determinísticos de persistência |
 | `snap-battle.xcodeproj/project.pbxproj` | Inclusão dos dois novos arquivos de teste no `PBXBuildFile`, `PBXFileReference`, grupo `snap-battleTests` e `PBXSourcesBuildPhase` |
 | `docs/DATA_MODEL.md` | Entradas de `Pedalboard`, `PedalboardEntry`, `PedalboardDocument`, seção de storage e invariantes |
 
@@ -209,6 +225,7 @@ Invariantes aplicadas e testadas:
 - falha de escrita no temporário não cria arquivo final;
 - falha de escrita durante a promoção não corrompe o board existente (backup restaurado);
 - arquivos `.tmp-` órfãos são limpos no próximo `loadCollection`;
+- múltiplos backups de promoção para o mesmo UUID escolhem deterministicamente por `updatedAt`, `createdAt` e filename;
 - marker `.deleted` impede novo `save` e é removido em um `save` bem-sucedido posterior;
 - extensões desconhecidas (`.txt`, `.png`) são ignoradas e não geram issues;
 - todos os arquivos no diretório dedicado terminam em `.json` e nenhum contém `/` ou `..`;
@@ -216,13 +233,13 @@ Invariantes aplicadas e testadas:
 - `PedalboardStore.shared` resolve para `Application Support/pedalboards/`;
 - injeção de `loadCollectionDidRun` permite observar chamadas.
 
-Total de testes adicionados nesta etapa após a correção dos P2: 55 focados em domínio/store (19 de domínio + 36 de store). A suíte completa do projeto terminou com `164 testes`, todos passaram.
+Total de testes adicionados nesta etapa após a correção dos P2: 56 focados em domínio/store (19 de domínio + 37 de store). A suíte completa do projeto terminou com `165 testes`, todos passaram.
 
 ## Resultados de testes
 
 - `PedalboardDomainTests`: 19/19 passaram.
-- `PedalboardStoreTests`: 36/36 passaram.
-- Suíte completa no Simulator (iPhone 17 Pro / iOS 26.5): 164/164 passaram.
+- `PedalboardStoreTests`: 37/37 passaram.
+- Suíte completa no Simulator (iPhone 17 Pro / iOS 26.5): 165/165 passaram.
 - `git diff --check`: passou.
 - `git diff --check origin/main...HEAD`: passou (após o commit desta etapa; nada para verificar antes do commit porque o working tree só continha o que entrou no commit).
 

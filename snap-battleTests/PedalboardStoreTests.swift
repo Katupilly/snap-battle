@@ -514,6 +514,71 @@ struct PedalboardStoreTests {
         #expect(try Data(contentsOf: finalURL(for: untouched.id, in: store)) == untouchedData)
     }
 
+    @Test func multiplePromotionBackupsUseDeterministicUpdatedCreatedAndFilenameOrder() throws {
+        let directory = makeTempDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalboardStore(directory: directory)
+        try FileManager.default.createDirectory(at: store.debugCollectionDirectory, withIntermediateDirectories: true)
+
+        let boardID = UUID()
+        let lowerUpdated = makeBoard(
+            name: "Lower Updated",
+            id: boardID,
+            createdAt: Date(timeIntervalSince1970: 500),
+            updatedAt: Date(timeIntervalSince1970: 1_000)
+        )
+        let newerUpdatedOlderCreated = makeBoard(
+            name: "Newer Updated Older Created",
+            id: boardID,
+            createdAt: Date(timeIntervalSince1970: 400),
+            updatedAt: Date(timeIntervalSince1970: 2_000)
+        )
+        let tiedDatesLaterFilename = makeBoard(
+            name: "Tied Dates Later Filename",
+            id: boardID,
+            createdAt: Date(timeIntervalSince1970: 900),
+            updatedAt: Date(timeIntervalSince1970: 2_000)
+        )
+        let selected = makeBoard(
+            name: "Selected",
+            id: boardID,
+            createdAt: Date(timeIntervalSince1970: 900),
+            updatedAt: Date(timeIntervalSince1970: 2_000)
+        )
+        let untouched = makeBoard(
+            name: "Untouched",
+            createdAt: Date(timeIntervalSince1970: 100),
+            updatedAt: Date(timeIntervalSince1970: 100)
+        )
+        let lowerUpdatedURL = promotionBackupURL(for: boardID, token: "d-lower-updated", in: store)
+        let olderCreatedURL = promotionBackupURL(for: boardID, token: "c-older-created", in: store)
+        let laterFilenameURL = promotionBackupURL(for: boardID, token: "z-later-filename", in: store)
+        let selectedURL = promotionBackupURL(for: boardID, token: "a-selected-filename", in: store)
+        try writeDocument(for: lowerUpdated, to: lowerUpdatedURL)
+        try writeDocument(for: newerUpdatedOlderCreated, to: olderCreatedURL)
+        try writeDocument(for: tiedDatesLaterFilename, to: laterFilenameURL)
+        let selectedData = try writeDocument(for: selected, to: selectedURL)
+        try store.save(untouched)
+        let untouchedData = try Data(contentsOf: finalURL(for: untouched.id, in: store))
+
+        let first = store.loadCollection()
+        let second = store.loadCollection()
+
+        let restoredFinal = finalURL(for: boardID, in: store)
+        #expect(first.boards.map(\.id) == [boardID, untouched.id])
+        #expect(second.boards.map(\.id) == [boardID, untouched.id])
+        #expect(first.boards.first == selected)
+        #expect(second.boards.first == selected)
+        #expect(first.issues.isEmpty)
+        #expect(second.issues.isEmpty)
+        #expect(try Data(contentsOf: restoredFinal) == selectedData)
+        #expect(try Data(contentsOf: finalURL(for: untouched.id, in: store)) == untouchedData)
+        #expect(!FileManager.default.fileExists(atPath: lowerUpdatedURL.path))
+        #expect(!FileManager.default.fileExists(atPath: olderCreatedURL.path))
+        #expect(!FileManager.default.fileExists(atPath: laterFilenameURL.path))
+        #expect(!FileManager.default.fileExists(atPath: selectedURL.path))
+    }
+
     @Test func commonTemporaryFilesAreCleanedWithoutDeletingRecoverableBackup() throws {
         let directory = makeTempDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
