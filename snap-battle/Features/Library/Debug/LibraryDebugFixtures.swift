@@ -47,12 +47,16 @@ struct LibraryDebugFixtureStore {
     func install(_ dataset: LibraryDebugDataset) throws -> PedalStore {
         reset(dataset: dataset)
         let store = store(for: dataset)
+        try installFixtures(dataset, into: store)
+        return store
+    }
+
+    func installFixtures(_ dataset: LibraryDebugDataset, into store: PedalStore) throws {
         for index in 0..<dataset.count {
             let pedal = Self.pedal(index: index, dataset: dataset)
             try store.save(pedal, cover: Self.cover(index: index))
         }
         try installCorruptSentinel(in: store)
-        return store
     }
 
     @MainActor

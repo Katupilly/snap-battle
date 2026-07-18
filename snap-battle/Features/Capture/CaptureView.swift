@@ -5,6 +5,7 @@ import UIKit
 struct ContentView: View {
     @State private var navigation = AppNavigationModel()
     @State private var gallery = GalleryViewModel()
+    @State private var pedalboards = PedalboardsViewModel()
     @State private var thumbnailLoader = ThumbnailLoader()
     #if DEBUG
     @State private var showingLibraryDebug = false
@@ -24,13 +25,19 @@ struct ContentView: View {
                         thumbnailLoader: thumbnailLoader,
                         transitionNamespace: libraryTransitionNamespace
                     )
-                case .jam: JamPlaceholderView()
+                case .jam:
+                    PedalboardsView(
+                        model: pedalboards,
+                        openBoard: navigation.openPedalboard
+                    )
                 }
             }
             .navigationDestination(for: AppRoute.self) { route in
                 switch route {
                 case .pedalDetail(let id):
                     PedalDetailView(itemID: id, model: gallery, transitionNamespace: libraryTransitionNamespace)
+                case .pedalboardDetail(let id):
+                    PedalboardDetailView(boardID: id, model: pedalboards)
                 }
             }
             #if DEBUG
@@ -65,7 +72,15 @@ struct ContentView: View {
                 )
             }
         }
-        .task { await gallery.reloadAsync() }
+        .task {
+            #if DEBUG
+            if CommandLine.arguments.contains("--install-fixtures") {
+                try? LibraryDebugFixtureStore().installFixtures(.small, into: PedalStore.shared)
+            }
+            #endif
+            await gallery.reloadAsync()
+            pedalboards.reload()
+        }
         .sheet(isPresented: $navigation.isPresentingCapture, onDismiss: { gallery.insertedSavedPedal() }) {
             CaptureFlowView(
                 bottomBarNamespace: bottomBarNamespace,

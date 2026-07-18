@@ -105,11 +105,11 @@ struct NavigationGalleryTests {
         #expect(configuration.destinations.map(\.accessibilityIdentifier) == ["bottomBar.destination.gallery", "bottomBar.destination.jam"])
     }
 
-    @Test func bottomBarRootKeepsJamPlaceholderInNavigation() {
+    @Test func bottomBarRootKeepsPedalboardsInNavigation() {
         let presentation = BottomBarPresentation.root(selected: .jam)
 
         guard case .navigation(let configuration) = presentation else {
-            Issue.record("Expected navigation presentation for Jam placeholder")
+            Issue.record("Expected navigation presentation for Pedalboards")
             return
         }
         #expect(configuration.destinations == [.gallery, .jam])
@@ -136,11 +136,32 @@ struct NavigationGalleryTests {
         #expect(configuration.captureAction?.id == .capture)
     }
 
+    @Test func pedalboardDetailRouteHidesBottomBarWithoutChangingSelectedRoot() {
+        let navigation = AppNavigationModel()
+        let boardID = UUID()
+        navigation.selectedDestination = .jam
+        navigation.path = [.pedalboardDetail(boardID)]
+
+        #expect(navigation.selectedDestination == .jam)
+        #expect(navigation.path == [.pedalboardDetail(boardID)])
+        #expect(BottomBarPresentation.forNavigation(navigation) == .hidden(.pedalDetail))
+    }
+
+    @Test func navigationOpensPedalboardDetailByPersistentID() {
+        let navigation = AppNavigationModel()
+        let boardID = UUID()
+
+        navigation.openPedalboard(id: boardID)
+
+        #expect(navigation.path == [.pedalboardDetail(boardID)])
+    }
+
     @Test func detailRouteUsesOnlyPersistentID() {
         let pedalID = UUID()
-        let route = AppRoute.pedalDetail(pedalID)
+        let boardID = UUID()
 
-        #expect(route == .pedalDetail(pedalID))
+        #expect(AppRoute.pedalDetail(pedalID) == .pedalDetail(pedalID))
+        #expect(AppRoute.pedalboardDetail(boardID) == .pedalboardDetail(boardID))
     }
 
     @Test func captureKeepsPrecedenceOverRootAndDetailState() {
