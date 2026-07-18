@@ -12,6 +12,9 @@
 | `PedalNote` | One grid note: step, row, MIDI note, velocity | Persisted |
 | `PedalSoundProfile` | Gate, octave range, waveform, effect presets and mixes | Persisted |
 | `PedalDraft` | Foundation Models or fallback name/description output | Transient |
+| `Pedalboard` | One ordered list of pedal references persisted as a UUID-associated document | Persisted separately from `PhotoPedal` |
+| `PedalboardEntry` | Reference to a `PhotoPedal.id` plus a stable entry identity | Persisted inside `Pedalboard` |
+| `PedalboardDocument` | Schema envelope around `Pedalboard` (`schemaVersion = 1`) | Persisted |
 
 `PhotoPedal` stores `id`, `name`, `description`, `sequence`, `effect`, `createdAt`, and `coverFilename`. The selected effect and both stored effect mixes are saved. `updating` creates a replacement value rather than mutating the model. Semantic enrichment may replace only `name` and `description` for an existing `id`.
 
@@ -43,13 +46,18 @@
 
 - **Ephemeral session state:** `PhotoPedalViewModel` holds the currently displayed pedal, cover, selected effect, and synth playback state while the app runs.
 - **Collection storage:** `PedalStore` loads, validates, orders, saves, deletes, and migrates local pedal pairs.
+- **Pedalboard storage:** `PedalboardStore` loads, validates, orders, saves, and deletes pedalboard documents in `Application Support/pedalboards/`. It only references pedals by `StoredPedal.ID` and never reads, writes, or deletes `PedalStore` records.
 - **Gallery:** presents valid persisted pedals; invalid pairs are excluded without blocking valid records.
-- **Cache, export, sharing, and boards:** not implemented.
+- **Cache, export, sharing, and boards playback:** not implemented.
 
 ## Invariants And Gaps
 
 - Steps are fixed at 16 and rows at 8.
 - `PedalNote.id` is derived from `step-row`.
 - Current persisted musical output is replayed rather than regenerated.
-- There is no `MusicRecipe` type, generator version, migration system, gallery, or board model.
+- `Pedalboard.id` is a UUID independent of any pedal it references.
+- `PedalboardEntry.id` is a UUID created per insertion; the same `PedalboardEntry.pedalID` may appear in multiple entries.
+- `Pedalboard.updatedAt` is refreshed by structural and naming mutations only; playback does not touch it.
+- Pedalboards are persisted in `Application Support/pedalboards/<uuid>.json` using the `PedalboardDocument` envelope with `schemaVersion == 1`; unknown schemas produce a recoverable issue and the file is preserved untouched.
+- There is no `MusicRecipe` type, generator version, migration system, gallery, playback coordinator, or board UI model yet.
 - `generatorVersion` is planned, not implemented. Its ownership and compatibility contract require a separate approved specification.
