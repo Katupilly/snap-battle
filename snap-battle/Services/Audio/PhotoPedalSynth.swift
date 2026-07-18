@@ -1,9 +1,16 @@
 import AVFoundation
 import Foundation
 
+enum PhotoPedalSynthStopReason: Equatable, Sendable {
+    case requested
+    case interruption
+    case engineFailure
+}
+
 @MainActor
 protocol PedalPlaying: AnyObject {
     var isPlaying: Bool { get }
+    var stopHandler: ((PhotoPedalSynthStopReason) -> Void)? { get set }
     func play(_ pedal: PhotoPedal) throws
     func stop()
 }
@@ -22,6 +29,7 @@ final class PhotoPedalSynth: NSObject, PedalPlaying {
     private var source: AVAudioSourceNode?
     private var playback: PlaybackBuffer?
     private(set) var isPlaying = false
+    var stopHandler: ((PhotoPedalSynthStopReason) -> Void)?
 
     override init() {
         super.init(); configureEngine()
@@ -33,6 +41,7 @@ final class PhotoPedalSynth: NSObject, PedalPlaying {
         stop()
         try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default)
         try AVAudioSession.sharedInstance().setActive(true)
+        try PedalPlaybackTiming.validate(pedal.sequence, sampleRate: format.sampleRate)
         applyEffect(pedal.effect, profile: pedal.sequence.soundProfile)
         let buffer = PlaybackBuffer(samples: Self.renderSequence(pedal.sequence, sampleRate: Int(format.sampleRate)))
         playback = buffer
@@ -47,12 +56,23 @@ final class PhotoPedalSynth: NSObject, PedalPlaying {
         }
         self.source = source
         engine.attach(source); engine.connect(source, to: reverb, format: format)
-        try engine.start(); isPlaying = true
+        do {
+            try engine.start(); isPlaying = true
+        } catch {
+            stop(reason: .engineFailure)
+            throw error
+        }
     }
 
     func stop() {
+        stop(reason: .requested)
+    }
+
+    private func stop(reason: PhotoPedalSynthStopReason) {
+        let shouldNotify = isPlaying || reason == .engineFailure
         if let source { engine.disconnectNodeOutput(source); engine.detach(source) }
         source = nil; playback = nil; engine.stop(); isPlaying = false
+        if shouldNotify { stopHandler?(reason) }
     }
 
     private func configureEngine() {
@@ -75,11 +95,11 @@ final class PhotoPedalSynth: NSObject, PedalPlaying {
 
     @objc private func handleInterruption(_ notification: Notification) {
         guard let type = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt, AVAudioSession.InterruptionType(rawValue: type) == .began else { return }
-        stop()
+        stop(reason: .interruption)
     }
 
     private static func renderSequence(_ sequence: PedalSequence, sampleRate: Int) -> [Float] {
-        let samplesPerStep = max(1, Int(Double(sampleRate) * 60 / Double(sequence.harmony.bpm) / 4))
+        let samplesPerStep = PedalPlaybackTiming.samplesPerStep(sequence: sequence, sampleRate: Double(sampleRate))
         let gateSamples = max(1, Int(Double(samplesPerStep) * sequence.soundProfile.gate))
         let wave = waveformTable(sequence.soundProfile.waveform, size: 512), envelope = envelopeTable(length: gateSamples)
         var output = [Float](repeating: 0, count: samplesPerStep * PedalSequence.steps)

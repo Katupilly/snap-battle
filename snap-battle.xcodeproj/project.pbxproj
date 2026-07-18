@@ -20,6 +20,7 @@
 		E50000000000000000000001 /* LibraryDebugFixturesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50000000000000000000002 /* LibraryDebugFixturesTests.swift */; };
 		F60000000000000000000001 /* PedalboardDomainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60000000000000000000002 /* PedalboardDomainTests.swift */; };
 		F60000000000000000000003 /* PedalboardStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60000000000000000000004 /* PedalboardStoreTests.swift */; };
+		G70000000000000000000001 /* PedalboardPlaybackCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = G70000000000000000000002 /* PedalboardPlaybackCoordinatorTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,6 +49,7 @@
 		E50000000000000000000002 /* LibraryDebugFixturesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryDebugFixturesTests.swift; sourceTree = "<group>"; };
 		F60000000000000000000002 /* PedalboardDomainTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PedalboardDomainTests.swift; sourceTree = "<group>"; };
 		F60000000000000000000004 /* PedalboardStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PedalboardStoreTests.swift; sourceTree = "<group>"; };
+		G70000000000000000000002 /* PedalboardPlaybackCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PedalboardPlaybackCoordinatorTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -110,6 +112,7 @@
 				E50000000000000000000002 /* LibraryDebugFixturesTests.swift */,
 				F60000000000000000000002 /* PedalboardDomainTests.swift */,
 				F60000000000000000000004 /* PedalboardStoreTests.swift */,
+				G70000000000000000000002 /* PedalboardPlaybackCoordinatorTests.swift */,
 			);
 			path = "snap-battleTests";
 			sourceTree = "<group>";
@@ -226,6 +229,7 @@
 				E50000000000000000000001 /* LibraryDebugFixturesTests.swift in Sources */,
 				F60000000000000000000001 /* PedalboardDomainTests.swift in Sources */,
 				F60000000000000000000003 /* PedalboardStoreTests.swift in Sources */,
+				G70000000000000000000001 /* PedalboardPlaybackCoordinatorTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

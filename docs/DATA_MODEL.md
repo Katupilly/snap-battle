@@ -48,7 +48,7 @@
 - **Collection storage:** `PedalStore` loads, validates, orders, saves, deletes, and migrates local pedal pairs.
 - **Pedalboard storage:** `PedalboardStore` loads, validates, orders, saves, and deletes pedalboard documents in `Application Support/pedalboards/`. It only references pedals by `StoredPedal.ID` and never reads, writes, or deletes `PedalStore` records.
 - **Gallery:** presents valid persisted pedals; invalid pairs are excluded without blocking valid records.
-- **Cache, export, sharing, and boards playback:** not implemented.
+- **Cache, export, and sharing:** not implemented. Pedalboard playback is transient runtime coordination and does not add persisted fields.
 
 ## Invariants And Gaps
 
@@ -59,5 +59,5 @@
 - `PedalboardEntry.id` is a UUID created per insertion; the same `PedalboardEntry.pedalID` may appear in multiple entries.
 - `Pedalboard.updatedAt` is refreshed by structural and naming mutations only; playback does not touch it.
 - Pedalboards are persisted in `Application Support/pedalboards/<uuid>.json` using the `PedalboardDocument` envelope with `schemaVersion == 1`; unknown schemas produce a recoverable issue and the file is preserved untouched.
-- There is no `MusicRecipe` type, generator version, migration system, gallery, playback coordinator, or board UI model yet.
+- There is no `MusicRecipe` type, generator version, migration system, gallery, or board UI model yet.
 - `generatorVersion` is planned, not implemented. Its ownership and compatibility contract require a separate approved specification.

@@ -227,11 +227,50 @@ struct PhotoPedalStabilizationTests {
         #expect(store.loadLatest() == nil)
     }
 
+    @Test func jsonOnlyPedalLoadDoesNotDecodeCoverImage() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalStore(directory: directory)
+        let pedal = Fixtures.pedal(name: "JSON Only")
+        let pedalsDirectory = directory.appendingPathComponent("pedals", isDirectory: true)
+        try FileManager.default.createDirectory(at: pedalsDirectory, withIntermediateDirectories: true)
+        try JSONEncoder().encode(pedal).write(to: pedalsDirectory.appendingPathComponent("\(pedal.id.uuidString).json"))
+
+        let loaded = try store.loadPhotoPedal(id: pedal.id)
+
+        #expect(loaded == pedal)
+        #expect(throws: Error.self) { try store.load(id: pedal.id) }
+    }
+
+    @Test func jsonOnlyPedalLoadValidatesExpectedID() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalStore(directory: directory)
+        let expectedID = UUID()
+        let mismatched = Fixtures.pedal(name: "Mismatch")
+        let pedalsDirectory = directory.appendingPathComponent("pedals", isDirectory: true)
+        try FileManager.default.createDirectory(at: pedalsDirectory, withIntermediateDirectories: true)
+        try JSONEncoder().encode(mismatched).write(to: pedalsDirectory.appendingPathComponent("\(expectedID.uuidString).json"))
+
+        #expect(throws: PedalStoreError.validationFailed) { try store.loadPhotoPedal(id: expectedID) }
+    }
+
     @Test @MainActor func synthStopLeavesCleanState() {
         let synth = PhotoPedalSynth()
         synth.stop()
         #expect(!synth.isPlaying)
         synth.stop()
+        #expect(!synth.isPlaying)
+    }
+
+    @Test @MainActor func synthRequestedStopWhenIdleDoesNotEmitUnexpectedStopReason() {
+        let synth = PhotoPedalSynth()
+        var reasons: [PhotoPedalSynthStopReason] = []
+        synth.stopHandler = { reasons.append($0) }
+
+        synth.stop()
+
+        #expect(reasons.isEmpty)
         #expect(!synth.isPlaying)
     }
 

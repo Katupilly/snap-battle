@@ -314,6 +314,7 @@ struct NavigationGalleryTests {
 @MainActor
 private final class PlayerDouble: PedalPlaying {
     let shouldFail: Bool
+    var stopHandler: ((PhotoPedalSynthStopReason) -> Void)?
     private(set) var playedID: UUID?
     private(set) var isPlaying = false
     private(set) var stopCount = 0

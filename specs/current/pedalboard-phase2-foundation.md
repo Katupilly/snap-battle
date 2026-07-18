@@ -298,6 +298,8 @@ For Phase 2 foundation, one pedal ends when its rendered sequence duration finis
 
 Because `PhotoPedalSynth` currently renders one sequence at a time and does not expose a completion callback, implementation may add the smallest correct seam to determine sequence duration or completion. That seam must not move audio graph ownership into SwiftUI.
 
+Step 2 implementation resolves this by centralizing the synth's sample-aligned duration formula and injecting a cancellable scheduler into the coordinator. The duration uses the fixed rendered step count (`16`) and saved BPM; rests, gate, and note count do not shorten playback because the synth renders every step.
+
 ### Gap Between Pedals
 
 - No intentional extra gap is required in this phase.
@@ -321,11 +323,15 @@ Because `PhotoPedalSynth` currently renders one sequence at a time and does not 
 - Pressing Play after the board finishes starts again from the first entry.
 - Pressing Play while already playing should restart from the first entry or be ignored; choose one behavior, document it in code, and test it.
 
+Step 2 chooses restart semantics: a new Play cancels the prior scheduled progression, stops the underlying player, invalidates late callbacks, and starts from the first resolvable entry.
+
 ### Missing Pedals During Playback
 
 - If an entry references a missing pedal, skip it.
 - Continue to the next entry.
 - The currently playing indicator must never point to a missing entry as if playback succeeded.
+
+Step 2 differentiates normal absence from structural load failure: a missing record is skipped and exposed as unavailable entry information, while corrupt or incompatible pedal data fails the board playback without mutating the board.
 
 ### Existing Synth Reuse
 

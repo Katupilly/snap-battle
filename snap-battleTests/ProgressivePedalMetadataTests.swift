@@ -235,6 +235,7 @@ private struct ObjectDouble: ObjectAnalyzing {
 @MainActor
 private final class PlayerDouble: PedalPlaying {
     private(set) var playedID: UUID?
+    var stopHandler: ((PhotoPedalSynthStopReason) -> Void)?
     private(set) var isPlaying = false
     func play(_ pedal: PhotoPedal) throws { playedID = pedal.id; isPlaying = true }
     func stop() { isPlaying = false }
