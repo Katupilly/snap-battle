@@ -166,6 +166,10 @@ final class PedalboardPlaybackCoordinator {
         }
     }
 
+    isolated deinit {
+        player.stopHandler = nil
+    }
+
     func play(board: Pedalboard) {
         let token = resetSession(boardID: board.id, stoppingCurrentPlayback: state.isPlaying || player.isPlaying)
         state = .preparing(boardID: board.id)

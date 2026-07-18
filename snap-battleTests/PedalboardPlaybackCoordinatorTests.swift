@@ -257,6 +257,7 @@ struct PedalboardPlaybackCoordinatorTests {
         #expect(weakCoordinator == nil)
         scheduler.completeNext()
         #expect(player.playedIDs == [pedal.id])
+        #expect(player.stopHandler == nil)
     }
 
     @Test func sampleAlignedDurationUsesAllStepsOnly() throws {
