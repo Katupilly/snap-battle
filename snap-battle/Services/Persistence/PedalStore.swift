@@ -106,9 +106,14 @@ nonisolated struct PedalStore {
     }
 
     func load(id: UUID) throws -> StoredPedal {
-        let pedal = try JSONDecoder().decode(PhotoPedal.self, from: Data(contentsOf: jsonURL(for: id)))
+        let pedal = try loadValidatedPhotoPedal(id: id)
         guard pedal.id == id, let cover = UIImage(contentsOfFile: pngURL(for: id).path) else { throw PedalStoreError.validationFailed }
         return StoredPedal(pedal: pedal, cover: cover)
+    }
+
+    func loadPhotoPedal(id: UUID) throws -> PhotoPedal {
+        guard fileManager.fileExists(atPath: jsonURL(for: id).path) else { throw PedalStoreError.missingRecord }
+        return try loadValidatedPhotoPedal(id: id)
     }
 
     /// Returns the persisted cover identity used by the Library thumbnail loader.
@@ -246,12 +251,12 @@ nonisolated struct PedalStore {
     }
 
     private func validateTemporaryPair(id: UUID, jsonURL: URL, pngURL: URL) throws {
-        let decoded = try JSONDecoder().decode(PhotoPedal.self, from: Data(contentsOf: jsonURL))
+        let decoded = try decodePhotoPedal(id: id, jsonURL: jsonURL)
         guard decoded.id == id, UIImage(contentsOfFile: pngURL.path) != nil else { throw PedalStoreError.validationFailed }
     }
 
     private func validateMetadataUpdateTemporaryJSON(id: UUID, original: PhotoPedal, jsonURL: URL) throws {
-        let decoded = try JSONDecoder().decode(PhotoPedal.self, from: Data(contentsOf: jsonURL))
+        let decoded = try decodePhotoPedal(id: id, jsonURL: jsonURL)
         guard decoded.id == id,
               decoded.createdAt == original.createdAt,
               decoded.sequence == original.sequence,
@@ -260,6 +265,16 @@ nonisolated struct PedalStore {
             throw PedalStoreError.validationFailed
         }
         _ = try PedalDraftValidator().validate(PedalDraft(name: decoded.name, description: decoded.description))
+    }
+
+    private func loadValidatedPhotoPedal(id: UUID) throws -> PhotoPedal {
+        try decodePhotoPedal(id: id, jsonURL: jsonURL(for: id))
+    }
+
+    private func decodePhotoPedal(id: UUID, jsonURL: URL) throws -> PhotoPedal {
+        let pedal = try JSONDecoder().decode(PhotoPedal.self, from: Data(contentsOf: jsonURL))
+        guard pedal.id == id else { throw PedalStoreError.validationFailed }
+        return pedal
     }
 
     private func promote(_ temporary: URL, to final: URL, token: String) throws {
