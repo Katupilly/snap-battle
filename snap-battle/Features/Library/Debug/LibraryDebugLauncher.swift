@@ -6,6 +6,8 @@ struct LibraryDebugLauncher: View {
     @State private var model: GalleryViewModel
     @State private var unavailableIDs: Set<UUID> = []
     @State private var status = "Nenhum dataset carregado"
+    @State private var baselineStatus = "Baseline v1 ainda não executado."
+    @State private var isRunningBaseline = false
     @Namespace private var transitionNamespace
 
     private let fixtures = LibraryDebugFixtureStore()
@@ -27,6 +29,15 @@ struct LibraryDebugLauncher: View {
                     Button("Limpar Library real", systemImage: "trash.circle", role: .destructive) { clearRealStore() }
                     Button("Limpar fixtures debug", systemImage: "trash", role: .destructive) { clear(dataset) }
                     Text(status).font(.footnote).foregroundStyle(.secondary)
+                }
+                Section("Baseline v1 (DEBUG)") {
+                    Button(action: runBaseline) {
+                        Label("Executar baseline e exportar JSON", systemImage: "waveform.path.ecg.rectangle")
+                    }
+                    .disabled(isRunningBaseline)
+                    Text(baselineStatus)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
                 Section {
                     Text("Somente DEBUG. Os dados ficam em Application Support/debug-library-fixtures e não compartilham a coleção real. 'Instalar na Library real' copia para a coleção usada pelo app.")
@@ -84,6 +95,27 @@ struct LibraryDebugLauncher: View {
             try? store.delete(id: pedal.id)
         }
         status = "Library real limpa"
+    }
+
+    private func runBaseline() {
+        guard !isRunningBaseline else { return }
+        isRunningBaseline = true
+        baselineStatus = "Executando baseline…"
+        Task {
+            defer { isRunningBaseline = false }
+            do {
+                let exportDir = MusicalDiagnosticsHarness.defaultExportDirectory()
+                let result = try await MusicalDiagnosticsHarness(corpusIdentifier: "procedural-v1")
+                    .runAndExportJSON(to: exportDir)
+                if let path = result.exportPath {
+                    baselineStatus = "Baseline pronto. JSON: \(path) (\(result.report.corpusSize) imagens)"
+                } else {
+                    baselineStatus = "Baseline pronto. \(result.report.corpusSize) imagens"
+                }
+            } catch {
+                baselineStatus = "Falha no baseline: \(error.localizedDescription)"
+            }
+        }
     }
 }
 #endif

@@ -66,7 +66,13 @@ nonisolated struct PedalNote: Codable, Sendable, Equatable, Identifiable {
 }
 
 nonisolated struct PedalSequence: Codable, Sendable, Equatable {
-    static let steps = 16; static let rows = 8
+    static let steps = 16
+    static let rows = 8
+    /// Structural upper bound on simultaneous notes for the v1 grid.
+    /// The v1 generator emits at most one note per `(step, row)` cell,
+    /// so the maximum is `steps * rows`. Used by the diagnostic layer
+    /// to normalize `noteDensity`.
+    static let maximumNoteSlots: Int = steps * rows
     let harmony: PedalHarmony
     let notes: [PedalNote]
     let soundProfile: PedalSoundProfile

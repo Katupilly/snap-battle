@@ -23,6 +23,10 @@
 		G70000000000000000000001 /* PedalboardPlaybackCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = G70000000000000000000002 /* PedalboardPlaybackCoordinatorTests.swift */; };
 		H80000000000000000000001 /* PedalboardsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = H80000000000000000000002 /* PedalboardsViewModelTests.swift */; };
 		I90000000000000000000001 /* GalleryReloadInstrumentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = I90000000000000000000002 /* GalleryReloadInstrumentationTests.swift */; };
+		J10000000000000000000001 /* MusicalDiagnosticsCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = J10000000000000000000002 /* MusicalDiagnosticsCalculatorTests.swift */; };
+		J10000000000000000000003 /* MusicalCorpusReportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = J10000000000000000000004 /* MusicalCorpusReportTests.swift */; };
+		J10000000000000000000005 /* ProceduralCorpusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = J10000000000000000000006 /* ProceduralCorpusTests.swift */; };
+		J10000000000000000000007 /* MusicalDiagnosticsEquivalenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = J10000000000000000000008 /* MusicalDiagnosticsEquivalenceTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -54,6 +58,10 @@
 		G70000000000000000000002 /* PedalboardPlaybackCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PedalboardPlaybackCoordinatorTests.swift; sourceTree = "<group>"; };
 		H80000000000000000000002 /* PedalboardsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PedalboardsViewModelTests.swift; sourceTree = "<group>"; };
 		I90000000000000000000002 /* GalleryReloadInstrumentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryReloadInstrumentationTests.swift; sourceTree = "<group>"; };
+		J10000000000000000000002 /* MusicalDiagnosticsCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicalDiagnosticsCalculatorTests.swift; sourceTree = "<group>"; };
+		J10000000000000000000004 /* MusicalCorpusReportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicalCorpusReportTests.swift; sourceTree = "<group>"; };
+		J10000000000000000000006 /* ProceduralCorpusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProceduralCorpusTests.swift; sourceTree = "<group>"; };
+		J10000000000000000000008 /* MusicalDiagnosticsEquivalenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicalDiagnosticsEquivalenceTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -119,6 +127,10 @@
 				G70000000000000000000002 /* PedalboardPlaybackCoordinatorTests.swift */,
 				H80000000000000000000002 /* PedalboardsViewModelTests.swift */,
 				I90000000000000000000002 /* GalleryReloadInstrumentationTests.swift */,
+				J10000000000000000000002 /* MusicalDiagnosticsCalculatorTests.swift */,
+				J10000000000000000000004 /* MusicalCorpusReportTests.swift */,
+				J10000000000000000000006 /* ProceduralCorpusTests.swift */,
+				J10000000000000000000008 /* MusicalDiagnosticsEquivalenceTests.swift */,
 			);
 			path = "snap-battleTests";
 			sourceTree = "<group>";
@@ -238,6 +250,10 @@
 				G70000000000000000000001 /* PedalboardPlaybackCoordinatorTests.swift in Sources */,
 				H80000000000000000000001 /* PedalboardsViewModelTests.swift in Sources */,
 				I90000000000000000000001 /* GalleryReloadInstrumentationTests.swift in Sources */,
+				J10000000000000000000001 /* MusicalDiagnosticsCalculatorTests.swift in Sources */,
+				J10000000000000000000003 /* MusicalCorpusReportTests.swift in Sources */,
+				J10000000000000000000005 /* ProceduralCorpusTests.swift in Sources */,
+				J10000000000000000000007 /* MusicalDiagnosticsEquivalenceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
