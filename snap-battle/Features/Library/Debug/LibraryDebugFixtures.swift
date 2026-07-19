@@ -114,16 +114,16 @@ struct LibraryDebugFixtureStore {
     static func cover(index: Int) -> UIImage {
         let size = CGSize(width: 64, height: 64)
         return UIGraphicsImageRenderer(size: size).image { context in
-            let hue = CGFloat((index * 37) % 360) / 360
-            UIColor(hue: hue, saturation: 0.72, brightness: 0.82, alpha: 1).setFill()
+            let palette = PitchColorIdentity.tonalPalette(for: PitchClass(normalizing: index))
+            UIColor(palette.base).setFill()
             context.fill(CGRect(origin: .zero, size: size))
-            UIColor.white.withAlphaComponent(0.28).setFill()
+            UIColor(palette.highlight).withAlphaComponent(0.42).setFill()
             for row in 0..<8 where (row + index) % 2 == 0 {
                 for column in 0..<8 where (column * 3 + index) % 4 < 2 {
                     context.fill(CGRect(x: column * 8, y: row * 8, width: 8, height: 8))
                 }
             }
-            UIColor.black.withAlphaComponent(0.55).setFill()
+            UIColor(palette.shadow).withAlphaComponent(0.85).setFill()
             context.fill(CGRect(x: 4, y: 4, width: 18, height: 10))
             let label = "\(index + 1)" as NSString
             label.draw(at: CGPoint(x: 6, y: 3), withAttributes: [.font: UIFont.monospacedSystemFont(ofSize: 7, weight: .bold), .foregroundColor: UIColor.white])
@@ -146,6 +146,17 @@ struct LibraryDebugFixtureStore {
         let directory = store.debugCollectionDirectory
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         try Data("corrupt debug fixture".utf8).write(to: directory.appendingPathComponent("D06B0000-0000-4000-8000-FFFFFFFFFFFF.json"))
+    }
+}
+
+private extension UIColor {
+    convenience init(_ color: SRGBColor) {
+        self.init(
+            red: CGFloat(color.red) / 255,
+            green: CGFloat(color.green) / 255,
+            blue: CGFloat(color.blue) / 255,
+            alpha: 1
+        )
     }
 }
 

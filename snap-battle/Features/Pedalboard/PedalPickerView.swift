@@ -31,7 +31,7 @@ struct PedalPickerView: View {
                                     Text(pedal.pedal.name)
                                         .font(.headline)
                                         .lineLimit(2)
-                                    Text(pedal.pedal.effect.displayName)
+                                    Text("\(pedal.pedal.effect.displayName) · \(pedal.pedal.dominantPitchClass.symbol)")
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
                                 }
@@ -45,7 +45,7 @@ struct PedalPickerView: View {
                             .padding(.vertical, 4)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Adicionar \(pedal.pedal.name)")
+                        .accessibilityLabel("Adicionar \(pedal.pedal.name), nota predominante \(pedal.pedal.dominantPitchClass.accessibilityName)")
                         .accessibilityHint("Adiciona este pedal ao pedalboard")
                     }
                 }

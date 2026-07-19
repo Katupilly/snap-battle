@@ -38,6 +38,13 @@ struct LibraryDebugFixturesTests {
         #expect((first?.count ?? .max) < 20_000)
     }
 
+    @Test func syntheticCoversRepresentAllPitchColorIdentities() throws {
+        let covers = try (0..<12).map { try #require(LibraryDebugFixtureStore.cover(index: $0).pngData()) }
+
+        #expect(Set(covers).count == 12)
+        #expect((0..<12).map { LibraryDebugFixtureStore.pedal(index: $0, dataset: .small).dominantPitchClass } == PitchClass.allCases)
+    }
+
     @Test func fixtureStoreUsesDedicatedDirectoryAndClearPreservesRealDirectory() throws {
         let base = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: base) }

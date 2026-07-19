@@ -370,4 +370,5 @@ private struct ObjectDouble: ObjectAnalyzing {
 
 private struct StabilizationFailingRetroProcessor: RetroImageProcessing {
     func process(_ image: UIImage) async throws -> UIImage { throw RetroImageProcessorError.invalidImage }
+    func recolor(_ image: UIImage, palette: [RetroColor]) async throws -> UIImage { image }
 }

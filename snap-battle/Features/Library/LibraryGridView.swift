@@ -293,9 +293,10 @@ private struct LibraryGridCell: View {
     private func accessibilityLabel(hasUnavailableCover: Bool) -> String {
         let date = item.pedal.createdAt.formattedForLibraryAccessibility(calendar: calendar, locale: locale)
         let name = item.pedal.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let pitch = item.pedal.dominantPitchClass.accessibilityName
         let cover = hasUnavailableCover ? ", capa indisponível" : ""
-        if name.isEmpty { return "Pedal criado em \(date), efeito \(item.pedal.effect.displayName)\(cover)" }
-        return "Pedal \"\(name)\", criado em \(date), efeito \(item.pedal.effect.displayName)\(cover)"
+        if name.isEmpty { return "Pedal criado em \(date), efeito \(item.pedal.effect.displayName), nota predominante \(pitch)\(cover)" }
+        return "Pedal \"\(name)\", criado em \(date), efeito \(item.pedal.effect.displayName), nota predominante \(pitch)\(cover)"
     }
 }
 
