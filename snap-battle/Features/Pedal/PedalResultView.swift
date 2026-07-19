@@ -11,7 +11,7 @@ struct PedalResultView: View {
         ScrollView {
             VStack(spacing: 20) {
                 Image(uiImage: cover).resizable().interpolation(.none).scaledToFit().clipShape(.rect(cornerRadius: 20))
-                    .accessibilityLabel("Capa 2-bit do pedal")
+                    .accessibilityLabel("Capa 2-bit do pedal, nota predominante \(pedal.dominantPitchClass.accessibilityName)")
                 VStack(spacing: 8) {
                     Text(pedal.name).font(.largeTitle.bold()).multilineTextAlignment(.center)
                     Text(pedal.description).multilineTextAlignment(.center).foregroundStyle(.secondary)
@@ -21,6 +21,9 @@ struct PedalResultView: View {
                 .accessibilityElement(children: .combine)
                 Text("\(pedal.sequence.harmony.rootName) · \(pedal.sequence.harmony.scale.displayName) · \(pedal.sequence.harmony.bpm) BPM")
                     .font(.subheadline.weight(.semibold))
+                Text("Nota predominante: \(pedal.dominantPitchClass.symbol)")
+                    .font(.subheadline.weight(.semibold))
+                    .accessibilityLabel("Nota predominante: \(pedal.dominantPitchClass.accessibilityName)")
                 StepGrid(sequence: pedal.sequence)
                 Picker("Efeito", selection: $model.selectedEffect) {
                     ForEach(PedalEffect.allCases) { effect in Text(effect.displayName).tag(effect) }

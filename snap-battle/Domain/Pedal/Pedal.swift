@@ -57,7 +57,7 @@ nonisolated struct PedalHarmony: Codable, Sendable, Equatable {
     let rootPitchClass: Int
     let scale: PedalScale
     let bpm: Int
-    var rootName: String { ["C", "C♯", "D", "D♯", "E", "F", "F♯", "G", "G♯", "A", "A♯", "B"][max(0, min(11, rootPitchClass))] }
+    var rootName: String { PitchClass(rawValue: rootPitchClass)?.symbol ?? PitchClass.c.symbol }
 }
 
 nonisolated struct PedalNote: Codable, Sendable, Equatable, Identifiable {

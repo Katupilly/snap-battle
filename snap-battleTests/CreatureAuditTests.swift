@@ -380,6 +380,7 @@ struct TestGenerator: CreatureGenerating {
 
 struct FailingRetroProcessor: RetroImageProcessing {
     func process(_ image: UIImage) async throws -> UIImage { throw RetroImageProcessorError.invalidImage }
+    func recolor(_ image: UIImage, palette: [RetroColor]) async throws -> UIImage { image }
 }
 
 final class RecordingRetroProcessor: RetroImageProcessing, @unchecked Sendable {
@@ -399,5 +400,9 @@ final class RecordingRetroProcessor: RetroImageProcessing, @unchecked Sendable {
         lock.unlock()
         try await Task.sleep(for: delay)
         return try await RetroImageProcessor().process(image)
+    }
+
+    func recolor(_ image: UIImage, palette: [RetroColor]) async throws -> UIImage {
+        image
     }
 }

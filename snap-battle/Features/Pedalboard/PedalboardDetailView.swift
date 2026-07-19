@@ -299,7 +299,7 @@ private struct PedalboardEntryRow: View {
     private var subtitle: String {
         switch display.status {
         case .available(let pedal):
-            pedal.pedal.effect.displayName
+            "\(pedal.pedal.effect.displayName) · \(pedal.pedal.dominantPitchClass.symbol)"
         case .missing:
             "Referência preservada na posição \(display.index + 1)"
         }

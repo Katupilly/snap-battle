@@ -73,14 +73,19 @@ final class PhotoPedalPipeline {
                                      processedSize: preparedValue.processedSize, fingerprint: preparedValue.fingerprint)
         try Task.checkCancellation()
         stage(.makingCover)
-        let cover = try await PerformanceDiagnostics.measure("retroProcessing", runID: runID, details: "inputWidth=\(prepared.processedSize.width) inputHeight=\(prepared.processedSize.height)") {
+        let baseCover = try await PerformanceDiagnostics.measure("retroProcessing", runID: runID, details: "inputWidth=\(prepared.processedSize.width) inputHeight=\(prepared.processedSize.height)") {
             try await retroProcessor.process(prepared.image)
         }
         let color = try PerformanceDiagnostics.measure("colorAnalysis", runID: runID, details: "analysisSide=\(PedalHeuristics.analysisSide)") {
             try PhotoColorAnalyzer.analyze(prepared.image)
         }
-        let sequence = try PerformanceDiagnostics.measure("sequenceGeneration", runID: runID, details: "coverWidth=\(cover.cgImage?.width ?? 0) coverHeight=\(cover.cgImage?.height ?? 0)") {
-            try ImageSequenceGenerator.makeSequence(retroImage: cover, colorProfile: color)
+        let sequence = try PerformanceDiagnostics.measure("sequenceGeneration", runID: runID, details: "coverWidth=\(baseCover.cgImage?.width ?? 0) coverHeight=\(baseCover.cgImage?.height ?? 0)") {
+            try ImageSequenceGenerator.makeSequence(retroImage: baseCover, colorProfile: color)
+        }
+        let dominantPitchClass = sequence.dominantPitchClass
+        let tonalPalette = PitchColorIdentity.tonalPalette(for: dominantPitchClass)
+        let cover = try await PerformanceDiagnostics.measure("retroRecolor", runID: runID, details: "pitchClass=\(dominantPitchClass.symbol)") {
+            try await retroProcessor.recolor(baseCover, palette: tonalPalette.retroColors)
         }
         try Task.checkCancellation()
         let draft = try validator.validate(PedalDraftValidator.fallback)
@@ -138,6 +143,12 @@ final class PhotoPedalPipeline {
         } catch {
             return (essential.pedal, essential.cover)
         }
+    }
+}
+
+private extension PitchColorPalette {
+    var retroColors: [RetroColor] {
+        colors.map { RetroColor(red: $0.red, green: $0.green, blue: $0.blue) }
     }
 }
 

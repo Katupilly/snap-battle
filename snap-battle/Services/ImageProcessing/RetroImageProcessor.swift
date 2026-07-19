@@ -3,6 +3,7 @@ import UIKit
 
 protocol RetroImageProcessing {
     nonisolated func process(_ image: UIImage) async throws -> UIImage
+    nonisolated func recolor(_ image: UIImage, palette: [RetroColor]) async throws -> UIImage
 }
 
 struct RetroColor: Sendable, Equatable {
@@ -47,6 +48,12 @@ final class RetroImageProcessor: RetroImageProcessing {
         let configuration = self.configuration
         return try await Task.detached(priority: .userInitiated) {
             try Self.processSynchronously(image, configuration: configuration)
+        }.value
+    }
+
+    nonisolated func recolor(_ image: UIImage, palette: [RetroColor]) async throws -> UIImage {
+        return try await Task.detached(priority: .userInitiated) {
+            try Self.recolorSynchronously(image, palette: palette)
         }.value
     }
 
@@ -130,6 +137,71 @@ final class RetroImageProcessor: RetroImageProcessing {
             throw RetroImageProcessorError.contextCreationFailed
         }
         return UIImage(cgImage: outputImage, scale: 1, orientation: .up)
+    }
+
+    private nonisolated static func recolorSynchronously(
+        _ image: UIImage,
+        palette: [RetroColor]
+    ) throws -> UIImage {
+        guard palette.count == 4, let source = image.cgImage else {
+            throw RetroImageProcessorError.invalidImage
+        }
+
+        let width = source.width
+        let height = source.height
+        let bytesPerRow = width * 4
+        let byteCount = bytesPerRow * height
+
+        var sourcePixels = [UInt8](repeating: 0, count: byteCount)
+        guard let sourceContext = CGContext(
+            data: &sourcePixels,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            throw RetroImageProcessorError.contextCreationFailed
+        }
+        sourceContext.interpolationQuality = .none
+        sourceContext.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        var outputPixels = [UInt8](repeating: 0, count: byteCount)
+        for index in 0 ..< width * height {
+            let pixelIndex = index * 4
+            let alpha = sourcePixels[pixelIndex + 3]
+            guard alpha > 0 else { continue }
+
+            let opacity = Double(alpha) / 255
+            let red = unpremultipliedComponent(sourcePixels[pixelIndex], opacity: opacity)
+            let green = unpremultipliedComponent(sourcePixels[pixelIndex + 1], opacity: opacity)
+            let blue = unpremultipliedComponent(sourcePixels[pixelIndex + 2], opacity: opacity)
+            let luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue
+            let mappedColor = palette.min { abs($0.luminance - luminance) < abs($1.luminance - luminance) }!
+
+            outputPixels[pixelIndex] = UInt8((Double(mappedColor.red) * opacity).rounded())
+            outputPixels[pixelIndex + 1] = UInt8((Double(mappedColor.green) * opacity).rounded())
+            outputPixels[pixelIndex + 2] = UInt8((Double(mappedColor.blue) * opacity).rounded())
+            outputPixels[pixelIndex + 3] = alpha
+        }
+
+        guard let outputContext = CGContext(
+            data: &outputPixels,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: bytesPerRow,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ), let outputImage = outputContext.makeImage() else {
+            throw RetroImageProcessorError.contextCreationFailed
+        }
+        return UIImage(cgImage: outputImage, scale: 1, orientation: .up)
+    }
+
+    private nonisolated static func unpremultipliedComponent(_ component: UInt8, opacity: Double) -> Double {
+        min(255, Double(component) / opacity)
     }
 
     private nonisolated static func distribute(

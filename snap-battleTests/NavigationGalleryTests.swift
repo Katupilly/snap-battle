@@ -77,6 +77,28 @@ struct NavigationGalleryTests {
         #expect(store.loadLatest()?.pedal.id == older.id)
     }
 
+    @Test func loadingLibraryDoesNotRegeneratePersistedCovers() throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalStore(directory: directory)
+        let pedal = self.pedal(name: "Stored")
+        let cover = self.cover(.blue)
+        try store.save(pedal, cover: cover)
+
+        let coverURL = directory
+            .appendingPathComponent("pedals", isDirectory: true)
+            .appendingPathComponent("\(pedal.id.uuidString).png")
+        let beforeBytes = try Data(contentsOf: coverURL)
+        let beforeDate = try FileManager.default.attributesOfItem(atPath: coverURL.path)[.modificationDate] as? Date
+
+        _ = store.loadCollection(reason: "test-no-regeneration")
+        let afterBytes = try Data(contentsOf: coverURL)
+        let afterDate = try FileManager.default.attributesOfItem(atPath: coverURL.path)[.modificationDate] as? Date
+
+        #expect(beforeBytes == afterBytes)
+        #expect(beforeDate == afterDate)
+    }
+
     @Test func navigationKeepsCaptureTransientAndCompletesInGallery() {
         let navigation = AppNavigationModel()
         #expect(navigation.selectedDestination == .gallery)
