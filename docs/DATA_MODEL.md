@@ -38,9 +38,20 @@
 
 ## Serialization And Storage
 
-`PhotoPedal` remains `Codable` with its existing schema. `PedalStore` serializes the complete final note events and sound settings to `<PhotoPedal.id>.json` and stores the processed cover as `<PhotoPedal.id>.png`; collection lookup derives that path from identity rather than `coverFilename`. The legacy `latest-pedal.json`/`latest-pedal.png` pair remains readable and is preserved after idempotent migration. The original image, input fingerprint, color analysis, Vision data, generator version, board data, and image file URLs are not persisted.
+`PhotoPedal` remains `Codable` with its existing schema, plus the optional metadata field `generatorVersion: Int?` introduced in Increment 2 of the photo-to-MIDI v2 evolution (`specs/current/photo-midi-variety-v2-incremento-2.md`). `PedalStore` serializes the complete final note events and sound settings to `<PhotoPedal.id>.json` and stores the processed cover as `<PhotoPedal.id>.png`; collection lookup derives that path from identity rather than `coverFilename`. The legacy `latest-pedal.json`/`latest-pedal.png` pair remains readable and is preserved after idempotent migration. The original image, input fingerprint, color analysis, Vision data, board data, and image file URLs are not persisted.
 
 `PedalSequence` decodes missing `soundProfile` as `PedalSoundProfile.legacy`; this is the only current decode compatibility behavior.
+
+### `PhotoPedal.generatorVersion`
+
+The `generatorVersion` field records the algorithm version that produced the persisted sequence. The contract (`specs/current/photo-midi-variety-v2.md` §13.2, Increment 2 §6.6) is:
+
+- **Decode**: missing or `null` decodes as `nil`; explicit integers (including unknown values such as `3`, `99`, `-1`) are preserved verbatim. Runtime code that consumes `PhotoPedal` treats `nil` as the legacy v1 algorithm.
+- **Encode**: `nil` is omitted from the JSON; non-nil values are written as `"generatorVersion": N`. Recoding a legacy pedal therefore produces a JSON without the field.
+- **Production**: new pedals written by Increment 2+ persist `generatorVersion = 1` (the active algorithm is still v1; `2` lands in Increment 3).
+- **Helpers**: `updatingMetadata(name:description:)` and `updating(effect:soundProfile:)` preserve the existing `generatorVersion` value, including `nil`.
+- **Migration**: there is no in-place migration. Pedals loaded from disk are replayed literally per ADR 0002; the `generatorVersion` is metadata, not a regeneration trigger.
+- **PedalStore**: `validateMetadataUpdateTemporaryJSON` continues to compare only `id`, `createdAt`, `sequence`, `effect`, and `coverFilename`. The `generatorVersion` is read-only on metadata updates, so the existing validator is sufficient.
 
 ## Storage Scope
 
@@ -55,9 +66,10 @@
 - Steps are fixed at 16 and rows at 8.
 - `PedalNote.id` is derived from `step-row`.
 - Current persisted musical output is replayed rather than regenerated.
+- `generatorVersion` is now persisted on new pedals (`1` for Increment 2; the field is `nil` for pre-Increment-2 pedals and treated as `1` at runtime). The persisted sequence is still replayed literally per ADR 0002; the version is metadata, not a regeneration trigger.
 - `Pedalboard.id` is a UUID independent of any pedal it references.
 - `PedalboardEntry.id` is a UUID created per insertion; the same `PedalboardEntry.pedalID` may appear in multiple entries.
 - `Pedalboard.updatedAt` is refreshed by structural and naming mutations only; playback does not touch it.
 - Pedalboards are persisted in `Application Support/pedalboards/<uuid>.json` using the `PedalboardDocument` envelope with `schemaVersion == 1`; unknown schemas produce a recoverable issue and the file is preserved untouched.
-- There is no `MusicRecipe` type, generator version, migration system, gallery, or board UI model yet.
-- `generatorVersion` is planned, not implemented. Its ownership and compatibility contract require a separate approved specification.
+- There is no `MusicRecipe` type, migration system, gallery, or board UI model yet.
+- The v2 photo-to-MIDI types (`VisualAnalysis`, `VisualAnalyzer`, `MusicalProfile`, `MelodicContour`, `TonalFamily`) are introduced as in-memory types in Increment 2 of `specs/current/photo-midi-variety-v2.md`. They are not persisted. The v2 music-generation algorithm that consumes them is not implemented in this increment.

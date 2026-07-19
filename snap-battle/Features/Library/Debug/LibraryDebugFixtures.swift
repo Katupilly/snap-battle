@@ -107,7 +107,8 @@ struct LibraryDebugFixtureStore {
             sequence: PedalSequence(harmony: harmony, notes: notes, soundProfile: profile),
             effect: PedalEffect.allCases[index % PedalEffect.allCases.count],
             createdAt: date,
-            coverFilename: "\(stableID(index: index).uuidString).png"
+            coverFilename: "\(stableID(index: index).uuidString).png",
+            generatorVersion: 1
         )
     }
 

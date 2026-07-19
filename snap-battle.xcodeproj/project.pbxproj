@@ -27,6 +27,11 @@
 		J10000000000000000000003 /* MusicalCorpusReportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = J10000000000000000000004 /* MusicalCorpusReportTests.swift */; };
 		J10000000000000000000005 /* ProceduralCorpusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = J10000000000000000000006 /* ProceduralCorpusTests.swift */; };
 		J10000000000000000000007 /* MusicalDiagnosticsEquivalenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = J10000000000000000000008 /* MusicalDiagnosticsEquivalenceTests.swift */; };
+		K20000000000000000000001 /* VersioningTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = K20000000000000000000002 /* VersioningTests.swift */; };
+		K20000000000000000000003 /* VisualAnalysisDeterminismTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = K20000000000000000000004 /* VisualAnalysisDeterminismTests.swift */; };
+		K20000000000000000000005 /* MusicalProfileInvariantTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = K20000000000000000000006 /* MusicalProfileInvariantTests.swift */; };
+		K20000000000000000000007 /* V1EquivalenceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = K20000000000000000000008 /* V1EquivalenceTests.swift */; };
+		K20000000000000000000009 /* PhotoPedalStampingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = K20000000000000000000010 /* PhotoPedalStampingTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -62,6 +67,11 @@
 		J10000000000000000000004 /* MusicalCorpusReportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicalCorpusReportTests.swift; sourceTree = "<group>"; };
 		J10000000000000000000006 /* ProceduralCorpusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProceduralCorpusTests.swift; sourceTree = "<group>"; };
 		J10000000000000000000008 /* MusicalDiagnosticsEquivalenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicalDiagnosticsEquivalenceTests.swift; sourceTree = "<group>"; };
+		K20000000000000000000002 /* VersioningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VersioningTests.swift; sourceTree = "<group>"; };
+		K20000000000000000000004 /* VisualAnalysisDeterminismTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VisualAnalysisDeterminismTests.swift; sourceTree = "<group>"; };
+		K20000000000000000000006 /* MusicalProfileInvariantTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicalProfileInvariantTests.swift; sourceTree = "<group>"; };
+		K20000000000000000000008 /* V1EquivalenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V1EquivalenceTests.swift; sourceTree = "<group>"; };
+		K20000000000000000000010 /* PhotoPedalStampingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPedalStampingTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -131,6 +141,11 @@
 				J10000000000000000000004 /* MusicalCorpusReportTests.swift */,
 				J10000000000000000000006 /* ProceduralCorpusTests.swift */,
 				J10000000000000000000008 /* MusicalDiagnosticsEquivalenceTests.swift */,
+				K20000000000000000000002 /* VersioningTests.swift */,
+				K20000000000000000000004 /* VisualAnalysisDeterminismTests.swift */,
+				K20000000000000000000006 /* MusicalProfileInvariantTests.swift */,
+				K20000000000000000000008 /* V1EquivalenceTests.swift */,
+				K20000000000000000000010 /* PhotoPedalStampingTests.swift */,
 			);
 			path = "snap-battleTests";
 			sourceTree = "<group>";
@@ -254,6 +269,11 @@
 				J10000000000000000000003 /* MusicalCorpusReportTests.swift in Sources */,
 				J10000000000000000000005 /* ProceduralCorpusTests.swift in Sources */,
 				J10000000000000000000007 /* MusicalDiagnosticsEquivalenceTests.swift in Sources */,
+				K20000000000000000000001 /* VersioningTests.swift in Sources */,
+				K20000000000000000000003 /* VisualAnalysisDeterminismTests.swift in Sources */,
+				K20000000000000000000005 /* MusicalProfileInvariantTests.swift in Sources */,
+				K20000000000000000000007 /* V1EquivalenceTests.swift in Sources */,
+				K20000000000000000000009 /* PhotoPedalStampingTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

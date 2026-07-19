@@ -76,9 +76,22 @@ final class PhotoPedalPipeline {
         let baseCover = try await PerformanceDiagnostics.measure("retroProcessing", runID: runID, details: "inputWidth=\(prepared.processedSize.width) inputHeight=\(prepared.processedSize.height)") {
             try await retroProcessor.process(prepared.image)
         }
+        #if DEBUG
+        let visualAnalysis = try PerformanceDiagnostics.measure("visualAnalysis", runID: runID, details: "side=\(PedalHeuristics.analysisSide)") {
+            try VisualAnalyzer.analyze(preparedImage: prepared)
+        }
+        let color = visualAnalysis.colorProfile
+        let fingerprint16 = String(visualAnalysis.fingerprint.prefix(16))
+        PerformanceDiagnostics.event(
+            "musicAnalysis",
+            runID: runID,
+            details: "side=\(PedalHeuristics.analysisSide) fingerprint16=\(fingerprint16) meanLuminance=\(visualAnalysis.meanLuminance) luminanceContrast=\(visualAnalysis.luminanceContrast) edgeDensity=\(visualAnalysis.edgeDensity) visualEntropy=\(visualAnalysis.visualEntropy)"
+        )
+        #else
         let color = try PerformanceDiagnostics.measure("colorAnalysis", runID: runID, details: "analysisSide=\(PedalHeuristics.analysisSide)") {
             try PhotoColorAnalyzer.analyze(prepared.image)
         }
+        #endif
         let sequence = try PerformanceDiagnostics.measure("sequenceGeneration", runID: runID, details: "coverWidth=\(baseCover.cgImage?.width ?? 0) coverHeight=\(baseCover.cgImage?.height ?? 0)") {
             try ImageSequenceGenerator.makeSequence(retroImage: baseCover, colorProfile: color)
         }
@@ -89,7 +102,17 @@ final class PhotoPedalPipeline {
         }
         try Task.checkCancellation()
         let draft = try validator.validate(PedalDraftValidator.fallback)
-        let pedal = PhotoPedal(id: UUID(), name: draft.name, description: draft.description, sequence: sequence, effect: .reverb, createdAt: .now, coverFilename: "latest-pedal.png")
+        let pedal = PhotoPedal(
+            id: UUID(),
+            name: draft.name,
+            description: draft.description,
+            sequence: sequence,
+            effect: .reverb,
+            createdAt: .now,
+            coverFilename: "latest-pedal.png",
+            generatorVersion: 1
+        )
+        PerformanceDiagnostics.event("generatorVersion", runID: runID, details: "value=\(pedal.generatorVersion ?? 1)")
         PerformanceDiagnostics.signpostEvent("essentialResultReady", runID: runID, details: "pedalID=\(pedal.id.uuidString)")
         PerformanceDiagnostics.event("timeToMusicalResult", runID: runID, details: "pedalID=\(pedal.id.uuidString)")
         return PedalEssentialResult(pedal: pedal, cover: cover, preparedImage: prepared)

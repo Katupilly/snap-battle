@@ -28,7 +28,7 @@ Documents and ADRs marked `Proposed`, `Draft`, or `Planned` are not implementati
 ## Non-Negotiable Invariants
 
 - Equivalent normalized image pixels must produce the same musical sequence under the same algorithm. This is implemented but lacks end-to-end regression coverage.
-- Persisted generated notes and sound settings must be played from storage rather than silently recalculated. Current storage covers only the latest pedal; no generator version exists yet.
+- Persisted generated notes and sound settings must be played from storage rather than silently recalculated. `PhotoPedal.generatorVersion` is persisted from Increment 2 of the photo-to-MIDI v2 evolution onward; an absent or `nil` value is treated as the legacy v1 algorithm at runtime. The version is metadata, never a regeneration trigger.
 - Foundation Models metadata must not control the deterministic sequence, harmony, or sound profile.
 - Keep deterministic domain logic independently testable.
 - Keep audio graph creation and rendering outside SwiftUI views.

@@ -36,7 +36,7 @@ Device-only integrations require manual validation. See [Testing](docs/TESTING.m
 
 Implemented: camera or photo-library input, 2-bit cover processing, deterministic music generation, local synth playback, reverb/distortion selection, local collection persistence, Gallery browsing/detail/delete/playback, Foundation Models metadata enrichment with static fallback, and two App Intents.
 
-Not implemented: generator versioning, boards, sharing, collaboration, offline rendering, video export, and the roadmap's effect macro labels.
+Not implemented: boards, sharing, collaboration, offline rendering, video export, v2 music generation, and the roadmap's effect macro labels.
 
 ## Documentation
 

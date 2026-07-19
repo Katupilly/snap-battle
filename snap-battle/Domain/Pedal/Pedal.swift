@@ -90,15 +90,72 @@ nonisolated struct PedalSequence: Codable, Sendable, Equatable {
 }
 
 nonisolated struct PhotoPedal: Codable, Sendable, Equatable, Identifiable {
-    let id: UUID; let name: String; let description: String; let sequence: PedalSequence
-    let effect: PedalEffect; let createdAt: Date; let coverFilename: String
+    let id: UUID
+    let name: String
+    let description: String
+    let sequence: PedalSequence
+    let effect: PedalEffect
+    let createdAt: Date
+    let coverFilename: String
+    /// Algorithm version that produced this pedal.
+    ///
+    /// Contract (`specs/current/photo-midi-variety-v2.md` §13.2 and
+    /// `specs/current/photo-midi-variety-v2-incremento-2.md` §6.6):
+    ///
+    /// - `nil` is treated as the legacy v1 algorithm at runtime.
+    /// - New pedals created by Increment 2+ persist `1` (the active
+    ///   algorithm is still v1; `2` lands in Increment 3).
+    /// - Unknown values (e.g. `3`, `99`, `-1`) are preserved verbatim
+    ///   for forward compatibility; the persisted sequence is still
+    ///   replayed literally per ADR 0002.
+    /// - On encode, `nil` is omitted from the JSON; non-nil values are
+    ///   written as `"generatorVersion": N`.
+    let generatorVersion: Int?
+
+    init(
+        id: UUID,
+        name: String,
+        description: String,
+        sequence: PedalSequence,
+        effect: PedalEffect,
+        createdAt: Date,
+        coverFilename: String,
+        generatorVersion: Int? = 1
+    ) {
+        self.id = id
+        self.name = name
+        self.description = description
+        self.sequence = sequence
+        self.effect = effect
+        self.createdAt = createdAt
+        self.coverFilename = coverFilename
+        self.generatorVersion = generatorVersion
+    }
 
     func updating(effect: PedalEffect? = nil, soundProfile: PedalSoundProfile? = nil) -> Self {
-        Self(id: id, name: name, description: description, sequence: PedalSequence(harmony: sequence.harmony, notes: sequence.notes, soundProfile: soundProfile ?? sequence.soundProfile), effect: effect ?? self.effect, createdAt: createdAt, coverFilename: coverFilename)
+        Self(
+            id: id,
+            name: name,
+            description: description,
+            sequence: PedalSequence(harmony: sequence.harmony, notes: sequence.notes, soundProfile: soundProfile ?? sequence.soundProfile),
+            effect: effect ?? self.effect,
+            createdAt: createdAt,
+            coverFilename: coverFilename,
+            generatorVersion: generatorVersion
+        )
     }
 
     func updatingMetadata(name: String, description: String) -> Self {
-        Self(id: id, name: name, description: description, sequence: sequence, effect: effect, createdAt: createdAt, coverFilename: coverFilename)
+        Self(
+            id: id,
+            name: name,
+            description: description,
+            sequence: sequence,
+            effect: effect,
+            createdAt: createdAt,
+            coverFilename: coverFilename,
+            generatorVersion: generatorVersion
+        )
     }
 }
 

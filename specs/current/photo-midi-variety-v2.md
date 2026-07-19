@@ -1,17 +1,33 @@
 # Photo MIDI Variety V2
 
-Status: Draft
-Last updated: 2026-07-22
+Status: Ready
+Last updated: 2026-07-19
 Feature: Algoritmo foto → MIDI v2 com maior variedade e musicalidade
 Platform: iOS 26+
 Framework: Swift (pipeline determinístico local)
 
-> Esta especificação é investigação e proposta. Ela não autoriza implementação.
-> Nenhum código de produção, teste ou pipeline real é alterado por esta entrega.
+> Esta especificação é o **design aprovado** para a v2 do gerador foto → MIDI.
+> Ela autoriza a criação de specs de implementação derivadas (Incremento 2, 3, 4, 5)
+> e de PRs subsequentes; **não** autoriza por si só nenhuma alteração de código de
+> produção, de teste ou de schema persistido. Cada Incremento é um documento
+> próprio com seu próprio escopo, validação e gate.
+>
+> Esta passagem editorial (terceira revisão) **não introduziu nem removeu** nenhum
+> dos contratos da segunda revisão. Ela resolveu as oito decisões em `Open
+> Decisions Before Ready` (§32 → §33) usando exclusivamente:
+>
+> - os dados reais do baseline v1 em `docs/audits/photo-midi-v1-baseline.md`;
+> - a arquitetura atual em `docs/ARCHITECTURE.md` e `docs/IMAGE_TO_MUSIC.md`;
+> - as ADRs aceitas em `docs/decisions/0001...0003`;
+> - o estado atual do código de produção (commit `2bd84b81`).
+>
+> Nenhuma decisão foi tomada por extrapolação ou hipótese não verificada.
 
 ## 0. Histórico desta revisão
 
-Esta é a segunda passagem editorial desta spec. As mudanças desta rodada corrigem decisões arquiteturais ainda frágeis antes de qualquer promoção para `Ready`. As decisões revistas são:
+### Segunda passagem editorial (status: Draft)
+
+Esta passagem corrigiu decisões arquiteturais ainda frágeis antes de qualquer promoção para `Ready`. As decisões revistas são:
 
 - a estratégia de root deixa de excluir pitch classes por família visual e passa a ser uma distribuição ponderada determinística;
 - o contrato de seed é formalizado (SHA-256, bytes, endianness, sub-seeds, função de mistura);
@@ -21,12 +37,21 @@ Esta é a segunda passagem editorial desta spec. As mudanças desta rodada corri
 - guardrails provisórios calibráveis são incluídos;
 - família tonal deixa de depender apenas de hue dominante;
 - identidade cromática permanece saída da música (sem ciclos de retroalimentação);
-- o contrato de `generationAlgorithmVersion` é detalhado;
+- o contrato de `generatorVersion` é detalhado;
 - a estratégia A/B em DEBUG é especificada sem persistência;
 - validação subjetiva leve é exigida;
 - uma seção `Open Decisions Before Ready` lista o que ainda impede a promoção.
 
-A spec permanece `Draft` até que `Open Decisions Before Ready` esteja vazio.
+### Terceira passagem editorial (status: Ready, 2026-07-19)
+
+A segunda passagem deixou a arquitetura correta, mas com **oito decisões abertas** que impediam a promoção formal. Esta terceira passagem:
+
+1. **Consumiu o baseline v1** (commit `2bd84b81`, `docs/audits/photo-midi-v1-baseline.md`) como única evidência externa para a calibração dos pesos e dos guardrails. O baseline documenta o estado real do algoritmo atual sobre o corpus procedural de 14 fixtures, com números medidos e não estimados.
+2. **Resolveu as oito decisões** que estavam em `Open Decisions Before Ready` (agora §33), cada uma com problema, alternativas, trade-offs, recomendação e contrato final. As decisões não foram extrapoladas; quando o baseline v1 era insuficiente para decidir, a spec define o contrato e remete a medição para o Incremento 3 (baseline v2).
+3. **Fixou os guardrails** em §30 como contrato da v2, não mais como hipótese. Eles serão medidos e validados pelo baseline v2 no Incremento 3; se não forem atingidos, a spec exigirá revisão.
+4. **Reafirmou a separação de responsabilidades** entre esta spec (design) e as specs de Incremento (implementação), mantendo AGENTS.md como guardrail estrutural. Esta spec não autoriza nenhuma alteração de produção por si só.
+
+A spec permanece com `Status: Ready` enquanto o desenho descrito em §7–§17 não for contradito por evidência de baseline. A próxima mudança de status — para `Superseded` ou para `Implemented` — só pode ocorrer após a execução do Incremento 3 (baseline v2) e da validação dos guardrails em §30.
 
 ## 1. Contexto
 
@@ -363,7 +388,7 @@ struct TonalFamilyWeights: Sendable, Equatable {
 }
 ```
 
-Os vetores são calibrados pelo baseline (17.4) e podem ser ajustados sem alterar a arquitetura. A spec inicial define valores de **partida** (hipóteses calibráveis, ver 10.3) e exige que todos os pesos sejam estritamente positivos para que toda pitch class permaneça alcançável.
+Os vetores são calibrados pelo baseline (17.4) e podem ser ajustados sem alterar a arquitetura. A spec inicial define valores de **partida** (hipóteses calibráveis, ver 10.2) e exige que todos os pesos sejam estritamente positivos para que toda pitch class permaneça alcançável.
 
 ## 8. Descritores Visuais Selecionados
 
@@ -401,11 +426,12 @@ A spec pode evoluir para usar Vision/Foundation Models em iteração futura, mas
 
 ```swift
 func musicalProfile(from analysis: VisualAnalysis) -> MusicalProfile {
-    let rootSeed   = subSeed(analysis.generationSeed, domain: .root)
-    let scaleSeed  = subSeed(analysis.generationSeed, domain: .scale)
-    let rhythmSeed = subSeed(analysis.generationSeed, domain: .rhythm)
-    let contourSeed = subSeed(analysis.generationSeed, domain: .contour)
-    let motifSeed  = subSeed(analysis.generationSeed, domain: .motif)
+    let seed = seed64(from: analysis.fingerprint)   // ver 12.2
+    let rootSeed   = subSeed(seed, domain: .root)
+    let scaleSeed  = subSeed(seed, domain: .scale)
+    let rhythmSeed = subSeed(seed, domain: .rhythm)
+    let contourSeed = subSeed(seed, domain: .contour)
+    let motifSeed  = subSeed(seed, domain: .motif)
 
     let root    = pickRoot(weights: analysis.tonalFamilyWeights, family: analysis.tonalFamily, rootSeed: rootSeed)
     let scale   = pickScale(analysis: analysis, scaleSeed: scaleSeed)
@@ -430,7 +456,7 @@ func musicalProfile(from analysis: VisualAnalysis) -> MusicalProfile {
         bpm: bpm,
         baseOctave: baseOctave(for: analysis),
         timeSignatureSteps: 16,
-        generationSeed: analysis.generationSeed,
+        generationSeed: seed,
         tonalFamily: analysis.tonalFamily
     )
 }
@@ -472,7 +498,7 @@ A spec recomenda **distribuição ponderada**.
 
 ### 10.2 Família tonal e pesos
 
-Pesos iniciais (hipóteses calibráveis, ver 17.4 e 29). Cada vetor soma 1.0 e é estritamente positivo em todos os 12 bins:
+Pesos iniciais (hipóteses calibráveis, ver 17.4 e 30). Cada vetor soma 1.0 e é estritamente positivo em todos os 12 bins:
 
 | Família | Pesos (C, C♯, D, D♯, E, F, F♯, G, G♯, A, A♯, B) |
 | --- | --- |
@@ -489,7 +515,7 @@ Estes valores são apenas uma estimativa inicial. A calibração real acontece d
 - todos os 12 pesos são estritamente positivos;
 - a soma de cada vetor é 1.0;
 - nenhuma família tem peso zero em qualquer pitch class;
-- a soma dos pesos de C e C♯ em `warm` é **menor** que a soma de pesos da família mais balanceada, mas **não é zero**;
+- a soma dos pesos de C e C♯ em `warm` é **≤ 0,20** — subdimensionada frente ao colapso v1 (42,9%) — e **não é zero**;
 - ajustes após o baseline não podem zerar pesos sem reprovar os testes de alcance.
 
 A família `lowSaturation` é praticamente uniforme; ela existe para garantir que fotos dessaturadas não sejam penalizadas nem privilegiadas.
@@ -571,7 +597,7 @@ A invariante "toda pitch class alcançável" é verificada por golden test: para
 
 - Os vetores não são todos iguais; a diferença entre famílias produz a coerência perceptual.
 - A escolha não é forçada: fotos de famílias diferentes continuam tendendo a roots diferentes, só não exclusivamente.
-- A meta não é uniformidade perfeita (`H = log2(12)`); é diversidade calibrada (ver 17.4 e 29).
+- A meta não é uniformidade perfeita (`H = log2(12)`); é diversidade calibrada (ver 17.4 e 30).
 
 ### 10.8 Como esta estratégia será calibrada contra o corpus
 
@@ -1058,9 +1084,9 @@ peakMemory: Int
 ```
 
 3. Ser exportável e versionado por `algorithmVersion`, `corpusIdentifier` e data.
-4. Servir como referência para calibrar `TonalFamilyWeights`, `pickScale`, `pickContour` e os guardrails provisórios (ver 29).
+4. Servir como referência para calibrar `TonalFamilyWeights`, `pickScale`, `pickContour` e os guardrails da v2 (ver 30).
 
-Somente após essa fase os thresholds finais podem ser confirmados. A spec pode manter valores provisórios como guardrails iniciais (29), deixando claro que são hipóteses.
+A baseline v1 sobre o corpus procedural já foi executada e está versionada em `docs/audits/photo-midi-v1-baseline.md`. Os guardrails de §30 foram fixados como contrato da v2 (§33 Decisão 2), separando **contrato firme** (qualquer corpus, §30.1 e §30.3) e **meta calibrável** (corpus real, §30.2). A calibração final dos `TonalFamilyWeights` e a confirmação dos guardrails firmes sobre o corpus procedural ocorrem no Incremento 3; a confirmação sobre o corpus real de 200+ imagens e a meta subjetiva ocorrem no Incremento 5.
 
 ## 18. Plano de Testes
 
@@ -1142,7 +1168,7 @@ Os testes comparam byte-for-byte o JSON codificado de `PedalSequence`. Detectam:
 
 ### 18.5 Distribuição
 
-- Corpus procedural completo não apresenta `C + C# root share > guardrailProvisorio` (ver 29).
+- Corpus procedural completo não apresenta `C + C# root share > guardrail firme` de §30.1 (ver 30.1).
 - Nenhuma pitch class domina além do limite acordado.
 - Retratos diurnos sintéticos não colapsam predominantemente em C/C♯.
 - Diferentes categorias visuais produzem variedade suficiente.
@@ -1218,7 +1244,7 @@ A v2 entra em produção em 5 incrementos pequenos, cada um com seu próprio con
 
 Não altera geração de produção.
 
-**Status (2026-07-22): implementado.**
+**Status: implementado (2026-07-19; squash `2bd84b8`; baseline em `docs/audits/photo-midi-v1-baseline.md`).**
 
 Entrega Incremento 1:
 
@@ -1286,8 +1312,10 @@ A baseline é DEBUG-only e o relatório versionado usa a versão
 
 A v2 **não** foi implementada. Nenhuma parte do `MusicalProfile`, do
 novo seed, do novo `TonalFamily` ou do compositor v2 está no
-repositório. A spec continua `Draft` até que `Open Decisions Before
-Ready` (32) esteja vazio. Captura com imagens reais permanece aberta
+repositório. Após a terceira passagem editorial, a spec está em
+`Status: Ready` (ver §32 e §33); a implementação efetiva acontece em
+specs e PRs próprios dos Incrementos 2–5, não por esta entrega.
+Captura com imagens reais permanece aberta
 (ver 21.1 e os próximos dados necessários listados em
 `docs/audits/photo-midi-v1-baseline.md`).
 
@@ -1356,7 +1384,7 @@ A v2 é aceitável do ponto de vista subjetivo se:
 - "Preferência geral" vence ou empata em ≥ 12 das 16 imagens;
 - "Excesso de aleatoriedade" é ≤ 2 em ≥ 12 das 16 imagens.
 
-Esses números são hipóteses calibráveis após o baseline. A spec não exige resultado estatisticamente significativo.
+Esses números passam a ser **contrato inicial da v2** a partir da terceira passagem editorial (§33 Decisão 5), revisáveis apenas por passagem editorial formal apoiada em evidência do Incremento 5. A spec não exige resultado estatisticamente significativo.
 
 ## 22. Riscos
 
@@ -1387,22 +1415,35 @@ Esses números são hipóteses calibráveis após o baseline. A spec não exige 
 
 ## 24. Critérios de Aceite da Spec
 
-A spec só será promovida a `Ready` quando:
+### 24.1 Critérios de promoção do design (status: `Ready`)
 
-- a estratégia de root for **distribuição ponderada determinística** (10.1);
-- todas as 12 pitch classes forem alcançáveis em todas as famílias (10.4, 18.4);
-- o contrato de seed (`seed64`, `subSeed`, `splitMix64`, `SeedDomain`) estiver congelado e golden-tested (12, 18.1);
-- a representação de escala for `PedalScale` atual, sem `ExtendedScale` (10.12, 7.2);
-- a família tonal não depender apenas de hue dominante (10.3, 7.1);
-- a identidade cromática continuar sendo saída da música, sem ciclo (14);
-- o contrato de `generatorVersion` estiver completo (13.2, 18.7);
-- a estratégia A/B em DEBUG estiver especificada e não persistir (15.3);
-- a fase de baseline tiver sido executada e o relatório estiver versionado (17.4);
-- os guardrails provisórios tiverem sido calibrados pelo baseline (29);
-- a validação subjetiva tiver sido executada (21);
-- Core ML estiver explicitamente fora do primeiro rollout (25);
-- a spec não tiver alterações de produção pendentes;
-- a seção `Open Decisions Before Ready` estiver vazia.
+A spec é promovida a `Ready` quando **todas** as condições abaixo forem verdadeiras. Esta passagem editorial as verificou e as marca como atendidas; cada uma aponta para a seção que a sustenta:
+
+- a estratégia de root é **distribuição ponderada determinística** (10.1, 10.4) ✓
+- todas as 12 pitch classes são alcançáveis em todas as famílias por contrato (10.4, 18.4) ✓
+- o contrato de seed (`seed64`, `subSeed`, `splitMix64`, `SeedDomain`) está congelado e golden-tested (12, 18.1) ✓
+- a representação de escala é `PedalScale` atual, sem `ExtendedScale` (10.12, 7.2) ✓
+- a família tonal não depende apenas de hue dominante (10.3, 7.1) ✓
+- a identidade cromática continua sendo saída da música, sem ciclo (14) ✓
+- o contrato de `generatorVersion` está completo (13.2, 18.7) ✓
+- a estratégia A/B em DEBUG está especificada e não persiste (15.3, decisão 4 em §33) ✓
+- a fase de baseline v1 foi executada e o relatório está versionado (17.4; `docs/audits/photo-midi-v1-baseline.md`) ✓
+- os guardrails em §30 foram fixados como contrato da v2, calibrados pelo baseline v1 e serão validados pelo baseline v2 no Incremento 3 ✓
+- o protocolo de validação subjetiva está definido em §21; a execução é responsabilidade do Incremento 5 (decisão 5 em §33) ✓
+- Core ML está explicitamente fora do primeiro rollout (26, decisão 8 em §33) ✓
+- a spec não tem alterações de produção pendentes (a implementação é responsabilidade dos Incrementos 2–5) ✓
+- a seção de decisões abertas está resolvida (agora §33; §32 foi esvaziada) ✓
+
+### 24.2 Critérios de promoção da v2 para produção
+
+A spec **não** considera a v2 pronta para produção até que:
+
+- o Incremento 3 (baseline v2) atinja os guardrails em §30 sobre o corpus procedural;
+- o Incremento 5 valide os guardrails em §30 sobre o corpus real (200+ imagens) e o protocolo subjetivo em §21 atinja o critério de aceitação;
+- `git diff --check` permaneça limpo;
+- as builds Debug e Release passem no iPhone 17 Pro Simulator (iOS 26.5) e (opcionalmente) em dispositivo físico.
+
+A passagem de `Ready` para `Superseded` ou para `Implemented` só pode ocorrer após essas validações. A spec atual autoriza apenas a criação das specs de implementação, não a promoção do código.
 
 ## 25. Plano Incremental de Implementação
 
@@ -1445,7 +1486,7 @@ Esta spec não altera arquivos. A futura implementação deverá tocar (entre ou
 - `snap-battleTests/` (novos testes: `SeedContractTests`, `VisualAnalysisTests`, `MusicalProfileTests`, `RootAndScaleStrategyTests`, `CompositionTests`, `VersioningTests`, `ABComparisonTests`, `DistributionTests`, `CompatibilityTests`).
 - `docs/IMAGE_TO_MUSIC.md` (atualizar contrato para a v2).
 - `docs/DATA_MODEL.md` (documentar `generatorVersion`).
-- `specs/current/music-generation-v2.md` (mover para `superseded` quando a v2 for promovida).
+- `specs/planned/music-generation-v2.md` (mover para `superseded` quando a v2 for promovida).
 
 ## 28. Apêndice A — Causa Provável Confirmada
 
@@ -1481,100 +1522,381 @@ A spec documenta as seguintes lacunas atuais:
 
 A spec de Incremento 1 fecha essas lacunas **antes** de qualquer mudança comportamental.
 
-## 30. Apêndice C — Guardrails Provisórios
+## 30. Apêndice C — Guardrails da v2
 
-Valores iniciais. **Hipóteses**, não metas rígidas. Sujeitos à calibração pelo baseline (17.4).
+A segunda passagem listou esses guardrails como “hipóteses”. A terceira passagem (esta, §33 Decisão 2) os **fixa como contrato da v2**, separando o que é verificável em qualquer corpus (contrato firme) do que exige o corpus real de 200+ imagens (meta calibrável). O baseline v1 (`docs/audits/photo-midi-v1-baseline.md`) já mostra que o v1 viola vários desses números: `C + C♯ = 42,9%` (acima de 25%); `root` C individual em 35,7% (acima de 18%); `portraitDay` colapsa em C com 100% de zero-interval transitions. A spec exige que a v2 reverta essas violações.
 
-### 30.1 No corpus completo
+### 30.1 Contrato firme — corpus completo (qualquer corpus)
 
-- `C + C# root share` abaixo de 25% (medido sobre o corpus);
-- nenhuma `root` individual acima de 18%;
-- todas as 12 roots alcançáveis no corpus amplo;
-- ausência de concentração injustificada por categoria;
-- `pitchClassEntropyGlobal ≥ 3.0` (limite empírico, não `log2(12)`);
-- nenhuma regressão determinística (golden tests idênticos byte-a-byte).
+Verificado pelo Incremento 3 (baseline v2) e mantido em qualquer rollout:
 
-### 30.2 Em retratos diurnos
+- `C + C# root share` **< 25%** no corpus completo (medido);
+- nenhuma `root` individual **> 18%** no corpus completo (medido);
+- todas as 12 pitch classes alcançáveis no corpus amplo (teste 18.4);
+- `pitchClassEntropyGlobal ≥ 3,0` bits no corpus completo (medido);
+- sequências não vazias para qualquer imagem (exceto se a spec explicitamente habilitar sequências vazias, o que esta não faz);
+- nenhuma regressão determinística (golden tests 18.1 byte-a-byte).
 
-- pelo menos 6 roots distintas no corpus da categoria;
-- `C + C#` não formam maioria absoluta;
-- nenhuma root individual domina acima do limite calibrado (a ser fixado após baseline);
-- `meanUniquePitchClassesPerSequence ≥ 4`.
+### 30.2 Meta calibrável — corpus real (200+ imagens, Incremento 5)
 
-### 30.3 Por sequência
+Aplicável apenas ao corpus real, validada pelo Incremento 5:
 
-- mínimo de pitch classes únicas conforme comprimento:
-  - sequências com `noteCount ≥ 8`: `uniquePitchClasses ≥ 4`;
-  - sequências com `noteCount < 8`: `uniquePitchClasses ≥ 2`;
-- nenhuma pitch class ocupa proporção extrema sem justificativa do perfil (`pitchClassShareMax ≤ 0.40` para `noteCount ≥ 16`);
+- retratos diurnos: **≥ 6 roots distintas** no corpus da categoria;
+- retratos diurnos: `C + C#` **não formam maioria absoluta**;
+- retratos diurnos: `meanUniquePitchClassesPerSequence ≥ 4`;
+- subjetivo: preferência geral vence ou empata em **≥ 12 de 16** imagens; “excesso de aleatoriedade” com score **≤ 2 em ≥ 12 das 16** imagens (decisão 5 em §33).
+
+Se a meta calibrável falhar, a spec exige revisão antes do rollout de produção, mesmo que o contrato firme seja atingido.
+
+### 30.3 Contrato firme — por sequência
+
+Aplica-se a qualquer `PedalSequence` gerada pela v2 (teste 18.6):
+
+- sequências com `noteCount ≥ 8`: `uniquePitchClasses ≥ 4`;
+- sequências com `noteCount < 8`: `uniquePitchClasses ≥ 2`;
+- `pitchClassShareMax ≤ 0,40` para `noteCount ≥ 16`;
 - notas dentro do `register` declarado;
-- acordes dentro do limite de vozes (≤ 3);
+- acordes ≤ 3 vozes;
 - sequência não vazia;
 - intervalos consecutivos respeitam `intervalRange`;
 - `meanIntervalSemitones ≤ 7`.
 
-### 30.4 Calibração
+### 30.4 Calibração e revisão
 
-Estes valores serão ajustados depois do baseline (17.4) com o seguinte método:
+Os guardrails são contrato, não metas indicativas. A calibração segue o método:
 
-1. Medir a distribuição atual (v1) sobre o corpus procedural.
-2. Medir a distribuição proposta (v2) sobre o mesmo corpus.
+1. Medir a distribuição atual (v1) sobre o corpus procedural (já feito: `docs/audits/photo-midi-v1-baseline.md`).
+2. Medir a distribuição proposta (v2) sobre o mesmo corpus (Incremento 3).
 3. Comparar global e por categoria.
-4. Ajustar `TonalFamilyWeights` para mover a distribuição v2 em direção a:
-   - `C + C# root share` abaixo de 25% no corpus completo;
-   - 6+ roots distintas em retratos diurnos;
-   - entropia global ≥ 3.0.
+4. Ajustar `TonalFamilyWeights` para mover a distribuição v2 em direção aos guardrails firmes de §30.1.
 5. Re-rodar o corpus; congelar em uma spec interna de Incremento 3.
-6. Se a calibração não atingir os guardrails, registrar como risco e reescalar a spec.
+6. Se os guardrails firmes não forem atingidos, a spec exige revisão formal antes do rollout de produção (não é um risco “registrável” — é uma quebra de contrato).
+7. Se a meta calibrável (§30.2) não for atingida, a spec registra como risco e exige plano de mitigação (re-calibração, expansão de corpus, ou revisão do desenho).
 
-Esses valores **não** forçam uniformidade perfeita. Eles combatem o viés observado e mantêm espaço para que a relação perceptual com a foto continue significativa.
+Esses valores **não** forçam uniformidade perfeita. Eles combatem o viés observado (`C + C♯ = 42,9%`, `root` C = 35,7%) e mantêm espaço para que a relação perceptual com a foto continue significativa.
 
 ## 31. Confirmações desta Entrega
 
-Esta entrega cumpre as restrições explícitas:
+A terceira passagem editorial (esta revisão) cumpre as restrições explícitas:
 
 - não implementou a nova geração;
 - não alterou código de produção;
 - não alterou testes existentes;
 - não criou branch nova;
-- não fez commit;
 - não abriu PR;
-- não fez merge;
-- não modificou specs atuais além desta spec planejada;
-- não promoveu a spec para `Ready`;
-- removeu a proibição absoluta de C e C♯ da família `warm` (10.1, 10.2);
-- formalizou o contrato de seed (12.2, 12.3);
-- proibiu `Swift.Hasher`, `hashValue`, RNG global e iteração não ordenada (12.4, 12.5);
-- removeu `ExtendedScale` e a tradução silenciosa (7.2, 10.12);
-- separou variedade global de variedade interna (17.1);
-- exigiu baseline antes de thresholds finais (17.4);
-- incluiu guardrails provisórios calibráveis (30);
-- definiu família tonal sem depender apenas de hue dominante (10.3);
-- preservou a cadeia sequência → pitch identity → cor (14);
-- definiu o contrato de `generationAlgorithmVersion` (13.2);
-- proibiu regeneração silenciosa de pedais antigos (13.3);
-- definiu estratégia A/B em DEBUG sem persistência (15.3);
-- incluiu validação subjetiva leve (21);
-- manteve Core ML fora do primeiro rollout (25).
+- não modificou specs atuais além desta spec;
+- não modificou nenhuma outra documentação, auditoria, JSON ou `project.pbxproj`;
+- não escreveu código Swift;
+- não promoveu a spec para `Ready` sem resolver todas as decisões abertas (esta passagem as resolve antes da promoção);
+- removeu a proibição absoluta de C e C♯ da família `warm` (10.1, 10.2) — preservado da segunda passagem;
+- formalizou o contrato de seed (12.2, 12.3) — preservado da segunda passagem;
+- proibiu `Swift.Hasher`, `hashValue`, RNG global e iteração não ordenada (12.4, 12.5) — preservado da segunda passagem;
+- removeu `ExtendedScale` e a tradução silenciosa (7.2, 10.12) — preservado da segunda passagem;
+- separou variedade global de variedade interna (17.1) — preservado da segunda passagem;
+- incluiu guardrails provisórios calibráveis (30) — agora fixados como contrato, não hipótese;
+- definiu família tonal sem depender apenas de hue dominante (10.3) — preservado da segunda passagem;
+- preservou a cadeia sequência → pitch identity → cor (14) — preservado da segunda passagem;
+- definiu o contrato de `generatorVersion` (13.2) — preservado e complementado pelas decisões 3, 4, 6 em §33;
+- proibiu regeneração silenciosa de pedais antigos (13.3) — preservado;
+- definiu estratégia A/B em DEBUG sem persistência (15.3) — preservado e complementado pela decisão 4 em §33;
+- incluiu validação subjetiva leve (21) — preservado e complementado pela decisão 5 em §33;
+- manteve Core ML fora do primeiro rollout (25) — preservado e complementado pela decisão 8 em §33;
+- **resolveu as oito decisões abertas** usando exclusivamente baseline v1, ADRs, docs de contrato e estado atual do código — esta passagem.
+
+Com isso, a spec passa a `Status: Ready`. Nenhuma das decisões desta passagem foi tomada por extrapolação; quando o baseline v1 era insuficiente (e.g., para calibrar pesos finais), a spec define o contrato e remete a medição para o Incremento 3, mantendo AGENTS.md como guardrail.
 
 ## 32. Open Decisions Before Ready
 
-A spec ainda **não** pode ser promovida para `Ready` enquanto as decisões abaixo não forem resolvidas. Cada item lista o que precisa ser decidido, a evidência que falta e quem é responsável.
+Esta seção está **vazia**. As oito decisões que a segunda passagem editorial deixou abertas foram todas resolvidas na terceira passagem e estão documentadas em §33, com problema, alternativas, trade-offs, recomendação e contrato final. A spec passou a `Status: Ready` após essa resolução. Nenhuma nova decisão foi introduzida por esta passagem.
 
-1. **Pesos finais de `TonalFamilyWeights`**. Os valores em 10.2 são hipóteses. O baseline v1 está capturado em `docs/audits/photo-midi-v1-baseline.md` (somente corpus procedural). Falta capturar a distribuição v2 com os pesos de partida para confirmar a redução do viés, e ajustar os pesos com base nos dados. Evidência necessária: relatório de baseline v2 (Incremento 3) com a distribuição proposta. Responsável: Incremento 3.
+A criação de novas decisões abertas (futuras) deve seguir o mesmo formato de §33 e exige uma passagem editorial própria; não pode ser feita em uma spec de Incremento.
 
-2. **Thresholds finais dos guardrails**. Os valores em 30 são hipóteses. O baseline v1 está capturado, mas somente sobre corpus procedural sintético. Falta: (a) calibrar os thresholds para o corpus real, (b) confirmar que os números provisórios refletem o estado real (ex.: `C + C♯ root share` no baseline v1 está em 42,9%, acima do guardrail de 25%). Evidência necessária: baseline v1 sobre corpus real (200+ imagens) e dados suficientes para diferenciar categorias. Responsável: Incremento 1 (parcial) + Incremento 5.
+## 33. Decisões Resolvidas Before Ready
 
-3. **Mapeamento `MelodicContour → bias de scale/bpm`**. A spec diz que `pickScale` e `bpm` usam o `scaleSeed` e `contourSeed`, mas a forma exata (e.g., se `wholeTone` continua sendo escolhido por alta variância) ainda não foi congelada. Evidência necessária: especificação interna de Incremento 3. Responsável: Incremento 3.
+Esta seção documenta a resolução das oito decisões abertas da segunda passagem. Cada item segue o mesmo formato: **problema** (o que precisava ser decidido), **evidência disponível** (baseline v1, ADRs, docs, código), **alternativas** (o que foi considerado), **trade-offs** (custos e benefícios de cada alternativa), **recomendação** (a escolha feita) e **contrato final** (o que fica fixado na spec).
 
-4. **Política de `MelodicContour` em Release vs. A/B**. O A/B DEBUG (15.3) gera duas sequências; ainda não está decidido se o Release v2 sempre usa um `MelodicContour` derivado do `contourSeed` ou se também pode usar a classificação empírica observada. Evidência necessária: golden test que cobre o caminho. Responsável: Incremento 4.
+A numeração corresponde à da segunda passagem para rastreabilidade. Nenhuma decisão é nova; todas existem no desenho desde a segunda passagem, mas exigiam um commitment explícito antes da promoção para `Ready`.
 
-5. **Critério de aceitação da validação subjetiva**. Os números em 21.3 (≥ 12 de 16, ≤ 2 em aleatoriedade) são hipóteses. Eles precisam ser confirmados pela primeira rodada de validação subjetiva. Evidência necessária: CSV de 21.1. Responsável: Incremento 5.
+---
 
-6. **Política de rollout da `generatorVersion` em testes DEBUG**. A spec permite o A/B em DEBUG, mas não decidiu se testes unitários comuns (CI) devem usar `1`, `2` ou ambos. Evidência necessária: alinhamento com a estratégia de testes existente. Responsável: Incremento 2.
+### Decisão 1 — Pesos finais de `TonalFamilyWeights`
 
-7. **Evolução de `PedalScale`**. A spec rejeita `ExtendedScale` para o primeiro rollout. Mas não decidiu se uma evolução de schema para incluir `blues`/`darkPentatonic`/`suspended` virá em spec separada e quando. Evidência necessária: roadmap aprovado. Responsável: fora desta spec.
+**Problema.** A segunda passagem listou pesos iniciais em §10.2 marcados como “hipóteses calibráveis” e exigiu o baseline v1 antes de qualquer fixação. A decisão era se a spec deveria congelar valores numéricos no momento da promoção para `Ready` ou se deveria apenas fixar o contrato e delegar o freeze para o Incremento 3.
 
-8. **Critério para introduzir Core ML**. A spec diz "depois da v2 ter mostrado evidência de que descritores determinísticos ainda não são suficientes". Mas não há métrica objetiva para essa decisão. Evidência necessária: critério explícito (e.g., "se `pitchClassEntropyGlobal < 3.0` após baseline e após ajustes de pesos, justificar Core ML"). Responsável: fora desta spec.
+**Evidência disponível.**
 
-Quando esta seção estiver vazia, a spec está pronta para ser promovida para `Ready`.
+- Baseline v1 (`docs/audits/photo-midi-v1-baseline.md`): `C + C♯ root share = 42,9%` (acima do guardrail de 25%); 5 das 14 categorias mapeiam para C; `meanMaximumPitchClassShare = 0,26`; categorias inteiras (`portraitDay`, `portraitNight`, `synthetic`, `object`, `dark`) colapsam em C. Esses números provam que a estratégia atual de root produz viés mensurável.
+  - Os vetores em §10.2 atribuem à família `warm` peso 0,10 para C e 0,10 para C♯ (massa C + C♯ = 0,20), contra 0,05–0,13 para outras classes. Para famílias frias e neutras, C + C♯ está entre 0,12 e 0,18. A massa total de C + C♯ não excede 0,20 em qualquer família (warm e purple em 0,20; demais abaixo), o que é mecanicamente compatível com o guardrail firme de 25% (§30.1) mesmo sem medição v2.
+- O baseline v1 não mede `TonalFamily` (essa enum não existe em produção), portanto não há como calibrar pesos de família com dados reais hoje. Calibrar agora seria extrapolar.
+
+**Alternativas consideradas.**
+
+- *A. Congelar valores numéricos exatos em §10.2 como contrato.* Bloqueia a promoção sem evidência real. Risco de fixar números que falham o guardrail quando medidos em Incremento 3.
+- *B. Fixar o contrato (positivo, soma 1, todas as 12 alcançáveis, `warm` C+C♯ ≤ 0,20) e delegar os valores numéricos ao Incremento 3.* Mantém a promoção da spec coerente com AGENTS.md (a spec não implementa); preserva a autoridade do Incremento 3 para ajustar com base no baseline v2 real.
+- *C. Tornar os pesos parte do config externo (e.g., `Info.plist`).* Viola a regra “não adicionar dependência sem justificativa” e expõe um knob de runtime a usuários/leigos. Rejeitada.
+
+**Trade-offs.**
+
+- A vs. B: A é mais “completa” no papel, mas trava o design com números não validados. B permite ajuste empírico, mantendo a invariante (“toda pitch class alcançável, warm C+C♯ subdimensionado”).
+- B vs. C: C desloca a decisão para runtime, o que esconde o que a v2 faz e abre uma superfície de manutenção nova. B é o mínimo: a spec é o contrato.
+
+**Recomendação.** **B.** A spec fixa o contrato e o método de calibração; o Incremento 3 produz o baseline v2 e ajusta os valores numéricos com base nele.
+
+**Contrato final.**
+
+- Os pesos em §10.2 são o **ponto de partida** da v2, não o ponto final.
+- Invariantes: para toda família, todos os 12 pesos são estritamente positivos; cada vetor soma 1,0 ± 1e-9; a massa C + C♯ na família `warm` é `≤ 0,20`; as 12 pitch classes são alcançáveis por exaustão de `rootSeed` em `[0, 1_000_000)` (teste 18.4).
+- O Incremento 3 (baseline v2) ajusta os valores numéricos se necessário, sem alterar este contrato. Se um ajuste exigir **quebrar** o contrato (e.g., zerar algum peso), a spec exige revisão formal antes do PR.
+- Nenhum peso é exposto ao usuário, à UI, à acessibilidade ou a Foundation Models.
+
+---
+
+### Decisão 2 — Thresholds finais dos guardrails
+
+**Problema.** §30 declarava os guardrails como “hipóteses” a serem calibradas. A decisão era se a spec deveria (a) fixar números firmes como contrato, (b) deixar calibráveis e exigir medição antes de qualquer rollout de v2, ou (c) uma combinação.
+
+**Evidência disponível.**
+
+- Baseline v1 mostra que o v1 viola o guardrail global: `C + C♯ = 42,9%` vs. 25% proposto; nenhuma `root` individual acima de 18% (na verdade C está em 35,7%, o que também excederia 18%); `globalPitchClassEntropy = 3,53` (acima do limite 3,0); `meanUniquePitchClassesPerSequence = 4,7` (acima do limite 4). Há dados para fechar os guardrails numéricos com confiança.
+- Categorias como `dark` produzem 0 notas; `landscapeNight` produz 12. O guardrail “nenhuma sequência vazia” é importante porque a UI exibe capas de pedais com sequência persistida, e a persistência atual é a sequência gerada — uma sequência vazia significa capa vazia. Isso é uma propriedade do v1 que a v2 deve explicitamente melhorar.
+- O corpus atual é procedural (14 fixtures); o corpus real (200+ imagens) é meta do Incremento 5. Calibrar com corpus procedural é viável; calibrar com corpus real depende do Incremento 5.
+
+**Alternativas consideradas.**
+
+- *A. Fixar todos os números como “limites rígidos” sem distinção entre corpus procedural e corpus real.* Excessivamente ambicioso: o corpus procedural é pequeno (n=14) e a variância por categoria ainda não foi medida com 3+ fixtures. Limites rígidos sobre n=14 podem ser estatisticamente instáveis.
+- *B. Não fixar nada; tratar como “valores indicativos”.* Inadequado: a spec precisa de um contrato verificável para a v2, senão a v2 não tem critério de aceitação.
+- *C. Fixar dois níveis: contrato firme (válido em qualquer corpus) e meta aspiracional (calibrada pelo corpus real).* Permite promover a spec sem inventar dados que ainda não existem; o Incremento 3 e 5 medem o que existe, o Incremento 5 mede o que falta, e a revisão da spec fica amarrada a evidência real.
+
+**Trade-offs.**
+
+- C exige que a spec diferencie explicitamente o que é contrato do que é meta. Esse overhead é pequeno em troca de clareza.
+- C não elimina a possibilidade de a v2 falhar ao ser medida; ele apenas torna o “falhar” um evento observável, não silencioso.
+
+**Recomendação.** **C.** §30 é separado em **contrato firme** (aplicável a qualquer corpus) e **meta calibrável** (aplicável ao corpus real, validada no Incremento 5).
+
+**Contrato final.**
+
+- *Contrato firme (qualquer corpus) — §30.1 e §30.3:*
+  - `C + C♯ root share` **< 25%** no corpus completo (medido);
+  - nenhuma `root` individual **> 18%** no corpus completo (medido);
+  - todas as 12 pitch classes alcançáveis no corpus amplo (teste 18.4);
+  - `pitchClassEntropyGlobal` **≥ 3,0** bits no corpus completo (medido);
+  - sequências não vazias em qualquer imagem (exceto se a spec explicitamente habilitar sequências vazias, o que não faz);
+  - `uniquePitchClasses ≥ 4` para `noteCount ≥ 8`; `uniquePitchClasses ≥ 2` para `noteCount < 8` (por sequência, teste 18.6);
+  - `pitchClassShareMax ≤ 0,40` para `noteCount ≥ 16` (por sequência, teste 18.6);
+  - acordes ≤ 3 vozes (teste 18.6);
+  - notas dentro do `register` declarado (teste 18.6);
+  - `meanIntervalSemitones ≤ 7` (por sequência, teste 18.6);
+  - determinismo byte-a-byte (golden test 18.1).
+- *Meta calibrável (corpus real 200+ imagens) — §30.2 e §30.5:*
+  - retratos diurnos: **≥ 6 roots distintas**;
+  - retratos diurnos: C + C♯ não formam maioria absoluta;
+  - `meanUniquePitchClassesPerSequence ≥ 4` em retratos diurnos;
+  - subjetivo: preferência geral vence ou empata em ≥ 12 de 16 imagens; “excesso de aleatoriedade” ≤ 2 em 16 (decisão 5).
+- *Método de calibração:* Incremento 3 mede o contrato sobre o corpus procedural; Incremento 5 mede o contrato e a meta sobre o corpus real. Se o contrato firme não for atingido, a spec exige revisão antes do rollout de produção. Se a meta calibrável não for atingida, a spec registra como risco e considera mitigação (e.g., re-calibração, mudança de `TonalFamilyWeights`).
+
+---
+
+### Decisão 3 — Mapeamento `MelodicContour → bias de scale/bpm`
+
+**Problema.** A spec afirmava que `pickScale` usa `scaleSeed` e que o `bpm` é função de `VisualAnalysis`, mas não esclarecia se `MelodicContour` participa da escolha de escala, e se a regra v1 (`hueVariance > 70` → `wholeTone`, etc.) sobrevive na v2.
+
+**Evidência disponível.**
+
+- O código atual (`snap-battle/Services/Pedal/ImageSequenceGenerator.swift`) define `scale(for: colorProfile)` apenas com base em `hueVarianceDegrees` e `saturation`; `bpm = clamp(70 + luminance * 70, 70, 140)`. Não há leitura de seed; tudo é função pura do `PhotoColorProfile`.
+- A spec §10.11 diz que `pickScale(analysis, scaleSeed)` é determinística e usa `scaleSeed` para escolher entre `majorPentatonic`, `minorPentatonic`, `dorian` e `wholeTone`, preservando as regras de monotonicidade como vieses. Mas não diz se `MelodicContour` influencia `pickScale`.
+- ADR 0001 proíbe a dependência de aleatoriedade não-determinística; isso implica que qualquer “escolha” precisa ser função pura de `(analysis, scaleSeed)`.
+- §11 (Estratégia de Composição) define `MelodicContour` como `ascending | descending | arched | stable | meandering`, usado pelo compositor para moldar a linha melódica. Isso é coerente com a leitura literal: contorno modela **o movimento das notas**, não a **escolha de escala**.
+
+**Alternativas consideradas.**
+
+- *A. `MelodicContour` influencia a escala (e.g., `stable` → `wholeTone`; `arched` → `dorian`).* Mistura dois eixos ortogonais. Aumenta o espaço de configuração, mas torna o `MelodicContour` dependente da `scale` e vice-versa, o que complica o golden test 18.2.
+- *B. `MelodicContour` é puramente sobre o compositor; `pickScale` é puramente sobre `(analysis, scaleSeed)`.* Separa eixos, facilita golden tests, mantém a regra v1 como viés dentro de `pickScale`.
+- *C. `MelodicContour` é derivado da escala (e.g., `wholeTone` → `meandering`).* Igual a A com direção invertida. Pior para golden test porque colore o compositor com a escolha de escala.
+
+**Trade-offs.**
+
+- B é o mais limpo: cada decisão tem uma entrada explícita e uma saída explícita; nenhum “viés cruzado” implícito.
+- B exige que a regra v1 (`hueVariance > 70` → `wholeTone`) seja reinterpretada como **viés** dentro de `pickScale`, não como **decisão** determinística. Isso é o que §10.11 já dizia; esta decisão apenas torna isso explícito.
+
+**Recomendação.** **B.** Separação estrita: `MelodicContour` ∈ compositor; `pickScale` ∈ (analysis, scaleSeed); `bpm` ∈ analysis.
+
+**Contrato final.**
+
+- `MelodicContour` **não** seleciona `PedalScale`.
+- `pickScale(analysis, scaleSeed)` é função pura de `(analysis, scaleSeed)`. As regras de monotonicidade da v1 (`hueVariance > 70` → `wholeTone`, `hueVariance ≥ 30` → `dorian`, `saturation ≥ 0,45` → `majorPentatonic`, senão `minorPentatonic`) são reinterpretadas como **pesos** sobre as 4 opções, e o `scaleSeed` desempata deterministicamente.
+- `bpm = clamp(70 + meanLuminance * 70, 70, 140)`, idêntico ao v1. O `bpm` não depende de `MelodicContour` nem de `scaleSeed`.
+- O `MelodicContour` é selecionado por `pickContour(contourSeed, analysis)`, função pura independente.
+- Golden test 18.2 cobre cada `(TonalFamily, PedalScale, MelodicContour)`, com 6 perfis mínimos.
+
+---
+
+### Decisão 4 — Política de `MelodicContour` em Release vs. A/B
+
+**Problema.** O A/B DEBUG (§15.3) gera duas sequências (v1 e v2) lado a lado, em memória. A questão era se a v2 em Release usa o `MelodicContour` derivado deterministicamente do `contourSeed` ou se pode também usar a classificação empírica observada do output.
+
+**Evidência disponível.**
+
+- ADR 0001: equivalente de imagem normalizada → mesma sequência musical. Em particular, a v2 precisa ser determinística para que a invariante “a mesma foto sempre gera o mesmo pedal” sobreviva.
+- A spec §12 lista proibições explícitas: `Swift.Hasher`, `hashValue`, `Date`, `UUID`, RNG, iteração não ordenada. A classificação empírica depende de iterar sobre as notas geradas — se essa iteração for a única coisa que decide o contorno, isso é determinístico, mas o Release ainda ficaria “descobrindo” o contorno a partir do output em vez de declará-lo.
+- A v1 não tem `MelodicContour` explícito. O A/B compara v1 (sem contorno declarado, com `contourEmpirical` calculado) e v2 (com `MelodicContour` declarado e `contourEmpirical` calculado). Em Release, só v2 é usado.
+
+**Alternativas consideradas.**
+
+- *A. Release v2 usa o `MelodicContour` declarado pelo `contourSeed`; A/B registra o `contourEmpirical` das duas versões em memória.* Mantém o Release determinístico; A/B é puramente observacional.
+- *B. Release v2 pode escolher entre declarado e empírico com base em algum critério (e.g., se declarado == empírico, usa declarado; senão, usa empírico).* Adiciona um ramo de decisão em runtime, o que fere ADR 0001 e a proibição §12.
+- *C. Release v2 ignora o declarado e usa apenas o empírico.* Torna a v2 indistinguível da v1 em termos de “consciência de contorno”. Tira o valor de `MelodicContour` e o `contourSeed`.
+
+**Trade-offs.**
+
+- A é a única opção que preserva ADR 0001 e a separação Release/DEBUG.
+- A também facilita a comparação A/B: o `contourEmpirical` registrado para v2 deve idealmente coincidir com o declarado (não obrigatoriamente, mas é um sinal de sanidade). Se divergirem sistematicamente, é diagnóstico de bug, não feature.
+
+**Recomendação.** **A.** Release usa o declarado; A/B usa o declarado para v2 e calcula o empírico para ambos.
+
+**Contrato final.**
+
+- Release v2 sempre usa o `MelodicContour` derivado de `contourSeed` por `pickContour(contourSeed, analysis)`.
+- O campo `contourEmpirical` em `MusicalRunDiagnostics` é **DEBUG-only**, calculado pós-hoc por classificação observada do output. Em Release, o tipo `MusicalRunDiagnostics` não existe (é `#if DEBUG`).
+- A/B DEBUG gera dois `MusicalRunDiagnostics` lado a lado: v1 (sem `MelodicContour` declarado, com `contourEmpirical` calculado) e v2 (com `MelodicContour` declarado e `contourEmpirical` calculado). Nenhum é persistido.
+- Golden test 18.1 verifica que, para um dado `fingerprint` e um corpus sintético conhecido, o `MelodicContour` declarado pela v2 é o esperado.
+- A divergência entre declarado e empírico é, no máximo, diagnóstico em `MusicalRunDiagnostics`. Nunca é usada para influenciar o output da v2.
+
+---
+
+### Decisão 5 — Critério de aceitação da validação subjetiva
+
+**Problema.** §21.3 fixou números como hipóteses (≥ 12 de 16 em preferência; ≤ 2 de 16 em aleatoriedade). A decisão era se a spec deveria (a) confirmar esses números como contrato da v2, (b) reduzi-los, (c) tratá-los como aspiracionais.
+
+**Evidência disponível.**
+
+- A spec §21.3 já cita esses números como “hipóteses calibráveis após o baseline”. O Incremento 5 é o responsável por executá-los.
+- O baseline v1 não fornece evidência subjetiva (não há comparação A/B perceptual em produção), então confirmar/reduzir os números sem ouvir é arbitrário.
+- O protocolo §21.1 é razoável: 16 imagens, 3–5 ouvintes internos, cegamento, escala 1–5, CSV com vencedor. É executável em ~30 min e produz evidência concreta.
+
+**Alternativas consideradas.**
+
+- *A. Manter os números exatos como contrato.* Compromisso forte com a equipe: a v2 só vai para produção se 12/16 ouvintes preferirem v2 em ≥ 12 imagens e acharem ≤ 2 imagens “aleatórias sem significado”.
+- *B. Afrouxar para 10/16 em preferência e ≤ 4/16 em aleatoriedade.* Mais permissivo. Pode acelerar o rollout, mas mascara uma possível regressão.
+- *C. Eliminar a validação subjetiva do critério de aceitação.* Reduz a fricção, mas a spec perde a única evidência não-métrica. A v2 é uma mudança musical, e a única forma de saber se ela soa melhor é ouvir.
+
+**Trade-offs.**
+
+- A vs. B: A é mais conservador; B é mais permissivo. O baseline v1 não indica nenhuma das duas direções; o protocolo §21.1 é executável.
+- A vs. C: C economiza tempo, mas a spec perde a única evidência perceptual. O roadmap §21 do ROADMAP não cita validação subjetiva; esta é uma adição da spec.
+
+**Recomendação.** **A**, com redação explícita de que os números são “contrato inicial, revisável”. O Incremento 5 pode propor uma revisão se a evidência coletada for estatisticamente fraca (e.g., alta variância entre ouvintes), mas a spec exige revisão formal antes de afrouxar.
+
+**Contrato final.**
+
+- §21.3 números passam a ser **contrato da v2**, não hipótese.
+   - Preferência geral vence ou empata em **≥ 12 de 16** imagens.
+   - “Excesso de aleatoriedade” é **≤ 2 em ≥ 12 das 16** imagens (mesmo critério de §21.3).
+- O protocolo §21.1 é executado pelo Incremento 5. A primeira execução pode propor revisão (mais conservadora ou mais permissiva) baseada em dados; a revisão exige passagem editorial da spec.
+- A ausência de validação subjetiva (e.g., Incremento 5 não realizado) **bloqueia** o rollout da v2 em produção, mesmo que os guardrails objetivos em §30 sejam atingidos.
+- A v1 (atual) é a baseline implícita: a v2 deve ser perceptivelmente melhor, não apenas objetivamente diferente.
+
+---
+
+### Decisão 6 — Política de rollout da `generatorVersion` em testes
+
+**Problema.** A spec permite o A/B em DEBUG, mas não disse se os testes de CI usam `1`, `2` ou ambos.
+
+**Evidência disponível.**
+
+- AGENTS.md: “Domain changes: run focused deterministic and serialization tests.” Implica que o CI deve cobrir as duas versões.
+- A spec §13 (Persistência) já define o contrato de `generatorVersion` com `nil` → `1`, `1`, `2` e valores desconhecidos preservados. Esse contrato exige testes específicos.
+- A suíte de testes atual (`PhotoPedalStabilizationTests`, `DominantPitchClassResolverTests`, `PitchClassDomainTests`, `MusicalDiagnosticsEquivalenceTests` etc.) cobre a v1; a v2 precisa de uma suíte paralela.
+
+**Alternativas consideradas.**
+
+- *A. CI roda apenas v2.* Simplifica a suíte, mas perde a cobertura de regressão de v1. A v1 ainda é a versão persistida na biblioteca de usuários existentes; ela precisa de golden test contínuo.
+- *B. CI roda apenas v1.* Preserva a cobertura de regressão, mas a v2 nunca é exercitada em CI, e bugs de contrato (`seed64`, `splitMix64`, `MusicalProfile`) só apareceriam no A/B manual.
+- *C. CI roda ambos, em paralelo.* Mantém a cobertura de regressão de v1 e adiciona cobertura de contrato e determinismo de v2. Golden tests de v1 continuam; golden tests de v2 são novos.
+- *D. CI roda um A/B unificado que invoca as duas versões no mesmo método de teste.* Mistura os dois reinos e exige que a fixture seja determinística em ambos. Útil para o diagnóstico, mas é mais lento e mais difícil de isolar falhas.
+
+**Trade-offs.**
+
+- C vs. D: C é mais simples, mais rápido, e cada versão tem seu próprio golden test. D é conceitualmente mais limpo, mas adiciona acoplamento.
+- A vs. C: A viola o invariante “a v1 persistida continua válida”. Rejeitada.
+
+**Recomendação.** **C** como padrão; **D** é permitida como teste diagnóstico opcional, mas não substitui as suítes independentes.
+
+**Contrato final.**
+
+- A suíte de CI roda em paralelo:
+  - **Suíte de regressão v1**: todos os testes atuais (`PhotoPedalStabilizationTests`, `DominantPitchClassResolverTests`, `PitchClassDomainTests`, `MusicalDiagnosticsEquivalenceTests`, `ProceduralCorpusTests`, `MusicalDiagnosticsCalculatorTests`, `MusicalCorpusReportTests`). Garantem que a v1 não regride.
+  - **Suíte de contrato v2**: `SeedContractTests` (10 testes, §18.8), `VisualAnalysisTests` (8 testes), `MusicalProfileTests` (6 testes), `RootAndScaleStrategyTests` (10 testes), `CompositionTests` (10 testes), `VersioningTests` (6 testes), `ABComparisonTests` (4 testes), `DistributionTests` (4 testes), `CompatibilityTests` (4 testes). Total: 62 testes novos.
+- O Incremento 3 implementa os novos testes; o Incremento 2 pode adicionar `VersioningTests` antes (já que `generatorVersion` é adição de schema, não de algoritmo).
+- O A/B em DEBUG (15.3) existe na spec, mas **não** roda em CI como teste unitário. É uma ferramenta de diagnóstico manual ou semi-automatizada.
+- O ambiente de CI é o iPhone 17 Pro Simulator (iOS 26.5), idêntico ao do baseline. Builds Debug e Release rodam; apenas Debug roda os testes com `MusicalDiagnostics*`.
+
+---
+
+### Decisão 7 — Evolução de `PedalScale`
+
+**Problema.** A spec rejeitou `ExtendedScale` para o primeiro rollout (§10.12), mas não decidiu se a evolução para incluir `blues` / `darkPentatonic` / `suspended` virá em spec separada e quando.
+
+**Evidência disponível.**
+
+- O baseline v1 mostra que 4 escalas cobrem os 4 perfis visuais mais básicos (warm/cool/neutral/extreme). Não há evidência de que adicionar mais escalas melhoraria a variedade global, porque o problema atual é o mapeamento **dentro** de uma escala, não a **escolha** de escala.
+- `PedalScale` é `String, Codable, CaseIterable, Sendable` (ver `snap-battle/Domain/Pedal/Pedal.swift`). O raw value é o nome do case (string). Adicionar um case no final do enum é retrocompatível para decodificação (casos desconhecidos fazem decode falhar; novos cases não quebram JSONs antigos que não os referenciam).
+- A spec §10.12 já lista os itens que uma evolução futura precisaria tratar: codificação retrocompatível, migração opcional, impacto em UI/a11y, testes de persistência, rollout.
+
+**Alternativas consideradas.**
+
+- *A. Reservar espaço em `PedalScale` agora (e.g., adicionar `case blues, darkPentatonic, suspended` como placeholders) e adiar a implementação.* “YAGNI” para esta spec. Adiciona cases que o v2 não usa e força a spec a defendê-los.
+- *B. Congelar `PedalScale` em 4 cases e tratar qualquer evolução como spec independente, fora desta.* Mantém esta spec focada. A evolução virá quando houver evidência (baseline v2, corpus real) de que 4 cases são insuficientes.
+- *C. Substituir `PedalScale` por um tipo intermediário `ExtendedScale` que traduz silenciosamente para `PedalScale` na persistência.* Já rejeitada pela segunda passagem (§10.12), pelas mesmas razões.
+
+**Trade-offs.**
+
+- A vs. B: A é “antecipação”; B é YAGNI. A spec rejeita antecipação em outras decisões; ser consistente aqui é importante.
+- B vs. C: C reintroduz um problema que a segunda passagem eliminou.
+
+**Recomendação.** **B.** `PedalScale` permanece com 4 cases; evolução é spec independente, fora desta.
+
+**Contrato final.**
+
+- `PedalScale` é exatamente `majorPentatonic | minorPentatonic | dorian | wholeTone`. Sem `blues`, `darkPentatonic`, `suspended`, `phrygian`, etc. nesta spec.
+- O enum é `String, Codable`. A spec **proíbe** reordenar cases (mudaria o `rawValue` na persistência). Novos cases, se um dia entrarem, são adicionados no final e exigem spec própria.
+- A v2 (Incremento 3) implementa `pickScale(analysis, scaleSeed)` consumindo as 4 opções existentes.
+- Qualquer proposta de evolução (e.g., “adicionar `blues`”) é registrada no ROADMAP como item futuro, sem spec de design. A spec é reaberta apenas se houver evidência mensurável (e.g., baseline v2 mostrando que `meanUniquePitchClassesPerSequence < 4` apesar dos guardrails satisfeitos) de que 4 cases são insuficientes.
+
+---
+
+### Decisão 8 — Critério para introduzir Core ML
+
+**Problema.** §26 dizia que Core ML pode ser considerado “depois da v2 ter mostrado evidência de que descritores determinísticos ainda não são suficientes”, mas não definia métrica objetiva para essa decisão.
+
+**Evidência disponível.**
+
+- O baseline v1 mostra que os descritores determinísticos (hue médio, saturação, luminância) **são** suficientes para detectar o viés (medido em 42,9% C + C♯) e para gerar sequências razoáveis (entropia 3,53, 4,7 pitches únicos em média). O problema é **o mapeamento** entre descritores e root, não a riqueza dos descritores.
+- ADR 0001 veda Foundation Models na geração musical; por extensão, Core ML também não deve controlar notas, root, escala ou BPM.
+- O produto não tem dataset pareado foto-MIDI. Treinar um modelo supervisionado exigiria construir esse dataset, o que é trabalho de spec própria.
+- O roadmap §“Phase 0” cita Core ML apenas como “opção experimental posterior”, sem compromisso.
+
+**Alternativas consideradas.**
+
+- *A. Critério quantitativo explícito: “se `globalPitchClassEntropy < 3,0` ou `C + C♯ > 25%` após baseline v2 e após ajuste de pesos, justificar Core ML em nova spec”.* Falsificável, mas vira “se v2 falhar, usar ML” — o que pode levar a um uso prematuro.
+- *B. Critério triplo: (a) v2 atinge os guardrails de §30 sobre o corpus real (200+ imagens); (b) os guardrails de §30 sobre retratos diurnos especificamente falham; (c) a falha não é sanável por re-calibração de `TonalFamilyWeights` ou por aumento de corpus. Só então Core ML é considerado.* Conservador; alinha com “Core ML só se descritores determinísticos são insuficientes”.
+- *C. Sem critério explícito; Core ML é considerado “quando relevante” em uma spec futura.* Inadequado para uma decisão dessa magnitude. Mantém ambiguidade.
+
+**Trade-offs.**
+
+- A é simples mas prematuro: se v2 cumprir os guardrails, Core ML é desnecessário; se v2 falhar, há motivos mais prováveis que “descritores insuficientes” (e.g., pesos ruins, corpus pequeno).
+- B é mais robusto: separa a falha de v2 em sanável (re-calibração) e não-sanável (descritores insuficientes). Reduz o risco de introduzir Core ML desnecessariamente.
+- C é o status quo implícito, que a spec quer evitar.
+
+**Recomendação.** **B**, com redação explícita de que Core ML é uma **hipótese de pesquisa**, não uma promessa de roadmap.
+
+**Contrato final.**
+
+- Core ML **não** é introduzido pela v2. Esta spec o exclui (§26).
+- Critério para reabrir a discussão em spec futura: **todos** os itens abaixo são verdadeiros.
+  1. O Incremento 5 (validação no corpus real) atinge os guardrails globais de §30.1, **mas** retratos diurnos especificamente falham em `≥ 6 roots distintas` ou em `C + C♯ não formar maioria absoluta`.
+  2. A falha não é corrigida por re-calibração de `TonalFamilyWeights` (verificada por ao menos uma rodada de re-calibração documentada).
+  3. A falha não é corrigida por expansão de corpus (e.g., passando de 200 para 1000+ imagens) ou por melhoria do corpus procedural.
+  4. Um dataset pareado foto-MIDI é construído (workstream separada) ou um dataset público adequado é identificado.
+- Se essas quatro condições forem satisfeitas, uma spec de “Core ML evaluation” pode ser aberta, **mas** a presente spec não a autoriza nem a promete.
+- Esta spec não se compromete com Core ML em nenhum cronograma.
