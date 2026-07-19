@@ -64,22 +64,39 @@ nonisolated struct PedalStore {
         }
     }
 
-    func loadCollection(diagnosticsRunID: String? = nil) -> PedalStoreLoadResult {
+    func loadCollection(diagnosticsRunID: String? = nil, reason: String = "manual") -> PedalStoreLoadResult {
         loadCollectionDidRun?()
         let runID = diagnosticsRunID ?? PerformanceDiagnostics.makeRunID()
         let started = ContinuousClock.now
         var issues: [String] = []
+        #if DEBUG
+        var issueKinds: [PedalLoadIssueKind] = []
+        #endif
         do {
             try ensureCollectionDirectory()
             cleanupTemporaryArtifacts()
             try migrateLegacyIfNeeded()
         } catch {
             issues.append(error.localizedDescription)
+            #if DEBUG
+            issueKinds.append(.unreadableStorage)
+            #endif
         }
 
         guard fileManager.fileExists(atPath: collectionDirectory.path) else {
             let result = PedalStoreLoadResult(pedals: [], issues: issues)
+            #if DEBUG
+            let details = Self.reloadDetails(
+                pedals: 0,
+                issues: issues.count,
+                kinds: issueKinds,
+                durationMs: Self.milliseconds(started.duration(to: .now)),
+                reason: reason
+            )
+            PerformanceDiagnostics.event("galleryReload", runID: runID, details: details)
+            #else
             PerformanceDiagnostics.event("galleryReload", runID: runID, details: "pedals=0 issues=\(issues.count) durationMs=\(Self.milliseconds(started.duration(to: .now)))")
+            #endif
             return result
         }
 
@@ -92,18 +109,80 @@ nonisolated struct PedalStore {
             var stored: [StoredPedal] = []
             for id in identifiers {
                 do { stored.append(try load(id: id)) }
-                catch { issues.append("Um pedal salvo não pôde ser carregado: \(error.localizedDescription)") }
+                catch {
+                    issues.append("Um pedal salvo não pôde ser carregado: \(error.localizedDescription)")
+                    #if DEBUG
+                    issueKinds.append(Self.categorize(error))
+                    #endif
+                }
             }
             let result = PedalStoreLoadResult(pedals: Self.ordered(stored), issues: issues)
+            #if DEBUG
+            let details = Self.reloadDetails(
+                pedals: result.pedals.count,
+                issues: issues.count,
+                kinds: issueKinds,
+                durationMs: Self.milliseconds(started.duration(to: .now)),
+                reason: reason
+            )
+            PerformanceDiagnostics.event("galleryReload", runID: runID, details: details)
+            #else
             PerformanceDiagnostics.event("galleryReload", runID: runID, details: "pedals=\(result.pedals.count) issues=\(issues.count) durationMs=\(Self.milliseconds(started.duration(to: .now)))")
+            #endif
             return result
         } catch {
             issues.append(error.localizedDescription)
+            #if DEBUG
+            issueKinds.append(.unreadableStorage)
+            #endif
             let result = PedalStoreLoadResult(pedals: [], issues: issues)
+            #if DEBUG
+            let details = Self.reloadDetails(
+                pedals: 0,
+                issues: issues.count,
+                kinds: issueKinds,
+                durationMs: Self.milliseconds(started.duration(to: .now)),
+                reason: reason
+            )
+            PerformanceDiagnostics.event("galleryReload", runID: runID, details: details)
+            #else
             PerformanceDiagnostics.event("galleryReload", runID: runID, details: "pedals=0 issues=\(issues.count) durationMs=\(Self.milliseconds(started.duration(to: .now)))")
+            #endif
             return result
         }
     }
+
+    #if DEBUG
+    private static func categorize(_ error: Error) -> PedalLoadIssueKind {
+        if let storeError = error as? PedalStoreError {
+            switch storeError {
+            case .validationFailed, .missingRecord: return .malformedDocument
+            case .imageEncoding: return .missingArtwork
+            }
+        }
+        return .unreadableStorage
+    }
+
+    private static func reloadDetails(
+        pedals: Int,
+        issues: Int,
+        kinds: [PedalLoadIssueKind],
+        durationMs: String,
+        reason: String
+    ) -> String {
+        var missingArtwork = 0
+        var malformedDocuments = 0
+        var unreadableStorage = 0
+        for kind in kinds {
+            switch kind {
+            case .missingArtwork: missingArtwork += 1
+            case .malformedDocument: malformedDocuments += 1
+            case .unreadableStorage: unreadableStorage += 1
+            }
+        }
+        return "pedals=\(pedals) issues=\(issues) missingArtwork=\(missingArtwork) malformedDocuments=\(malformedDocuments) unreadableStorage=\(unreadableStorage) durationMs=\(durationMs) reason=\(reason)"
+    }
+    #endif
 
     func load(id: UUID) throws -> StoredPedal {
         let pedal = try loadValidatedPhotoPedal(id: id)

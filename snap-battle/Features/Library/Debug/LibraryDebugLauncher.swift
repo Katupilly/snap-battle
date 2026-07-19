@@ -64,7 +64,7 @@ struct LibraryDebugLauncher: View {
     private func clear(_ dataset: LibraryDebugDataset) {
         fixtures.reset(dataset: dataset)
         model = GalleryViewModel(store: fixtures.store(for: dataset), player: PhotoPedalSynth())
-        model.reload()
+        model.reload(reason: .fixtureInstalled)
         unavailableIDs = []
         status = "Fixtures de \(dataset.title) removidas; dados reais preservados"
     }

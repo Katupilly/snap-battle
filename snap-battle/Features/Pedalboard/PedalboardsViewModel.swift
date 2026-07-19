@@ -11,13 +11,17 @@ protocol PedalboardStoring {
 extension PedalboardStore: PedalboardStoring {}
 
 protocol PedalLibraryLoading {
-    func loadPedals() -> PedalStoreLoadResult
+    func loadPedals(reason: String) -> PedalStoreLoadResult
     func thumbnailAsset(for id: UUID) -> PersistedImageAsset?
 }
 
+extension PedalLibraryLoading {
+    func loadPedals() -> PedalStoreLoadResult { loadPedals(reason: "manual") }
+}
+
 extension PedalStore: PedalLibraryLoading {
-    func loadPedals() -> PedalStoreLoadResult {
-        loadCollection()
+    func loadPedals(reason: String) -> PedalStoreLoadResult {
+        loadCollection(reason: reason)
     }
 }
 
@@ -137,14 +141,14 @@ final class PedalboardsViewModel {
         }
     }
 
-    func reload() {
+    func reload(reason: GalleryReloadReason = .manual) {
         state = .loading
         let result = boardStore.loadCollection()
         apply(result)
     }
 
-    func reloadLibrary() {
-        let result = pedalStore.loadPedals()
+    func reloadLibrary(reason: GalleryReloadReason = .boardOpen) {
+        let result = pedalStore.loadPedals(reason: reason.rawValue)
         availablePedals = result.pedals
         refreshEntryDisplays()
         errorMessage = result.issues.isEmpty ? nil : result.issues.joined(separator: " ")

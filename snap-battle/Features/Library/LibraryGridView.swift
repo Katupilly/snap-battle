@@ -273,7 +273,7 @@ private struct LibraryGridCell: View {
     private var unavailableCover: some View {
         ZStack {
             Color.secondary.opacity(0.16)
-            Image(systemName: "photo.slash")
+            Image(systemName: "exclamationmark.triangle")
                 .font(.title2)
                 .foregroundStyle(.secondary)
                 .accessibilityHidden(true)

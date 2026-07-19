@@ -370,7 +370,7 @@ private struct PedalStoreDouble: PedalLibraryLoading {
     var pedals: [StoredPedal] = []
     var issues: [String] = []
 
-    func loadPedals() -> PedalStoreLoadResult {
+    func loadPedals(reason: String) -> PedalStoreLoadResult {
         PedalStoreLoadResult(pedals: pedals, issues: issues)
     }
 

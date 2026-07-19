@@ -62,7 +62,7 @@ struct GalleryView: View {
             case .blockingError(let message):
                 LibraryGridView(
                     state: .error(message: message),
-                    onRetry: { Task { await model.reloadAsync() } },
+                    onRetry: { Task { await model.reloadAsync(reason: .retry) } },
                     imageProvider: imageProvider,
                     thumbnailLoader: thumbnailLoader,
                     assetProvider: asset(for:),
@@ -78,13 +78,13 @@ struct GalleryView: View {
     private func libraryGrid(state: LibraryGridState) -> some View {
         LibraryGridView(
             state: state,
-            onRetry: { Task { await model.reloadAsync() } },
+            onRetry: { Task { await model.reloadAsync(reason: .retry) } },
             imageProvider: imageProvider,
             thumbnailLoader: thumbnailLoader,
             assetProvider: asset(for:),
             transitionNamespace: transitionNamespace
         )
-        .refreshable { await model.reloadAsync() }
+        .refreshable { await model.reloadAsync(reason: .pullToRefresh) }
     }
 
     private func asset(for id: UUID) -> PersistedImageAsset? {

@@ -78,10 +78,10 @@ struct ContentView: View {
                 try? LibraryDebugFixtureStore().installFixtures(.small, into: PedalStore.shared)
             }
             #endif
-            await gallery.reloadAsync()
-            pedalboards.reload()
+            await gallery.reloadAsync(reason: .initialLoad)
+            pedalboards.reload(reason: .initialLoad)
         }
-        .sheet(isPresented: $navigation.isPresentingCapture, onDismiss: { gallery.insertedSavedPedal() }) {
+        .sheet(isPresented: $navigation.isPresentingCapture) {
             CaptureFlowView(
                 bottomBarNamespace: bottomBarNamespace,
                 onCancel: navigation.cancelCapture,

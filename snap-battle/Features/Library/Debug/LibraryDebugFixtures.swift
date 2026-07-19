@@ -60,10 +60,10 @@ struct LibraryDebugFixtureStore {
     }
 
     @MainActor
-    func installAndLoad(_ dataset: LibraryDebugDataset) throws -> LibraryDebugLoadedDataset {
+    func installAndLoad(_ dataset: LibraryDebugDataset, reason: GalleryReloadReason = .fixtureInstalled) throws -> LibraryDebugLoadedDataset {
         let store = try install(dataset)
         let model = GalleryViewModel(store: store, player: PhotoPedalSynth())
-        let loaded = model.reload()
+        let loaded = model.reload(reason: reason)
         let unavailableIDs = Set(loaded.pedals.enumerated().compactMap { $0.offset % 23 == 0 ? $0.element.id : nil })
         return LibraryDebugLoadedDataset(model: model, loadResult: loaded, unavailableIDs: unavailableIDs)
     }

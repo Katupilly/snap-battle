@@ -22,6 +22,7 @@
 		F60000000000000000000003 /* PedalboardStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60000000000000000000004 /* PedalboardStoreTests.swift */; };
 		G70000000000000000000001 /* PedalboardPlaybackCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = G70000000000000000000002 /* PedalboardPlaybackCoordinatorTests.swift */; };
 		H80000000000000000000001 /* PedalboardsViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = H80000000000000000000002 /* PedalboardsViewModelTests.swift */; };
+		I90000000000000000000001 /* GalleryReloadInstrumentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = I90000000000000000000002 /* GalleryReloadInstrumentationTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,6 +53,7 @@
 		F60000000000000000000004 /* PedalboardStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PedalboardStoreTests.swift; sourceTree = "<group>"; };
 		G70000000000000000000002 /* PedalboardPlaybackCoordinatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PedalboardPlaybackCoordinatorTests.swift; sourceTree = "<group>"; };
 		H80000000000000000000002 /* PedalboardsViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PedalboardsViewModelTests.swift; sourceTree = "<group>"; };
+		I90000000000000000000002 /* GalleryReloadInstrumentationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryReloadInstrumentationTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -116,6 +118,7 @@
 				F60000000000000000000004 /* PedalboardStoreTests.swift */,
 				G70000000000000000000002 /* PedalboardPlaybackCoordinatorTests.swift */,
 				H80000000000000000000002 /* PedalboardsViewModelTests.swift */,
+				I90000000000000000000002 /* GalleryReloadInstrumentationTests.swift */,
 			);
 			path = "snap-battleTests";
 			sourceTree = "<group>";
@@ -234,6 +237,7 @@
 				F60000000000000000000003 /* PedalboardStoreTests.swift in Sources */,
 				G70000000000000000000001 /* PedalboardPlaybackCoordinatorTests.swift in Sources */,
 				H80000000000000000000001 /* PedalboardsViewModelTests.swift in Sources */,
+				I90000000000000000000001 /* GalleryReloadInstrumentationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
