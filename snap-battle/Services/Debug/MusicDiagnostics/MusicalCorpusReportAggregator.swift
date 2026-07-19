@@ -54,9 +54,20 @@ enum MusicalCorpusReportAggregator {
         let meanNoteDensity = mean(runs: runs, keyPath: \.noteDensity)
         let meanRestDensity = mean(runs: runs, keyPath: \.restDensity)
         let meanMultiNoteStepShare = mean(runs: runs, keyPath: \.multiNoteStepShare)
+        let meanNotesPerActiveStep = mean(runs: runs, keyPath: \.meanNotesPerActiveStep)
+        let meanZeroIntervalTransitionShare = mean(runs: runs, keyPath: \.zeroIntervalTransitionShare)
+        let meanSingleVoiceStepShare = meanStepVoiceShare(runs: runs, keyPath: \.singleVoiceStepCount)
+        let meanTwoVoiceStepShare = meanStepVoiceShare(runs: runs, keyPath: \.twoVoiceStepCount)
+        let meanThreeOrMoreVoiceStepShare = meanStepVoiceShare(runs: runs, keyPath: \.threeOrMoreVoiceStepCount)
         let meanSeqMs = mean(runs: runs, keyPath: \.sequenceGenerationDurationMilliseconds)
         let meanDiagMs = mean(runs: runs, keyPath: \.diagnosticsCalculationDurationMilliseconds)
         let meanTotalMs = mean(runs: runs, keyPath: \.totalRunDurationMilliseconds)
+
+        // Memory deltas. The delta is signed because the kernel may
+        // reclaim pages between samples. We expose nil when no run
+        // produced a valid pair so the consumer can distinguish
+        // "no signal" from "zero delta".
+        let memorySummary = aggregateResidentMemoryDelta(runs: runs)
 
         // Per-category rollups (sorted by category name)
         let categoryReports = buildCategoryReports(runs: runs)
@@ -83,9 +94,18 @@ enum MusicalCorpusReportAggregator {
             meanNoteDensity: meanNoteDensity,
             meanRestDensity: meanRestDensity,
             meanMultiNoteStepShare: meanMultiNoteStepShare,
+            meanNotesPerActiveStep: meanNotesPerActiveStep,
+            meanZeroIntervalTransitionShare: meanZeroIntervalTransitionShare,
+            meanSingleVoiceStepShare: meanSingleVoiceStepShare,
+            meanTwoVoiceStepShare: meanTwoVoiceStepShare,
+            meanThreeOrMoreVoiceStepShare: meanThreeOrMoreVoiceStepShare,
             meanSequenceGenerationDurationMilliseconds: meanSeqMs,
             meanDiagnosticsDurationMilliseconds: meanDiagMs,
             meanTotalRunDurationMilliseconds: meanTotalMs,
+            meanResidentMemoryDeltaBytes: memorySummary.mean,
+            maximumResidentMemoryDeltaBytes: memorySummary.max,
+            minimumResidentMemoryDeltaBytes: memorySummary.min,
+            runsWithMemorySamples: memorySummary.count,
             categoryReports: categoryReports,
             runs: sortedRuns
         )
@@ -150,11 +170,58 @@ enum MusicalCorpusReportAggregator {
         return Double(total) / Double(runs.count)
     }
 
+    /// Average of a per-step voice count over the active steps in a run.
+    /// When the run has no active steps the per-run share is `0`, so a
+    /// corpus with any all-rests runs still produces a finite mean.
+    private static func meanStepVoiceShare(runs: [MusicalRunDiagnostics], keyPath: KeyPath<MusicalRunDiagnostics, Int>) -> Double {
+        guard !runs.isEmpty else { return 0 }
+        let shares = runs.map { run -> Double in
+            let active = run.activeStepCount
+            guard active > 0 else { return 0 }
+            return Double(run[keyPath: keyPath]) / Double(active)
+        }
+        return shares.reduce(0, +) / Double(runs.count)
+    }
+
     private static func sorted(_ dict: [String: Int]) -> [String: Int] {
         let keys = dict.keys.sorted()
         var result: [String: Int] = [:]
         for key in keys { result[key] = dict[key] }
         return result
+    }
+
+    private struct MemorySummary: Equatable {
+        var mean: Int64?
+        var max: Int64?
+        var min: Int64?
+        var count: Int
+    }
+
+    private static func aggregateResidentMemoryDelta(runs: [MusicalRunDiagnostics]) -> MemorySummary {
+        // The delta uses Int64 because `after - before` can be negative
+        // (the kernel may reclaim pages between samples). The signed
+        // type also prevents wrap-around on platforms where resident
+        // size approaches UInt64.max in pathological cases.
+        var deltas: [Int64] = []
+        deltas.reserveCapacity(runs.count)
+        for run in runs {
+            guard let before = run.residentMemoryBytesBefore,
+                  let after = run.residentMemoryBytesAfter else { continue }
+            let delta = Int64(after) &- Int64(before)
+            deltas.append(delta)
+        }
+        guard !deltas.isEmpty else {
+            return MemorySummary(mean: nil, max: nil, min: nil, count: 0)
+        }
+        let total = deltas.reduce(Int64(0), +)
+        let count = Int64(deltas.count)
+        let meanValue = total / count
+        return MemorySummary(
+            mean: meanValue,
+            max: deltas.max(),
+            min: deltas.min(),
+            count: deltas.count
+        )
     }
 
     private static func buildCategoryReports(runs: [MusicalRunDiagnostics]) -> [MusicalCategoryReport] {
@@ -184,6 +251,11 @@ enum MusicalCorpusReportAggregator {
                 meanNoteDensity: mean(runs: subset, keyPath: \.noteDensity),
                 meanRestDensity: mean(runs: subset, keyPath: \.restDensity),
                 meanMultiNoteStepShare: mean(runs: subset, keyPath: \.multiNoteStepShare),
+                meanNotesPerActiveStep: mean(runs: subset, keyPath: \.meanNotesPerActiveStep),
+                meanZeroIntervalTransitionShare: mean(runs: subset, keyPath: \.zeroIntervalTransitionShare),
+                meanSingleVoiceStepShare: meanStepVoiceShare(runs: subset, keyPath: \.singleVoiceStepCount),
+                meanTwoVoiceStepShare: meanStepVoiceShare(runs: subset, keyPath: \.twoVoiceStepCount),
+                meanThreeOrMoreVoiceStepShare: meanStepVoiceShare(runs: subset, keyPath: \.threeOrMoreVoiceStepCount),
                 maximumObservedJumpSemitones: subset.map(\.maximumJumpSemitones).max() ?? 0
             )
         }

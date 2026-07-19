@@ -986,9 +986,19 @@ Diversidade dentro de uma única sequência:
 - `uniquePitchClasses`: número de `midiNote % 12` distintos na sequência.
 - `intervalSemitones[i] = |midiNote[i] - midiNote[i-1]|` para `i > 0`; reporta média, mediana, máximo, distribuição por bucket.
 - `restDensity = restCount / 128`.
-- `noteDensity = noteCount / 128`.
+- `noteDensity = noteCount / PedalSequence.maximumNoteSlots`
+  (com `maximumNoteSlots = steps * rows = 16 * 8 = 128`).
+  A constante nomeada em `PedalSequence` substitui o número
+  mágico `128`. Retorna `0` quando `noteCount == 0`.
+- `activeStepCount = steps - restStepCount`.
+- `meanNotesPerActiveStep = noteCount / activeStepCount` (0 quando
+  não há steps ativos).
+- `singleVoiceStepCount` / `twoVoiceStepCount` /
+  `threeOrMoreVoiceStepCount` = passos ativos com 1, 2 ou ≥3 notas.
 - `durationDistinctCount = count(velocity distintos)`.
 - `patternRepetition = taxa de PedalNote repetidas em steps adjacentes`.
+- `zeroIntervalTransitionShare = zeroIntervalTransitionCount /
+  melodicTransitionCount` (0 quando não há transições).
 - `chordStepCount = steps com mais de uma nota`.
 - `contourEmpirical`: classificação observada do contorno (ascending, descending, etc.) versus `MelodicContour` declarado.
 - `registerUtilization`: distribuição do `midiNote` dentro do `register` declarado.
@@ -1233,9 +1243,46 @@ Resumo do baseline (somente corpus procedural, n = 14):
 - `globalPitchClassEntropy`: 3,53 bits;
 - `meanUniquePitchClassesPerSequence`: 4,7;
 - `meanMaximumPitchClassShare`: 0,26;
-- `meanSequenceGenerationDurationMilliseconds`: 7,49 ms;
-- `meanDiagnosticsDurationMilliseconds`: 0,13 ms;
-- `meanTotalRunDurationMilliseconds`: 27,45 ms.
+- `meanNotesPerActiveStep`: 6,43 (média global; 0 quando não há steps ativos);
+- `meanSingleVoiceStepShare`: 0,05; `meanTwoVoiceStepShare`: 0,02;
+  `meanThreeOrMoreVoiceStepShare`: 0,86 — confirma a predominância
+  de acordes densos (3+ vozes) em 86% dos steps ativos;
+- `meanZeroIntervalTransitionShare`: 0,79 — 79% das transições
+  melódicas repetem a mesma nota (intervalo 0), explicando o
+  `meanIntervalSemitones = 0,4` observado;
+- `runsWithMemorySamples`: 14; `meanResidentMemoryDeltaBytes`:
+  -1,6 MB (proxy grossa no Simulator; valores exatos variam entre
+  execuções porque `resident_size` depende do estado do processo;
+  ver `docs/audits/photo-midi-v1-baseline.md`);
+- `meanSequenceGenerationDurationMilliseconds`: 7,50 ms;
+- `meanDiagnosticsDurationMilliseconds`: 0,20 ms;
+- `meanTotalRunDurationMilliseconds`: 27,32 ms.
+
+Definições formais adotadas:
+
+- `noteDensity = noteCount / PedalSequence.maximumNoteSlots`, onde
+  `maximumNoteSlots = steps * rows = 16 * 8 = 128`. A constante
+  nomeada em `PedalSequence` substitui o número mágico `128`.
+- `meanNotesPerActiveStep = noteCount / activeStepCount` (0 quando
+  não há steps ativos).
+- Distribuição de vozes: passos ativos com 1, 2 ou ≥3 notas,
+  contados independentemente da ordem de inserção.
+- `zeroIntervalTransitionShare = zeroIntervalTransitionCount /
+  melodicTransitionCount` (0 quando não há transições).
+- `meanResidentMemoryDeltaBytes` é a média de
+  `residentMemoryBytesAfter - residentMemoryBytesBefore` (com
+  sinal) sobre os runs com ambos os samples válidos.
+
+Auditoria de proteção Release: a infraestrutura de diagnóstico
+(`MusicalDiagnosticsHarness`, `MusicalDiagnosticsCalculator`,
+`MusicalCorpusReport`, `MusicalCorpusReportAggregator`,
+`MusicalRunDiagnostics`, `CorpusCategory`, `ProceduralCorpus`),
+o botão do harness em `LibraryDebugLauncher` e a fixture store
+em `LibraryDebugFixtures` estão integralmente protegidos por
+`#if DEBUG`. O `xcodebuild -configuration Release build` passa.
+A baseline é DEBUG-only e o relatório versionado usa a versão
+`.normalized` (sem `generatedAt`) — ver
+`docs/audits/photo-midi-v1-baseline.md` para os detalhes.
 
 A v2 **não** foi implementada. Nenhuma parte do `MusicalProfile`, do
 novo seed, do novo `TonalFamily` ou do compositor v2 está no

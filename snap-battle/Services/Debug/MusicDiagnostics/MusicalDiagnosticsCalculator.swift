@@ -42,9 +42,11 @@ enum MusicalDiagnosticsCalculator {
             }
         }
         let restStepCount = notesPerStep.filter { $0 == 0 }.count
-        let singleNoteStepCount = notesPerStep.filter { $0 == 1 }.count
-        let multiNoteStepCount = notesPerStep.filter { $0 > 1 }.count
-        let stepsWithNotes = steps - restStepCount
+        let activeStepCount = steps - restStepCount
+        let singleVoiceStepCount = notesPerStep.filter { $0 == 1 }.count
+        let twoVoiceStepCount = notesPerStep.filter { $0 == 2 }.count
+        let threeOrMoreVoiceStepCount = notesPerStep.filter { $0 >= 3 }.count
+        let multiNoteStepCount = twoVoiceStepCount + threeOrMoreVoiceStepCount
 
         // Pitch class histogram and unique counts
         var pitchClassHistogram: [Int] = Array(repeating: 0, count: 12)
@@ -62,19 +64,38 @@ enum MusicalDiagnosticsCalculator {
             ? 0
             : Double(pitchClassHistogram.max() ?? 0) / Double(noteCount)
 
-        // Intervals: most-acute note per step
+        // Intervals: most-acute note per step. The same melodic policy
+        // is used for mean/max/zero transitions so the shares are
+        // consistent.
         let intervals = mostAcuteIntervals(sequence: sequence, steps: steps)
+        let zeroIntervals = intervals.filter { $0 == 0 }.count
+        let melodicTransitionCount = intervals.count
         let (meanInterval, maxJump) = intervalStats(intervals: intervals)
+        let zeroIntervalTransitionShare: Double = melodicTransitionCount == 0
+            ? 0
+            : Double(zeroIntervals) / Double(melodicTransitionCount)
 
         // Duration histogram (velocity buckets)
         let durationHistogram = durationHistogram(sequence: sequence)
 
-        // Densities
-        let noteDensity: Double = Double(noteCount) / Double(steps * PedalSequence.rows)
-        let restDensity: Double = Double(restStepCount) / Double(steps)
-        let multiNoteStepShare: Double = stepsWithNotes == 0
+        // Mean notes per active step. `noteCount == 0` implies
+        // `activeStepCount == 0`, but the guard is kept explicit.
+        let meanNotesPerActiveStep: Double = activeStepCount == 0
             ? 0
-            : Double(multiNoteStepCount) / Double(stepsWithNotes)
+            : Double(noteCount) / Double(activeStepCount)
+
+        // Densities. `noteDensity` is normalized against the structural
+        // upper bound `PedalSequence.maximumNoteSlots = steps * rows`
+        // (currently `16 * 8 = 128`). This is the maximum number of
+        // notes a v1 sequence can carry if every cell is filled.
+        let maximumNoteSlots = Double(PedalSequence.maximumNoteSlots)
+        let noteDensity: Double = noteCount == 0
+            ? 0
+            : Double(noteCount) / maximumNoteSlots
+        let restDensity: Double = Double(restStepCount) / Double(steps)
+        let multiNoteStepShare: Double = activeStepCount == 0
+            ? 0
+            : Double(multiNoteStepCount) / Double(activeStepCount)
 
         _ = calculationStart // placeholder to make timing explicit; no separate measurement emitted
 
@@ -87,8 +108,11 @@ enum MusicalDiagnosticsCalculator {
             bpm: sequence.harmony.bpm,
             noteCount: noteCount,
             restStepCount: restStepCount,
-            singleNoteStepCount: singleNoteStepCount,
-            multiNoteStepCount: multiNoteStepCount,
+            activeStepCount: activeStepCount,
+            meanNotesPerActiveStep: meanNotesPerActiveStep,
+            singleVoiceStepCount: singleVoiceStepCount,
+            twoVoiceStepCount: twoVoiceStepCount,
+            threeOrMoreVoiceStepCount: threeOrMoreVoiceStepCount,
             uniqueMIDINotes: uniqueMIDINotes.count,
             uniquePitchClasses: uniquePitchClasses.count,
             pitchClassHistogram: pitchClassHistogram,
@@ -96,6 +120,9 @@ enum MusicalDiagnosticsCalculator {
             maximumPitchClassShare: maximumPitchClassShare,
             meanIntervalSemitones: meanInterval,
             maximumJumpSemitones: maxJump,
+            melodicTransitionCount: melodicTransitionCount,
+            zeroIntervalTransitionCount: zeroIntervals,
+            zeroIntervalTransitionShare: zeroIntervalTransitionShare,
             durationHistogram: durationHistogram,
             noteDensity: noteDensity,
             restDensity: restDensity,

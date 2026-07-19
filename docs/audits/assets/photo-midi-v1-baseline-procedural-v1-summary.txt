@@ -1,7 +1,7 @@
 Photo-to-MIDI v1 baseline
 -------------------------
 Corpus: procedural-v1
-Generated at: 2026-07-19T19:24:21Z
+Generated at: 2026-07-19T20:02:34Z
 Images: 14
 Algorithm version: 1
 Roots: C 35.7%, C♯ 7.1%, D 0.0%, D♯ 7.1%, E 7.1%, F 7.1%, F♯ 7.1%, G 14.3%, G♯ 14.3%, A 0.0%, A♯ 0.0%, B 0.0%
@@ -14,22 +14,28 @@ Max observed jump: 5 semitones
 Mean note density: 0.79
 Mean rest density: 0.11
 Mean multi-note step share: 0.88
-Mean sequence generation: 7.49 ms
-Mean diagnostics: 0.13 ms
-Mean total run: 27.45 ms
+Mean notes per active step: 6.43
+Mean single-voice step share: 0.05
+Mean two-voice step share: 0.02
+Mean 3+ voice step share: 0.86
+Mean zero-interval transition share: 0.79
+Mean sequence generation: 7.92 ms
+Mean diagnostics: 0.16 ms
+Mean total run: 27.33 ms
+Memory delta (n=14): mean=-1637229 B, min=-47464448 B, max=5046272 B
 
 By category:
-  architecture        n= 1  roots=C0 C♯1 D0 D♯0 E0 F0 F♯0 G0 G♯0 A0 A♯0 B0  entropy=2.25  meanPitches=5.0
-  bright              n= 1  roots=C0 C♯0 D0 D♯0 E0 F0 F♯0 G0 G♯1 A0 A♯0 B0  entropy=2.25  meanPitches=5.0
-  centralSubject      n= 1  roots=C0 C♯0 D0 D♯0 E0 F0 F♯0 G1 G♯0 A0 A♯0 B0  entropy=2.50  meanPitches=6.0
-  dark                n= 1  roots=C1 C♯0 D0 D♯0 E0 F0 F♯0 G0 G♯0 A0 A♯0 B0  entropy=0.00  meanPitches=0.0
-  highSaturation      n= 1  roots=C0 C♯0 D0 D♯0 E1 F0 F♯0 G0 G♯0 A0 A♯0 B0  entropy=2.50  meanPitches=6.0
-  landscapeDay        n= 1  roots=C0 C♯0 D0 D♯0 E0 F1 F♯0 G0 G♯0 A0 A♯0 B0  entropy=2.25  meanPitches=5.0
-  landscapeNight      n= 1  roots=C0 C♯0 D0 D♯0 E0 F0 F♯0 G1 G♯0 A0 A♯0 B0  entropy=1.79  meanPitches=4.0
-  lowSaturation       n= 1  roots=C0 C♯0 D0 D♯0 E0 F0 F♯0 G0 G♯1 A0 A♯0 B0  entropy=2.25  meanPitches=5.0
-  nature              n= 1  roots=C0 C♯0 D0 D♯1 E0 F0 F♯0 G0 G♯0 A0 A♯0 B0  entropy=2.25  meanPitches=5.0
-  noClearSubject      n= 1  roots=C0 C♯0 D0 D♯0 E0 F0 F♯1 G0 G♯0 A0 A♯0 B0  entropy=2.25  meanPitches=5.0
-  object              n= 1  roots=C1 C♯0 D0 D♯0 E0 F0 F♯0 G0 G♯0 A0 A♯0 B0  entropy=2.25  meanPitches=5.0
-  portraitDay         n= 1  roots=C1 C♯0 D0 D♯0 E0 F0 F♯0 G0 G♯0 A0 A♯0 B0  entropy=2.25  meanPitches=5.0
-  portraitNight       n= 1  roots=C1 C♯0 D0 D♯0 E0 F0 F♯0 G0 G♯0 A0 A♯0 B0  entropy=2.17  meanPitches=5.0
-  synthetic           n= 1  roots=C1 C♯0 D0 D♯0 E0 F0 F♯0 G0 G♯0 A0 A♯0 B0  entropy=2.19  meanPitches=5.0
+  architecture        n= 1  roots=C0 C♯1 D0 D♯0 E0 F0 F♯0 G0 G♯0 A0 A♯0 B0  entropy=2.25  meanPitches=5.0  meanNotes/active=5.3  zero=0.33
+  bright              n= 1  roots=C0 C♯0 D0 D♯0 E0 F0 F♯0 G0 G♯1 A0 A♯0 B0  entropy=2.25  meanPitches=5.0  meanNotes/active=8.0  zero=1.00
+  centralSubject      n= 1  roots=C0 C♯0 D0 D♯0 E0 F0 F♯0 G1 G♯0 A0 A♯0 B0  entropy=2.50  meanPitches=6.0  meanNotes/active=8.0  zero=1.00
+  dark                n= 1  roots=C1 C♯0 D0 D♯0 E0 F0 F♯0 G0 G♯0 A0 A♯0 B0  entropy=0.00  meanPitches=0.0  meanNotes/active=0.0  zero=0.00
+  highSaturation      n= 1  roots=C0 C♯0 D0 D♯0 E1 F0 F♯0 G0 G♯0 A0 A♯0 B0  entropy=2.50  meanPitches=6.0  meanNotes/active=8.0  zero=1.00
+  landscapeDay        n= 1  roots=C0 C♯0 D0 D♯0 E0 F1 F♯0 G0 G♯0 A0 A♯0 B0  entropy=2.25  meanPitches=5.0  meanNotes/active=8.0  zero=1.00
+  landscapeNight      n= 1  roots=C0 C♯0 D0 D♯0 E0 F0 F♯0 G1 G♯0 A0 A♯0 B0  entropy=1.79  meanPitches=4.0  meanNotes/active=1.3  zero=0.38
+  lowSaturation       n= 1  roots=C0 C♯0 D0 D♯0 E0 F0 F♯0 G0 G♯1 A0 A♯0 B0  entropy=2.25  meanPitches=5.0  meanNotes/active=8.0  zero=1.00
+  nature              n= 1  roots=C0 C♯0 D0 D♯1 E0 F0 F♯0 G0 G♯0 A0 A♯0 B0  entropy=2.25  meanPitches=5.0  meanNotes/active=8.0  zero=1.00
+  noClearSubject      n= 1  roots=C0 C♯0 D0 D♯0 E0 F0 F♯1 G0 G♯0 A0 A♯0 B0  entropy=2.25  meanPitches=5.0  meanNotes/active=8.0  zero=1.00
+  object              n= 1  roots=C1 C♯0 D0 D♯0 E0 F0 F♯0 G0 G♯0 A0 A♯0 B0  entropy=2.25  meanPitches=5.0  meanNotes/active=8.0  zero=1.00
+  portraitDay         n= 1  roots=C1 C♯0 D0 D♯0 E0 F0 F♯0 G0 G♯0 A0 A♯0 B0  entropy=2.25  meanPitches=5.0  meanNotes/active=8.0  zero=1.00
+  portraitNight       n= 1  roots=C1 C♯0 D0 D♯0 E0 F0 F♯0 G0 G♯0 A0 A♯0 B0  entropy=2.17  meanPitches=5.0  meanNotes/active=4.7  zero=0.38
+  synthetic           n= 1  roots=C1 C♯0 D0 D♯0 E0 F0 F♯0 G0 G♯0 A0 A♯0 B0  entropy=2.19  meanPitches=5.0  meanNotes/active=6.7  zero=1.00

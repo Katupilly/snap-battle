@@ -77,6 +77,18 @@ final class MusicalDiagnosticsHarness {
         return MusicalDiagnosticsHarnessResult(report: result.report, exportPath: url.path)
     }
 
+    /// Run the harness and persist a *normalized* version of the JSON
+    /// report (with `generatedAt` dropped) to the given directory.
+    /// Use this for committed baseline assets so the file is
+    /// reproducible byte-for-byte across runs. Local debug exports
+    /// should keep `runAndExportJSON` to retain the execution timestamp.
+    @discardableResult
+    func runAndExportNormalizedJSON(to directory: URL) async throws -> MusicalDiagnosticsHarnessResult {
+        let result = try await run()
+        let url = try writeJSON(report: result.report.normalized, to: directory)
+        return MusicalDiagnosticsHarnessResult(report: result.report, exportPath: url.path)
+    }
+
     // MARK: - Corpus
 
     func collectFixtures() -> [ProceduralCorpus.Fixture] {
@@ -165,8 +177,11 @@ final class MusicalDiagnosticsHarness {
             bpm: diagnostics.bpm,
             noteCount: diagnostics.noteCount,
             restStepCount: diagnostics.restStepCount,
-            singleNoteStepCount: diagnostics.singleNoteStepCount,
-            multiNoteStepCount: diagnostics.multiNoteStepCount,
+            activeStepCount: diagnostics.activeStepCount,
+            meanNotesPerActiveStep: diagnostics.meanNotesPerActiveStep,
+            singleVoiceStepCount: diagnostics.singleVoiceStepCount,
+            twoVoiceStepCount: diagnostics.twoVoiceStepCount,
+            threeOrMoreVoiceStepCount: diagnostics.threeOrMoreVoiceStepCount,
             uniqueMIDINotes: diagnostics.uniqueMIDINotes,
             uniquePitchClasses: diagnostics.uniquePitchClasses,
             pitchClassHistogram: diagnostics.pitchClassHistogram,
@@ -174,6 +189,9 @@ final class MusicalDiagnosticsHarness {
             maximumPitchClassShare: diagnostics.maximumPitchClassShare,
             meanIntervalSemitones: diagnostics.meanIntervalSemitones,
             maximumJumpSemitones: diagnostics.maximumJumpSemitones,
+            melodicTransitionCount: diagnostics.melodicTransitionCount,
+            zeroIntervalTransitionCount: diagnostics.zeroIntervalTransitionCount,
+            zeroIntervalTransitionShare: diagnostics.zeroIntervalTransitionShare,
             durationHistogram: diagnostics.durationHistogram,
             noteDensity: diagnostics.noteDensity,
             restDensity: diagnostics.restDensity,
@@ -216,21 +234,36 @@ final class MusicalDiagnosticsHarness {
         printer("Mean note density: \(format(report.meanNoteDensity, decimals: 2))")
         printer("Mean rest density: \(format(report.meanRestDensity, decimals: 2))")
         printer("Mean multi-note step share: \(format(report.meanMultiNoteStepShare, decimals: 2))")
+        printer("Mean notes per active step: \(format(report.meanNotesPerActiveStep, decimals: 2))")
+        printer("Mean single-voice step share: \(format(report.meanSingleVoiceStepShare, decimals: 2))")
+        printer("Mean two-voice step share: \(format(report.meanTwoVoiceStepShare, decimals: 2))")
+        printer("Mean 3+ voice step share: \(format(report.meanThreeOrMoreVoiceStepShare, decimals: 2))")
+        printer("Mean zero-interval transition share: \(format(report.meanZeroIntervalTransitionShare, decimals: 2))")
         printer("Mean sequence generation: \(format(report.meanSequenceGenerationDurationMilliseconds, decimals: 2)) ms")
         printer("Mean diagnostics: \(format(report.meanDiagnosticsDurationMilliseconds, decimals: 2)) ms")
         printer("Mean total run: \(format(report.meanTotalRunDurationMilliseconds, decimals: 2)) ms")
+        if report.runsWithMemorySamples > 0,
+           let mean = report.meanResidentMemoryDeltaBytes,
+           let min = report.minimumResidentMemoryDeltaBytes,
+           let max = report.maximumResidentMemoryDeltaBytes {
+            printer("Memory delta (n=\(report.runsWithMemorySamples)): mean=\(mean) B, min=\(min) B, max=\(max) B")
+        } else {
+            printer("Memory delta: no samples")
+        }
 
         printer("")
         printer("By category:")
         for categoryReport in report.categoryReports {
             let name = categoryReport.category.padding(toLength: 18, withPad: " ", startingAt: 0)
             let line = String(
-                format: "  %@  n=%2d  roots=%@  entropy=%.2f  meanPitches=%.1f",
+                format: "  %@  n=%2d  roots=%@  entropy=%.2f  meanPitches=%.1f  meanNotes/active=%.1f  zero=%.2f",
                 name,
                 categoryReport.runCount,
                 rootSummary(categoryReport.rootHistogram),
                 categoryReport.pitchClassEntropy,
-                categoryReport.meanUniquePitchClassesPerSequence
+                categoryReport.meanUniquePitchClassesPerSequence,
+                categoryReport.meanNotesPerActiveStep,
+                categoryReport.meanZeroIntervalTransitionShare
             )
             printer(line)
         }

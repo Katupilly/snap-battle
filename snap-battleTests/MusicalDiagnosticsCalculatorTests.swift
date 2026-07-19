@@ -23,6 +23,8 @@ struct MusicalDiagnosticsCalculatorTests {
         #expect(diagnostics.pitchClassEntropy == 0)
         #expect(diagnostics.maximumPitchClassShare == 0)
         #expect(diagnostics.noteCount == 0)
+        #expect(diagnostics.activeStepCount == 0)
+        #expect(diagnostics.meanNotesPerActiveStep == 0)
     }
 
     @Test func entropyIsZeroForSinglePitchClass() {
@@ -94,6 +96,9 @@ struct MusicalDiagnosticsCalculatorTests {
         )
         #expect(diagnostics.meanIntervalSemitones == 0)
         #expect(diagnostics.maximumJumpSemitones == 0)
+        #expect(diagnostics.melodicTransitionCount == 0)
+        #expect(diagnostics.zeroIntervalTransitionCount == 0)
+        #expect(diagnostics.zeroIntervalTransitionShare == 0)
     }
 
     @Test func intervalsIgnoreRestsAndUseMostAcuteNotePerStep() {
@@ -116,7 +121,9 @@ struct MusicalDiagnosticsCalculatorTests {
             memory: MusicalDiagnosticsCalculator.Memory()
         )
         #expect(diagnostics.restStepCount == PedalSequence.steps - 3) // 13
-        #expect(diagnostics.multiNoteStepCount == 1)
+        #expect(diagnostics.twoVoiceStepCount == 1)
+        #expect(diagnostics.zeroIntervalTransitionCount == 0)
+        #expect(diagnostics.melodicTransitionCount == 2)
         #expect(abs(diagnostics.meanIntervalSemitones - 3.5) < 1e-9)
         #expect(diagnostics.maximumJumpSemitones == 4)
     }
@@ -131,9 +138,11 @@ struct MusicalDiagnosticsCalculatorTests {
             memory: MusicalDiagnosticsCalculator.Memory()
         )
         #expect(diagnostics.restStepCount == PedalSequence.steps)
-        #expect(diagnostics.multiNoteStepCount == 0)
+        #expect(diagnostics.twoVoiceStepCount == 0)
+        #expect(diagnostics.threeOrMoreVoiceStepCount == 0)
         #expect(diagnostics.meanIntervalSemitones == 0)
         #expect(diagnostics.maximumJumpSemitones == 0)
+        #expect(diagnostics.melodicTransitionCount == 0)
     }
 
     // MARK: - Step classification
@@ -161,12 +170,120 @@ struct MusicalDiagnosticsCalculatorTests {
             memory: MusicalDiagnosticsCalculator.Memory()
         )
         #expect(diagnostics.restStepCount == 13)
-        #expect(diagnostics.singleNoteStepCount == 1)
-        #expect(diagnostics.multiNoteStepCount == 2)
+        #expect(diagnostics.singleVoiceStepCount == 1)
+        #expect(diagnostics.twoVoiceStepCount == 1)
+        #expect(diagnostics.threeOrMoreVoiceStepCount == 1)
+        #expect(diagnostics.activeStepCount == 3)
         #expect(diagnostics.multiNoteStepShare == 2.0 / 3.0)
     }
 
-    @Test func noteAndRestDensitiesUseCorrectDenominators() {
+    @Test func activeStepCountMatchesStepsMinusRests() {
+        // 4 active steps, 12 rests, 8 notes (2 per active step).
+        let notes: [PedalNote] = (0..<4).flatMap { step in
+            [
+                PedalNote(step: step, row: 0, midiNote: 60, velocity: 1),
+                PedalNote(step: step, row: 1, midiNote: 62, velocity: 1)
+            ]
+        }
+        let sequence = makeSequence(notes: notes)
+        let diagnostics = MusicalDiagnosticsCalculator.makeDiagnostics(
+            for: sequence,
+            identifier: "active",
+            category: nil,
+            timings: MusicalDiagnosticsCalculator.Timings(sequenceGenerationMilliseconds: 0, totalRunMilliseconds: 0),
+            memory: MusicalDiagnosticsCalculator.Memory()
+        )
+        #expect(diagnostics.activeStepCount == 4)
+        #expect(diagnostics.restStepCount == PedalSequence.steps - 4)
+        #expect(abs(diagnostics.meanNotesPerActiveStep - 2.0) < 1e-9)
+    }
+
+    @Test func meanNotesPerActiveStepIsZeroForAllRestsSequence() {
+        let sequence = makeSequence(notes: [])
+        let diagnostics = MusicalDiagnosticsCalculator.makeDiagnostics(
+            for: sequence,
+            identifier: "all-rests",
+            category: nil,
+            timings: MusicalDiagnosticsCalculator.Timings(sequenceGenerationMilliseconds: 0, totalRunMilliseconds: 0),
+            memory: MusicalDiagnosticsCalculator.Memory()
+        )
+        #expect(diagnostics.activeStepCount == 0)
+        #expect(diagnostics.meanNotesPerActiveStep == 0)
+    }
+
+    @Test func voiceDistributionIsIndependentOfNoteOrderWithinAStep() {
+        // The same step (step 0) holds three notes regardless of input
+        // order. The 3+ voice bucket must remain stable.
+        let orderA: [PedalNote] = [
+            PedalNote(step: 0, row: 0, midiNote: 60, velocity: 1),
+            PedalNote(step: 0, row: 1, midiNote: 62, velocity: 1),
+            PedalNote(step: 0, row: 2, midiNote: 64, velocity: 1)
+        ]
+        let orderB: [PedalNote] = orderA.reversed()
+        let sequenceA = makeSequence(notes: orderA)
+        let sequenceB = makeSequence(notes: orderB)
+        let a = MusicalDiagnosticsCalculator.makeDiagnostics(
+            for: sequenceA,
+            identifier: "orderA",
+            category: nil,
+            timings: MusicalDiagnosticsCalculator.Timings(sequenceGenerationMilliseconds: 0, totalRunMilliseconds: 0),
+            memory: MusicalDiagnosticsCalculator.Memory()
+        )
+        let b = MusicalDiagnosticsCalculator.makeDiagnostics(
+            for: sequenceB,
+            identifier: "orderB",
+            category: nil,
+            timings: MusicalDiagnosticsCalculator.Timings(sequenceGenerationMilliseconds: 0, totalRunMilliseconds: 0),
+            memory: MusicalDiagnosticsCalculator.Memory()
+        )
+        #expect(a.threeOrMoreVoiceStepCount == b.threeOrMoreVoiceStepCount)
+        #expect(a.threeOrMoreVoiceStepCount == 1)
+        #expect(a.singleVoiceStepCount == 0)
+        #expect(a.twoVoiceStepCount == 0)
+    }
+
+    @Test func zeroIntervalTransitionCountsRepeatAcrossMostAcuteSteps() {
+        // Step 0 most-acute = 60. Step 1 most-acute = 60 (same). Step 2 most-acute = 62.
+        // Transitions: |60-60|=0, |62-60|=2. So 1 zero, 2 total, share 0.5.
+        let sequence = makeSequence(notes: [
+            PedalNote(step: 0, row: 0, midiNote: 60, velocity: 1),
+            PedalNote(step: 1, row: 0, midiNote: 60, velocity: 1),
+            PedalNote(step: 2, row: 0, midiNote: 62, velocity: 1)
+        ])
+        let diagnostics = MusicalDiagnosticsCalculator.makeDiagnostics(
+            for: sequence,
+            identifier: "zero",
+            category: nil,
+            timings: MusicalDiagnosticsCalculator.Timings(sequenceGenerationMilliseconds: 0, totalRunMilliseconds: 0),
+            memory: MusicalDiagnosticsCalculator.Memory()
+        )
+        #expect(diagnostics.melodicTransitionCount == 2)
+        #expect(diagnostics.zeroIntervalTransitionCount == 1)
+        #expect(abs(diagnostics.zeroIntervalTransitionShare - 0.5) < 1e-9)
+    }
+
+    @Test func zeroIntervalTransitionShareIsZeroWhenAllTransitionsAreDistinct() {
+        let sequence = makeSequence(notes: [
+            PedalNote(step: 0, row: 0, midiNote: 60, velocity: 1),
+            PedalNote(step: 1, row: 0, midiNote: 62, velocity: 1),
+            PedalNote(step: 2, row: 0, midiNote: 64, velocity: 1)
+        ])
+        let diagnostics = MusicalDiagnosticsCalculator.makeDiagnostics(
+            for: sequence,
+            identifier: "no-zero",
+            category: nil,
+            timings: MusicalDiagnosticsCalculator.Timings(sequenceGenerationMilliseconds: 0, totalRunMilliseconds: 0),
+            memory: MusicalDiagnosticsCalculator.Memory()
+        )
+        #expect(diagnostics.melodicTransitionCount == 2)
+        #expect(diagnostics.zeroIntervalTransitionCount == 0)
+        #expect(diagnostics.zeroIntervalTransitionShare == 0)
+    }
+
+    // MARK: - Densities
+
+    @Test func noteDensityUsesMaximumNoteSlotsAsDenominator() {
+        // One note → 1/128.
         let sequence = makeSequence(notes: [
             PedalNote(step: 0, row: 0, midiNote: 60, velocity: 1)
         ])
@@ -177,9 +294,44 @@ struct MusicalDiagnosticsCalculatorTests {
             timings: MusicalDiagnosticsCalculator.Timings(sequenceGenerationMilliseconds: 0, totalRunMilliseconds: 0),
             memory: MusicalDiagnosticsCalculator.Memory()
         )
-        let maxNotes = Double(PedalSequence.steps * PedalSequence.rows)
-        #expect(abs(diagnostics.noteDensity - 1.0 / maxNotes) < 1e-9)
+        let expectedDenominator = Double(PedalSequence.maximumNoteSlots)
+        #expect(expectedDenominator == 128)
+        #expect(abs(diagnostics.noteDensity - 1.0 / expectedDenominator) < 1e-9)
         #expect(abs(diagnostics.restDensity - 15.0 / 16.0) < 1e-9)
+    }
+
+    @Test func noteDensityIsZeroForEmptySequenceWithoutDivisionByZero() {
+        let sequence = makeSequence(notes: [])
+        let diagnostics = MusicalDiagnosticsCalculator.makeDiagnostics(
+            for: sequence,
+            identifier: "empty-density",
+            category: nil,
+            timings: MusicalDiagnosticsCalculator.Timings(sequenceGenerationMilliseconds: 0, totalRunMilliseconds: 0),
+            memory: MusicalDiagnosticsCalculator.Memory()
+        )
+        #expect(diagnostics.noteDensity == 0)
+        #expect(diagnostics.noteDensity.isFinite)
+        #expect(!diagnostics.noteDensity.isNaN)
+    }
+
+    @Test func noteDensityForFullGridEqualsOne() {
+        // 16 * 8 = 128 notes → density 1.0.
+        var notes: [PedalNote] = []
+        for step in 0..<PedalSequence.steps {
+            for row in 0..<PedalSequence.rows {
+                notes.append(PedalNote(step: step, row: row, midiNote: 60 + row, velocity: 1))
+            }
+        }
+        let sequence = makeSequence(notes: notes)
+        let diagnostics = MusicalDiagnosticsCalculator.makeDiagnostics(
+            for: sequence,
+            identifier: "full-grid",
+            category: nil,
+            timings: MusicalDiagnosticsCalculator.Timings(sequenceGenerationMilliseconds: 0, totalRunMilliseconds: 0),
+            memory: MusicalDiagnosticsCalculator.Memory()
+        )
+        #expect(abs(diagnostics.noteDensity - 1.0) < 1e-9)
+        #expect(diagnostics.activeStepCount == PedalSequence.steps)
     }
 
     // MARK: - Duration histogram

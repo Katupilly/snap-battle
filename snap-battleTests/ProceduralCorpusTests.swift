@@ -116,7 +116,17 @@ struct ProceduralCorpusTests {
             printer: printer
         ).runAndExportJSON(to: target)
 
+        // Also write the *normalized* version (without `generatedAt`)
+        // with the stable name expected by the audit asset. The local
+        // debug export above retains the execution timestamp.
+        let normalizedURL = target.appendingPathComponent("photo-midi-v1-baseline-procedural-v1.normalized.json")
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        let normalizedData = try encoder.encode(result.report.normalized)
+        try normalizedData.write(to: normalizedURL, options: [.atomic])
+
         FileHandle.standardError.write(Data("JSON written to: \(result.exportPath ?? "<none>")\n".utf8))
+        FileHandle.standardError.write(Data("Normalized JSON written to: \(normalizedURL.path)\n".utf8))
 
         // Sanity assertions: the report shape is stable.
         #expect(result.report.corpusSize == CorpusCategory.allCases.count)

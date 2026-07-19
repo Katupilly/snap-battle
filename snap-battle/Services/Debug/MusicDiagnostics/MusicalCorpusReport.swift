@@ -20,6 +20,16 @@ struct MusicalCategoryReport: Codable, Equatable, Sendable {
     let meanNoteDensity: Double
     let meanRestDensity: Double
     let meanMultiNoteStepShare: Double
+    /// Average of `meanNotesPerActiveStep` over the category.
+    let meanNotesPerActiveStep: Double
+    /// Average of `zeroIntervalTransitionShare` over the category.
+    let meanZeroIntervalTransitionShare: Double
+    /// Average share of active steps with exactly 1 note.
+    let meanSingleVoiceStepShare: Double
+    /// Average share of active steps with exactly 2 notes.
+    let meanTwoVoiceStepShare: Double
+    /// Average share of active steps with 3 or more notes.
+    let meanThreeOrMoreVoiceStepShare: Double
     let maximumObservedJumpSemitones: Int
 }
 
@@ -57,9 +67,21 @@ struct MusicalCorpusReport: Codable, Equatable, Sendable {
     let meanNoteDensity: Double
     let meanRestDensity: Double
     let meanMultiNoteStepShare: Double
+    let meanNotesPerActiveStep: Double
+    let meanZeroIntervalTransitionShare: Double
+    let meanSingleVoiceStepShare: Double
+    let meanTwoVoiceStepShare: Double
+    let meanThreeOrMoreVoiceStepShare: Double
     let meanSequenceGenerationDurationMilliseconds: Double
     let meanDiagnosticsDurationMilliseconds: Double
     let meanTotalRunDurationMilliseconds: Double
+
+    // Memory deltas. Signed because `after - before` can be negative.
+    // `nil` when no run produced a valid sample pair.
+    let meanResidentMemoryDeltaBytes: Int64?
+    let maximumResidentMemoryDeltaBytes: Int64?
+    let minimumResidentMemoryDeltaBytes: Int64?
+    let runsWithMemorySamples: Int
 
     // Per-category rollups (keys are sorted on construction)
     let categoryReports: [MusicalCategoryReport]
@@ -68,7 +90,9 @@ struct MusicalCorpusReport: Codable, Equatable, Sendable {
     let runs: [MusicalRunDiagnostics]
 
     /// A copy of this report with `generatedAt` set to an empty string.
-    /// Used for deterministic equality in tests.
+    /// Used for deterministic equality in tests and for the versioned
+    /// audit asset (Strategy A: drop volatile fields from the
+    /// committed baseline).
     var normalized: MusicalCorpusReport {
         MusicalCorpusReport(
             reportVersion: reportVersion,
@@ -89,9 +113,18 @@ struct MusicalCorpusReport: Codable, Equatable, Sendable {
             meanNoteDensity: meanNoteDensity,
             meanRestDensity: meanRestDensity,
             meanMultiNoteStepShare: meanMultiNoteStepShare,
+            meanNotesPerActiveStep: meanNotesPerActiveStep,
+            meanZeroIntervalTransitionShare: meanZeroIntervalTransitionShare,
+            meanSingleVoiceStepShare: meanSingleVoiceStepShare,
+            meanTwoVoiceStepShare: meanTwoVoiceStepShare,
+            meanThreeOrMoreVoiceStepShare: meanThreeOrMoreVoiceStepShare,
             meanSequenceGenerationDurationMilliseconds: meanSequenceGenerationDurationMilliseconds,
             meanDiagnosticsDurationMilliseconds: meanDiagnosticsDurationMilliseconds,
             meanTotalRunDurationMilliseconds: meanTotalRunDurationMilliseconds,
+            meanResidentMemoryDeltaBytes: meanResidentMemoryDeltaBytes,
+            maximumResidentMemoryDeltaBytes: maximumResidentMemoryDeltaBytes,
+            minimumResidentMemoryDeltaBytes: minimumResidentMemoryDeltaBytes,
+            runsWithMemorySamples: runsWithMemorySamples,
             categoryReports: categoryReports,
             runs: runs
         )
