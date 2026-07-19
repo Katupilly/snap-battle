@@ -177,6 +177,20 @@ Consequências:
 - não iniciar regeneração em massa no reload da biblioteca;
 - eventual regeneração incremental futura exige operação segura e autorizada por spec.
 
+## Physical device validation
+
+Validação física em dispositivo real confirmou o fluxo essencial da feature com imagens reais de diferentes dimensões e orientações, incluindo `4032 x 3024`, `1179 x 2556`, `2688 x 4032`, `3088 x 2316` e `5712 x 4284`.
+
+Foram observadas capas geradas com pitch classes distintas, incluindo `C`, `C♯`, `F`, `G` e `B`. O fluxo essencial concluiu fingerprint, preparação da imagem, processamento retrô, análise de cor, geração da sequência, recolor baseado em pitch, criação do resultado essencial, persistência, apresentação do resultado e reload da galeria.
+
+Tempos observados para o pipeline essencial completo incluíram aproximadamente `122.9 ms`, `134.9 ms`, `179.3 ms`, `310.4 ms`, `325.6 ms`, `376.5 ms` e `472.5 ms`. Esses valores são evidência observacional de execução física, não benchmark formal nem promessa de desempenho.
+
+A persistência de pedais individuais concluiu corretamente, geralmente em aproximadamente `10-14 ms` no primeiro save do fluxo e `4-8 ms` em várias escritas subsequentes observadas. PNGs e JSONs foram gravados, capas reapareceram após reload, e reloads observados reportaram `issues=0`, `missingArtwork=0`, `malformedDocuments=0` e `unreadableStorage=0` enquanto a coleção cresceu de 6 até 13 pedais.
+
+Mensagens de framework/sistema como `FigXPCUtilities`, `FigCaptureSourceRemote`, `MADService Client XPC connection invalidated`, `LaunchServices` e `Visual isTranslatable: NO` foram observadas durante captura/picker/execução DEBUG, mas não bloquearam o fluxo essencial de pitch-color e não têm evidência de regressão causada por esta branch.
+
+`semanticEnrichmentFailed details=reason=semanticStage` foi observado em execuções físicas após o resultado essencial já estar criado, persistido e apresentado. A etapa semântica é progressiva e independente da sequência determinística, do cálculo de pitch e do recolor; a falha não impede salvar, reabrir ou usar o pedal. Investigação de disponibilidade/qualidade da etapa semântica fica como dívida separada.
+
 ## Affected surfaces
 
 Consumidores reais mapeados:
