@@ -38,20 +38,21 @@ final class GalleryViewModel {
     }
 
     @discardableResult
-    func reload() -> PedalStoreLoadResult {
+    func reload(reason: GalleryReloadReason = .manual) -> PedalStoreLoadResult {
         state = .loading
-        let result = store.loadCollection()
+        let result = store.loadCollection(reason: reason.rawValue)
         apply(result)
         return result
     }
 
-    func reloadAsync() async {
+    func reloadAsync(reason: GalleryReloadReason = .initialLoad) async {
         state = .loading
         let store = store
         let runID = PerformanceDiagnostics.makeRunID()
+        let reasonRaw = reason.rawValue
         let result = await Task.detached(priority: .userInitiated) {
             PerformanceDiagnostics.measure("galleryReload", runID: runID) {
-                store.loadCollection(diagnosticsRunID: runID)
+                store.loadCollection(diagnosticsRunID: runID, reason: reasonRaw)
             }
         }.value
         apply(result)
@@ -67,7 +68,7 @@ final class GalleryViewModel {
     }
 
     func insertedSavedPedal() {
-        Task { await reloadAsync() }
+        Task { await reloadAsync(reason: .saveCompleted) }
     }
 
     func updateExistingPedal(_ updated: StoredPedal) {

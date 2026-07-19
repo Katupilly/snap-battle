@@ -47,19 +47,23 @@ struct LibraryDebugFixtureStore {
     func install(_ dataset: LibraryDebugDataset) throws -> PedalStore {
         reset(dataset: dataset)
         let store = store(for: dataset)
+        try installFixtures(dataset, into: store)
+        return store
+    }
+
+    func installFixtures(_ dataset: LibraryDebugDataset, into store: PedalStore) throws {
         for index in 0..<dataset.count {
             let pedal = Self.pedal(index: index, dataset: dataset)
             try store.save(pedal, cover: Self.cover(index: index))
         }
         try installCorruptSentinel(in: store)
-        return store
     }
 
     @MainActor
-    func installAndLoad(_ dataset: LibraryDebugDataset) throws -> LibraryDebugLoadedDataset {
+    func installAndLoad(_ dataset: LibraryDebugDataset, reason: GalleryReloadReason = .fixtureInstalled) throws -> LibraryDebugLoadedDataset {
         let store = try install(dataset)
         let model = GalleryViewModel(store: store, player: PhotoPedalSynth())
-        let loaded = model.reload()
+        let loaded = model.reload(reason: reason)
         let unavailableIDs = Set(loaded.pedals.enumerated().compactMap { $0.offset % 23 == 0 ? $0.element.id : nil })
         return LibraryDebugLoadedDataset(model: model, loadResult: loaded, unavailableIDs: unavailableIDs)
     }

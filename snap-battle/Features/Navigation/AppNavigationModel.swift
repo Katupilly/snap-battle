@@ -3,6 +3,7 @@ import Foundation
 
 enum AppRoute: Hashable {
     case pedalDetail(UUID)
+    case pedalboardDetail(UUID)
 }
 
 @MainActor
@@ -31,10 +32,16 @@ final class AppNavigationModel {
         selectedDestination = .gallery
     }
 
+    func openPedalboard(id: Pedalboard.ID) {
+        path.append(.pedalboardDetail(id))
+    }
+
     var isShowingPedalDetail: Bool {
         path.contains { route in
-            if case .pedalDetail = route { return true }
-            return false
+            switch route {
+            case .pedalDetail, .pedalboardDetail:
+                true
+            }
         }
     }
 }
