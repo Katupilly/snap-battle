@@ -596,8 +596,35 @@ accessory, blue luminous gradient under interactive regular Liquid
 Glass, optical positioning, `RootNavigationVisibility` per the
 contract above).
 
-**Increment 3 is authorized.** Increments 4 and 5 are not part of
-this step.
+**Increment 3: Complete.** The `CaptureTabAccessory` is implemented
+per the approved visual direction in this specification
+(capsule, blue luminous gradient under interactive regular Liquid
+Glass, optical positioning, sibling of the `TabView` in a
+`ZStack(alignment: .bottomTrailing)`, visibility coordinated with
+the tab bar via the single `RootNavigationVisibility` source).
+Merged on the same branch as Increments 1 and 2.
+
+**Increment 4: Complete.** Visibility and contextual bar
+coordination. The single `RootNavigationVisibility` source drives
+both the native tab bar (`.toolbar(.hidden, for: .tabBar)`) and
+the `CaptureTabAccessory` together; the contextual bar inside the
+capture sheet remains the only bottom surface during capture
+phases. The accessory carries `.transition(.opacity)` to stay in
+lockstep with the tab bar's native fade, and a defensive
+`.contentShape(Capsule())` at the outermost view so the trailing
+and bottom padding never extend the hit area beyond the visible
+capsule. The redundant per-tab `.toolbar(.hidden, for: .tabBar)`
+modifiers and the parallel `isShowingGalleryDetail` /
+`isShowingJamDetail` properties were removed so the
+`RootNavigationVisibility` value is the only switch.
+
+**Increment 5 is not part of this step.** Removal of obsolete
+infrastructure (`AppNavigationModel.Destination`,
+`RootDestination`, `NavigationBarConfiguration`, the contextual
+bar's `.navigation` case, the `bottomBar.destination.*`
+identifiers) is deferred to a separate increment. The current
+implementation does not yet demonstrate that those types are
+redundant.
 
 Increment 1 is complete in commit `66063380`
 (`refactor(navigation): separate root navigation visibility`). It
@@ -607,17 +634,85 @@ root-navigation state from contextual state, preserved
 derived `RootNavigationVisibility` source without implementing the
 new button or choosing circle vs. capsule.
 
-Increment 2 is authorized next: introduce the native `TabView` for
-Gallery and Jam, bind it to `AppNavigationModel.selectedDestination`,
-preserve contextual actions, keep Capture as a temporary non-tab
-trigger until Increment 3, and do not implement the final
-`CaptureTabAccessory`.
+Increment 2 is complete in commit `de9043b3`
+(`feat(navigation): add native Gallery and Jam tabs`).
+`TabView(selection:)` binds to `AppNavigationModel.selectedDestination`;
+each `Tab` owns its own `NavigationStack`; Capture remained a
+temporary non-tab trigger.
+
+Increment 3 is complete in commit `f59cfc51`
+(`feat(navigation): add Capture tab accessory`). Capsule
+`CaptureTabAccessory` rendered as a sibling of the `TabView`,
+wired to `beginCapture()`.
+
+Increment 4 is complete on this branch. See the commit
+`fix(navigation): coordinate root and contextual visibility` for
+the coordination change and the commit
+`docs(native-tab-navigation): record increment 4 validation` for
+the documentation update.
 
 The single-source-of-truth decision is recorded above: the
 implementation adapts `AppNavigationModel.selectedDestination` as
 the binding backing the `TabView` selection for the early
 increments and removes or renames it in Increment 5 only if the
 implementation evidence shows the model has become redundant.
+
+### Increment 4 Validation Notes
+
+- **Visibility matrix.** Confirmed against the
+  `RootNavigationVisibility` contract: Gallery root, Jam root →
+  visible; Photo Inspector, Pedalboard detail, all capture
+  phases (picker, camera, processing, save retry, result) →
+  hidden. The single value drives both the tab bar
+  (`.toolbar(.hidden, for: .tabBar)`) and the `CaptureTabAccessory`
+  (`if` on the same value). Asserted by
+  `rootVisibilityMatrixIsConsistentForEverySurface` and
+  `rootNavigationVisibilityIsTheSingleSourceForTabBarAndAccessory`
+  in `snap-battleTests/NavigationGalleryTests.swift`.
+- **Transitions.** `beginCapture` flips a single boolean
+  (`isPresentingCapture`) which the visibility source observes;
+  there is no transient frame in which the tab bar is visible
+  behind a capture sheet, and the accessory cannot appear or
+  disappear out of step with the tab bar because both observe
+  the same value. The per-frame ordering is enforced by
+  SwiftUI's reaction to a single `RootNavigationState` change,
+  not by two independent triggers. Asserted by
+  `noTransientTriggerBetweenSelectionAndRootVisibility`.
+- **Hit testing.** The accessory's `.contentShape(Capsule())` is
+  applied at the outermost view (after padding), so the 8 pt
+  trailing and 4 pt bottom visual padding never extends the hit
+  area beyond the visible capsule. Only the capsule receives
+  taps; the Jam tab stays accessible in the rest of its area.
+  The `.offset(y: 14)` moves the hit area with the rendering.
+  Behaviour is visually verified on iPhone 17 Pro simulator
+  (iOS 26.5); no automated hit-test was added in this increment.
+- **Path preservation.** Hiding the root navigation does not
+  clear any per-tab path. `beginCapture`, `cancelCapture`, and
+  `completeCapture` keep `galleryPath` and `jamPath` intact
+  except for `completeCapture`'s existing product behaviour
+  (clears `galleryPath`, selects Gallery). Asserted by
+  `hidingRootNavigationDoesNotClearNavigationPaths`.
+- **No parallel visibility state.** The per-tab
+  `.toolbar(.hidden, for: .tabBar)` modifiers and the
+  `isShowingGalleryDetail` / `isShowingJamDetail` derived
+  properties were removed. `RootNavigationVisibility` is the
+  only switch; there is no independent accessory-visibility
+  state and no per-screen duplicated logic.
+- **Contextual bar.** Untouched. The contextual bar's
+  `.contextual` and `.hidden` cases, identifiers, and
+  `BottomBarPresentation` contract are preserved verbatim.
+  Increment 4 only coordinates when it appears relative to
+  root navigation; the sheet covers both the tab bar and the
+  accessory during capture, leaving the contextual bar as the
+  only bottom surface.
+- **Test runner limitation.** The focused `xcodebuild test`
+  attempt did not start `xctest` in this session (runner
+  launch). Per the project's `AGENTS.md` Validation rule,
+  validation fell back to `build-for-testing` (Debug and
+  Release targets), Debug build, Release build, and static
+  review. No `xctest` assertion was executed in this
+  increment. Recorded as a runner/launch limitation, not an
+  assertion failure.
 
 ## Acceptance Criteria for Phase 0 Completion
 
