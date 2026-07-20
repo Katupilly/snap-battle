@@ -44,6 +44,16 @@ final class AppNavigationModel {
             }
         }
     }
+
+    /// Single visibility source for root navigation, derived from
+    /// the current route/presentation. Reading this never changes
+    /// selection, path, or presentation state.
+    var rootNavigation: RootNavigationState {
+        RootNavigationState(
+            selectedDestination: RootDestination(selectedDestination) ?? .gallery,
+            visibility: (isShowingPedalDetail || isPresentingCapture) ? .hidden : .visible
+        )
+    }
 }
 
 enum RootDestination: Hashable, Identifiable {

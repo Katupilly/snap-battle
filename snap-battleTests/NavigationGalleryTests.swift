@@ -114,30 +114,72 @@ struct NavigationGalleryTests {
     }
 
     @Test func bottomBarRootIncludesGalleryAndJamDestinations() {
-        let presentation = BottomBarPresentation.root(selected: .gallery)
+        let navigation = AppNavigationModel()
+        let root = navigation.rootNavigation
 
-        guard case .navigation(let configuration) = presentation else {
-            Issue.record("Expected navigation presentation")
-            return
-        }
-        #expect(configuration.destinations == [.gallery, .jam])
-        #expect(configuration.selectedDestination == .gallery)
-        #expect(configuration.captureAction?.id == .capture)
+        #expect(RootNavigationState.destinations == [.gallery, .jam])
+        #expect(root.selectedDestination == .gallery)
+        #expect(root.visibility == .visible)
         #expect(RootDestination(.jam) == .jam)
-        #expect(configuration.destinations.map(\.accessibilityIdentifier) == ["bottomBar.destination.gallery", "bottomBar.destination.jam"])
+        #expect(RootNavigationState.destinations.map(\.accessibilityIdentifier) == ["bottomBar.destination.gallery", "bottomBar.destination.jam"])
     }
 
     @Test func bottomBarRootKeepsPedalboardsInNavigation() {
-        let presentation = BottomBarPresentation.root(selected: .jam)
+        let navigation = AppNavigationModel()
+        navigation.selectedDestination = .jam
+        let root = navigation.rootNavigation
 
-        guard case .navigation(let configuration) = presentation else {
-            Issue.record("Expected navigation presentation for Pedalboards")
-            return
-        }
-        #expect(configuration.destinations == [.gallery, .jam])
-        #expect(configuration.selectedDestination == .jam)
-        #expect(configuration.captureAction?.id == .capture)
-        #expect(configuration.destinations.map(\.accessibilityIdentifier).contains("bottomBar.destination.jam"))
+        #expect(RootNavigationState.destinations == [.gallery, .jam])
+        #expect(root.selectedDestination == .jam)
+        #expect(root.visibility == .visible)
+        #expect(RootNavigationState.destinations.map(\.accessibilityIdentifier).contains("bottomBar.destination.jam"))
+    }
+
+    @Test func detailRoutesHideRootNavigationWithoutChangingSelection() {
+        // Photo Inspector: tab bar and Capture disappear together;
+        // on return both reappear with Gallery and its state intact.
+        let navigation = AppNavigationModel()
+        let pedalID = UUID()
+        navigation.path = [.pedalDetail(pedalID)]
+
+        #expect(navigation.rootNavigation.visibility == .hidden)
+        #expect(navigation.selectedDestination == .gallery)
+        #expect(navigation.path == [.pedalDetail(pedalID)])
+
+        navigation.path.removeLast()
+        #expect(navigation.rootNavigation.visibility == .visible)
+        #expect(navigation.rootNavigation.selectedDestination == .gallery)
+
+        // Same rule for Jam and Pedalboard detail.
+        navigation.selectedDestination = .jam
+        let boardID = UUID()
+        navigation.openPedalboard(id: boardID)
+
+        #expect(navigation.rootNavigation.visibility == .hidden)
+        #expect(navigation.selectedDestination == .jam)
+        #expect(navigation.path == [.pedalboardDetail(boardID)])
+
+        navigation.path.removeLast()
+        #expect(navigation.rootNavigation.visibility == .visible)
+        #expect(navigation.rootNavigation.selectedDestination == .jam)
+    }
+
+    @Test func captureFlowHidesRootNavigationAndCancelRestoresIt() {
+        let navigation = AppNavigationModel()
+        navigation.selectedDestination = .jam
+
+        navigation.beginCapture()
+        #expect(navigation.rootNavigation.visibility == .hidden)
+        #expect(navigation.selectedDestination == .jam)
+
+        navigation.cancelCapture()
+        #expect(navigation.rootNavigation.visibility == .visible)
+        #expect(navigation.rootNavigation.selectedDestination == .jam)
+
+        navigation.beginCapture()
+        navigation.completeCapture()
+        #expect(navigation.rootNavigation.visibility == .visible)
+        #expect(navigation.rootNavigation.selectedDestination == .gallery)
     }
 
     @Test func pedalDetailRouteHidesBottomBarWithoutChangingSelectedRoot() {
