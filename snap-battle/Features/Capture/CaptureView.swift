@@ -33,7 +33,6 @@ struct ContentView: View {
                                 EmptyView()
                             }
                         }
-                        .toolbar(navigation.isShowingGalleryDetail ? .hidden : .visible, for: .tabBar)
                         #if DEBUG
                         .toolbar {
                             ToolbarItem(placement: .topBarTrailing) {
@@ -65,17 +64,27 @@ struct ContentView: View {
                                 PedalboardDetailView(boardID: id, model: pedalboards)
                             }
                         }
-                        .toolbar(navigation.isShowingJamDetail ? .hidden : .visible, for: .tabBar)
                     }
                 }
             }
             .toolbar(navigation.rootNavigation.visibility == .hidden ? .hidden : .visible, for: .tabBar)
 
+            // The accessory observes the same RootNavigationVisibility
+            // as the tab bar above. .transition(.opacity) keeps its
+            // appearance synchronized with the tab bar's native fade
+            // so the two surfaces do not flicker relative to each
+            // other. .contentShape(Capsule()) is applied at the
+            // outermost view so the trailing/bottom padding does not
+            // extend the hit area beyond the visible capsule; only
+            // the capsule receives taps, and the Jam tab stays
+            // accessible everywhere else.
             if navigation.rootNavigation.visibility == .visible {
                 CaptureTabAccessory(action: navigation.beginCapture)
                     .padding(.trailing, 8)
                     .padding(.bottom, 4)
+                    .contentShape(Capsule())
                     .offset(y: 14)
+                    .transition(.opacity)
             }
         }
         .task {

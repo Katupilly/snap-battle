@@ -56,28 +56,6 @@ final class AppNavigationModel {
         currentPathContainsDetail
     }
 
-    var isShowingGalleryDetail: Bool {
-        galleryPath.contains { route in
-            switch route {
-            case .pedalDetail:
-                true
-            case .pedalboardDetail:
-                false
-            }
-        }
-    }
-
-    var isShowingJamDetail: Bool {
-        jamPath.contains { route in
-            switch route {
-            case .pedalDetail:
-                false
-            case .pedalboardDetail:
-                true
-            }
-        }
-    }
-
     private var currentPathContainsDetail: Bool {
         path.contains { route in
             switch route {

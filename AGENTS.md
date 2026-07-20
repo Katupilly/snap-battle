@@ -58,6 +58,11 @@ Do not implement unrelated roadmap work. Current non-goals include manual piano-
 - UI changes: build and check accessibility, motion, empty, and error states as applicable.
 - App Intents changes: validate the intent's app-launch and routing behavior on device.
 - Documentation-only changes: validate links, paths, type references, and `git diff --check`.
+- Test runner: if one focused `xcodebuild test` attempt fails before
+  `xctest` starts in the current session, do not retry the same runner.
+  Record the infrastructure limitation, fall back to
+  `build-for-testing`, Debug build, Release build, static review, and
+  manual validation, and report which checks were not run.
 
 Always report validation not run.
 

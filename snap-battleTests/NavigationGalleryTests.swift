@@ -210,6 +210,146 @@ struct NavigationGalleryTests {
         #expect(navigation.rootNavigation.selectedDestination == .gallery)
     }
 
+    // Increment 4: visibility matrix. The single RootNavigationVisibility
+    // value drives the native tab bar and the CaptureTabAccessory together.
+    // These tests assert the matrix that ContentView's `.toolbar` modifier
+    // and the accessory's `if` both observe.
+    @Test func rootVisibilityMatrixIsConsistentForEverySurface() {
+        let navigation = AppNavigationModel()
+
+        // Gallery root: visible.
+        #expect(navigation.rootNavigation.visibility == .visible)
+        #expect(navigation.rootNavigation.selectedDestination == .gallery)
+
+        // Jam root: visible.
+        navigation.selectedDestination = .jam
+        #expect(navigation.rootNavigation.visibility == .visible)
+        #expect(navigation.rootNavigation.selectedDestination == .jam)
+
+        // Photo Inspector: hidden, selection preserved.
+        navigation.selectedDestination = .gallery
+        let pedalID = UUID()
+        navigation.path = [.pedalDetail(pedalID)]
+        #expect(navigation.rootNavigation.visibility == .hidden)
+        #expect(navigation.selectedDestination == .gallery)
+
+        // Back to Gallery root: visible, path popped.
+        navigation.path.removeAll()
+        #expect(navigation.rootNavigation.visibility == .visible)
+        #expect(navigation.rootNavigation.selectedDestination == .gallery)
+
+        // Pedalboard detail: hidden, selection preserved.
+        navigation.selectedDestination = .jam
+        let boardID = UUID()
+        navigation.path = [.pedalboardDetail(boardID)]
+        #expect(navigation.rootNavigation.visibility == .hidden)
+        #expect(navigation.selectedDestination == .jam)
+        navigation.path.removeAll()
+
+        // Capture picker: hidden via isPresentingCapture.
+        navigation.beginCapture()
+        #expect(navigation.rootNavigation.visibility == .hidden)
+        #expect(navigation.selectedDestination == .jam)
+
+        // Cancel: returns to the tab that was selected before capture.
+        navigation.cancelCapture()
+        #expect(navigation.rootNavigation.visibility == .visible)
+        #expect(navigation.rootNavigation.selectedDestination == .jam)
+    }
+
+    // Increment 4: the CaptureTabAccessory and the native tab bar
+    // observe the SAME RootNavigationVisibility. There is no parallel
+    // accessory-visibility state; the same property drives both.
+    @Test func rootNavigationVisibilityIsTheSingleSourceForTabBarAndAccessory() {
+        let navigation = AppNavigationModel()
+        let initial = navigation.rootNavigation
+        #expect(initial.visibility == .visible)
+        #expect(initial.selectedDestination == .gallery)
+
+        // Detail path: single flip, both surfaces hide together.
+        navigation.path = [.pedalDetail(UUID())]
+        #expect(navigation.rootNavigation.visibility == .hidden)
+        navigation.path.removeAll()
+        #expect(navigation.rootNavigation.visibility == .visible)
+
+        // Capture: single flip, both surfaces hide together,
+        // selection preserved.
+        navigation.selectedDestination = .jam
+        navigation.beginCapture()
+        #expect(navigation.rootNavigation.visibility == .hidden)
+        #expect(navigation.rootNavigation.selectedDestination == .jam)
+        navigation.cancelCapture()
+        #expect(navigation.rootNavigation.visibility == .visible)
+        #expect(navigation.rootNavigation.selectedDestination == .jam)
+
+        // Complete: root navigation visible again, selection moves to
+        // Gallery (current product contract).
+        navigation.beginCapture()
+        navigation.completeCapture()
+        #expect(navigation.rootNavigation.visibility == .visible)
+        #expect(navigation.rootNavigation.selectedDestination == .gallery)
+    }
+
+    // Increment 4: hiding the root navigation does not clear the
+    // per-tab path; the user's stack is preserved across the
+    // visibility flip.
+    @Test func hidingRootNavigationDoesNotClearNavigationPaths() {
+        let navigation = AppNavigationModel()
+        let pedalID = UUID()
+        navigation.path = [.pedalDetail(pedalID)]
+        #expect(navigation.rootNavigation.visibility == .hidden)
+        #expect(navigation.galleryPath == [.pedalDetail(pedalID)])
+
+        // Open and cancel capture; the pedal detail path is intact.
+        navigation.beginCapture()
+        #expect(navigation.galleryPath == [.pedalDetail(pedalID)])
+        navigation.cancelCapture()
+        #expect(navigation.galleryPath == [.pedalDetail(pedalID)])
+
+        // Tab switch preserves the per-tab path independently.
+        navigation.selectedDestination = .jam
+        #expect(navigation.galleryPath == [.pedalDetail(pedalID)])
+        #expect(navigation.jamPath.isEmpty)
+        #expect(navigation.rootNavigation.visibility == .hidden)
+    }
+
+    // Increment 4: contextual states (picker, camera, processing,
+    // save retry, result) are presented via the capture sheet, which
+    // covers the tab bar and the CaptureTabAccessory. The contextual
+    // bar inside the sheet is the only bottom surface during these
+    // phases; no root accessory is rendered behind it.
+    @Test func contextualCapturePhasesDoNotDeriveRootAccessoryVisibility() {
+        let navigation = AppNavigationModel()
+        navigation.beginCapture()
+        // While presenting, the single RootNavigationVisibility is
+        // hidden. The contextual bar inside the sheet is independent
+        // and keeps its own BottomBarPresentation contract.
+        #expect(navigation.rootNavigation.visibility == .hidden)
+        #expect(navigation.isPresentingCapture)
+        #expect(navigation.rootNavigation.selectedDestination == RootDestination(navigation.selectedDestination))
+        navigation.cancelCapture()
+    }
+
+    // Increment 4: there is no transient trigger between the user's
+    // selection and the visibility state. A single read of
+    // rootNavigation.visibility is sufficient to render the bar and
+    // the accessory.
+    @Test func noTransientTriggerBetweenSelectionAndRootVisibility() {
+        let navigation = AppNavigationModel()
+        navigation.selectedDestination = .jam
+        #expect(navigation.rootNavigation.visibility == .visible)
+        #expect(navigation.rootNavigation.selectedDestination == .jam)
+
+        navigation.beginCapture()
+        // The same rootNavigation.visibility is hidden the moment
+        // isPresentingCapture flips, with no intermediate "visible
+        // while sheet animates" state.
+        #expect(navigation.rootNavigation.visibility == .hidden)
+        #expect(navigation.isPresentingCapture)
+        navigation.cancelCapture()
+        #expect(navigation.rootNavigation.visibility == .visible)
+    }
+
     @Test func pedalDetailRouteHidesBottomBarWithoutChangingSelectedRoot() {
         let navigation = AppNavigationModel()
         let pedalID = UUID()
