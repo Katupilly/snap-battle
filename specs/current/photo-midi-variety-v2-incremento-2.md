@@ -50,9 +50,9 @@ Esta spec implementa o **Incremento 2** do design: a fundação de tipos e o ver
 ### 5.1 Em escopo
 
 - **Schema (`PhotoPedal`):** novo campo opcional `generatorVersion: Int?` com decodificação tolerante (ausente → `nil`, valor desconhecido preservado) e codificação que omite `nil`. O construtor explícito recebe `generatorVersion` com default `1` para a API de produção. `updatingMetadata` e `updating(effect:soundProfile:)` preservam `generatorVersion` sem sobrescrevê-lo.
-- **Persistência:** `PhotoPedalPipeline.runEssential` grava `generatorVersion = 1` em todo novo pedal (o algoritmo em uso é v1). `PedalStore.validateMetadataUpdateTemporaryJSON` continua comparando apenas `id`/`createdAt`/`sequence`/`effect`/`coverFilename` (o `generatorVersion` é somente leitura na atualização de metadados); nenhuma outra mudança de validação é necessária porque o campo é `Int?` e o `JSONDecoder` sintetizado trata ausentes e desconhecidos. A migração de arquivos legados é automática: ausência do campo → `nil`, tratado como `1` em runtime.
+- **Persistência:** `DapPipeline.runEssential` grava `generatorVersion = 1` em todo novo pedal (o algoritmo em uso é v1). `PedalStore.validateMetadataUpdateTemporaryJSON` continua comparando apenas `id`/`createdAt`/`sequence`/`effect`/`coverFilename` (o `generatorVersion` é somente leitura na atualização de metadados); nenhuma outra mudança de validação é necessária porque o campo é `Int?` e o `JSONDecoder` sintetizado trata ausentes e desconhecidos. A migração de arquivos legados é automática: ausência do campo → `nil`, tratado como `1` em runtime.
 - **Domínio (não persistido):** novos tipos `VisualAnalysis` (struct, §6.1), `VisualAnalyzer` (enum com função pura `analyze(_:)`), `MusicalProfile` (struct, §6.2), `MelodicContour` (enum), `TonalFamily` (enum). Nenhum desses tipos é `Codable` para o disco nesta entrega; eles vivem apenas no pipeline de produção (in-memory) e nos testes.
-- **Pipeline de produção:** o `PhotoPedalPipeline` calcula `VisualAnalysis` (a partir do `PreparedImage`/`UIImage` já materializado pelo `ImageInputPreparer`) reaproveitando o buffer 64×64 que o `PhotoColorAnalyzer` já lê, sem segunda passada completa. O cálculo de `VisualAnalysis` é opcional na pipeline de Release (computado quando há `PerformanceDiagnostics` instrumentando); em Release puro, pode ser computado lazy ou omitido, desde que a saída de `PedalSequence` permaneça byte-idêntica. O `MusicalProfile` **não** é construído na pipeline de produção nesta entrega (seu builder completo depende de `seedFromFingerprint`/`subSeed`/`TonalFamilyWeights`, Incremento 3).
+- **Pipeline de produção:** o `DapPipeline` calcula `VisualAnalysis` (a partir do `PreparedImage`/`UIImage` já materializado pelo `ImageInputPreparer`) reaproveitando o buffer 64×64 que o `PhotoColorAnalyzer` já lê, sem segunda passada completa. O cálculo de `VisualAnalysis` é opcional na pipeline de Release (computado quando há `PerformanceDiagnostics` instrumentando); em Release puro, pode ser computado lazy ou omitido, desde que a saída de `PedalSequence` permaneça byte-idêntica. O `MusicalProfile` **não** é construído na pipeline de produção nesta entrega (seu builder completo depende de `seedFromFingerprint`/`subSeed`/`TonalFamilyWeights`, Incremento 3).
 - **Observabilidade DEBUG:** `PerformanceDiagnostics.event("generatorVersion", ...)` reporta `1` (ou `nil` se chamado em caminho de decodificação pura) e `PerformanceDiagnostics.event("musicAnalysis", ...)` (§15.1 do design) emite os descritores disponíveis no Incremento 2: `side`, `fingerprint16`, `meanLuminance`, `luminanceContrast`, `edgeDensity`, `visualEntropy` (os campos `tonalFamily` e os histogramas de pitch são adiados para o Incremento 3). `MusicalRunDiagnostics.algorithmVersion` (§13.9 do design) passa a ser alimentado com o valor efetivamente usado na geração (sempre `1` nesta entrega); a infraestrutura do Incremento 1 já possui o campo.
 - **Fixtures DEBUG:** `LibraryDebugFixtures.swift` (50/200/500 pedais sintéticos) é atualizado para criar `PhotoPedal` com `generatorVersion = 1` (e opcionalmente fixtures de teste com valores desconhecidos para cobrir a tolerância de decode). Nenhuma fixture passa a usar valores v2 nesta entrega.
 - **Documentação:** `docs/DATA_MODEL.md` ganha o registro de `generatorVersion` no quadro de tipos e na seção "Serialization And Storage" (§13.5 do design); `docs/IMAGE_TO_MUSIC.md` deixa de afirmar "There is no `generatorVersion` in the current model" e passa a referenciar a presença do campo e a ausência de regeneração automática; `AGENTS.md` ganha a observação de que o `generatorVersion` é persistido a partir desta entrega (revogando a frase "no generator version exists yet"). `specs/README.md` **não** é atualizado nesta entrega (índice de specs não referencia a v2 no estado atual; tarefa de housekeeping fora do escopo).
@@ -207,7 +207,7 @@ struct PhotoPedal: Codable, Sendable, Equatable, Identifiable {
 Regras de codificação/decodificação:
 
 - `Codable` sintetizado do Swift trata `Int?` ausente no JSON como `nil` na decodificação e omite `nil` na codificação (§13.10 do design). Nenhum `init(from:)` ou `encode(to:)` customizado é necessário.
-- A API de produção expõe um inicializador com `generatorVersion: Int = 1` como default, de modo que `PhotoPedal(...)` no `PhotoPedalPipeline.runEssential` continue a compilar sem mudança e produza `generatorVersion == 1` por padrão. O inicializador `memberwise` sintetizado também fica disponível, recebendo `nil` para o caso de decodificação manual em testes.
+- A API de produção expõe um inicializador com `generatorVersion: Int = 1` como default, de modo que `PhotoPedal(...)` no `DapPipeline.runEssential` continue a compilar sem mudança e produza `generatorVersion == 1` por padrão. O inicializador `memberwise` sintetizado também fica disponível, recebendo `nil` para o caso de decodificação manual em testes.
 - `updatingMetadata(name:description:)` e `updating(effect:soundProfile:)` preservam `generatorVersion` sem sobrescrevê-lo (ver §13.8 do design).
 - `PedalStore.validateMetadataUpdateTemporaryJSON` continua comparando apenas `id`/`createdAt`/`sequence`/`effect`/`coverFilename`; o `generatorVersion` é somente leitura em updates de metadados (§13.5 do design). Nenhuma modificação de validação é necessária.
 
@@ -218,7 +218,7 @@ Regras de codificação/decodificação:
 | Campo | Tipo | Origem | Default | Observações |
 | --- | --- | --- | --- | --- |
 | `id` | `UUID` | pipeline | novo a cada save | inalterado |
-| `name` | `String` | pipeline (fallback ou FM) | fallback `"Photo Pedal"` | inalterado |
+| `name` | `String` | pipeline (fallback ou FM) | fallback `"Dap"` | inalterado |
 | `description` | `String` | pipeline (fallback ou FM) | fallback | inalterado |
 | `sequence` | `PedalSequence` | pipeline | — | inalterado, byte-idêntico ao v1 |
 | `effect` | `PedalEffect` | pipeline | `.reverb` | inalterado |
@@ -230,7 +230,7 @@ Compatibilidade com `PhotoPedal` legados (sem o campo):
 
 - Decodificação: `JSONDecoder` sintetizado → `generatorVersion == nil`. Em runtime, qualquer código que consome `PhotoPedal` trata `nil` como `1` (§13.2 do design).
 - Recodificação: `JSONEncoder` sintetizado omite o campo quando o valor é `nil`, preservando a forma original do JSON legado. Nenhuma migração destrutiva (§13.3/§13.4 do design).
-- Codificação de novos pedais: o `PhotoPedalPipeline.runEssential` constrói `PhotoPedal` com `generatorVersion = 1` (o algoritmo em uso é v1). O valor `2` só passa a ser gravado no Incremento 3, quando a geração v2 é ativada (regra alinhada à §13.2 do design: "gerar um novo pedal: gravar `generatorVersion = 2` no JSON" — explicitamente adiada para o Incremento 3).
+- Codificação de novos pedais: o `DapPipeline.runEssential` constrói `PhotoPedal` com `generatorVersion = 1` (o algoritmo em uso é v1). O valor `2` só passa a ser gravado no Incremento 3, quando a geração v2 é ativada (regra alinhada à §13.2 do design: "gerar um novo pedal: gravar `generatorVersion = 2` no JSON" — explicitamente adiada para o Incremento 3).
 
 ### 7.2 Domínio (in-memory)
 
@@ -264,7 +264,7 @@ A infraestrutura de seed (`SeedContractTests`, `seed64`/`splitMix64`/`subSeed`/`
 
 ## 10. Compatibilidade com a Geração v1
 
-- `PhotoPedalPipeline.runEssential` continua chamando `ImageSequenceGenerator.makeSequence(retroImage:colorProfile:)` com os mesmos argumentos; nenhuma mudança no caminho de produção. O cálculo de `VisualAnalysis` é **aditivo** e não influencia `PedalSequence`/`PedalHarmony`/`PedalNote`/`PedalSoundProfile`.
+- `DapPipeline.runEssential` continua chamando `ImageSequenceGenerator.makeSequence(retroImage:colorProfile:)` com os mesmos argumentos; nenhuma mudança no caminho de produção. O cálculo de `VisualAnalysis` é **aditivo** e não influencia `PedalSequence`/`PedalHarmony`/`PedalNote`/`PedalSoundProfile`.
 - O novo campo `PhotoPedal.generatorVersion` é gravado como `1` (não `nil`).
 - A capa persistida é idêntica (mesma `dominantPitchClass`, mesma `PitchColorIdentity.tonalPalette`, mesmo `RetroImageProcessor.recolor`).
 - A reprodução de pedais antigos é literal (ADR 0002): `PedalSequence` persistido é tocado do storage, sem regeneração.
@@ -317,26 +317,26 @@ A entrega é aceitável quando **todas** as condições abaixo forem verdadeiras
 
 Produção:
 
-- `snap-battle/Domain/Pedal/Pedal.swift` — adicionar `generatorVersion: Int?` a `PhotoPedal`; ajustar `updating`/`updatingMetadata` para preservar o campo; adicionar inicializador público com default.
-- `snap-battle/Domain/Pedal/VisualAnalysis.swift` (novo) — struct `VisualAnalysis` (§6.1).
-- `snap-battle/Domain/Pedal/VisualAnalyzer.swift` (novo) — enum `VisualAnalyzer` com `analyze(preparedImage:)` (§6.2).
-- `snap-battle/Domain/Pedal/MusicalProfile.swift` (novo) — struct `MusicalProfile` (§6.3) e helpers de invariantes.
-- `snap-battle/Domain/Pedal/MelodicContour.swift` (novo) — enum `MelodicContour` (§6.4).
-- `snap-battle/Domain/Pedal/TonalFamily.swift` (novo) — enum `TonalFamily` (§6.5).
-- `snap-battle/Services/Pedal/PhotoColorAnalyzer.swift` — possivelmente estendido para emitir `VisualAnalysis` no mesmo loop, ou `VisualAnalyzer` separado que consome o mesmo `PreparedImage`; decisão de implementação livre desde que a saída de `PhotoColorProfile` permaneça byte-idêntica e o total de passadas sobre o buffer não exceda 2 (1 para o perfil, 1 para a análise estendida, com reuso de buffers).
-- `snap-battle/Services/Pedal/PhotoPedalPipeline.swift` — calcular `VisualAnalysis` no caminho de produção (ou em hook DEBUG-only); emitir `PerformanceDiagnostics.event("generatorVersion", ...)` e `PerformanceDiagnostics.event("musicAnalysis", ...)`; passar `generatorVersion: 1` ao construir `PhotoPedal`.
-- `snap-battle/Services/Pedal/PedalHeuristics.swift` — sem mudança obrigatória nesta entrega; qualquer nova constante necessária para o cálculo de histogramas (e.g., número de bins) é adicionada aqui com valores explícitos.
-- `snap-battle/Services/Persistence/PedalStore.swift` — sem mudança obrigatória; o decode tolerante é automático via `Codable` sintetizado. A spec exige a verificação explícita de que `validateMetadataUpdateTemporaryJSON` continua funcionando sem alteração (§13.5 do design).
-- `snap-battle/Features/Library/Debug/LibraryDebugFixtures.swift` — fixtures de pedais sintéticos passam a incluir `generatorVersion = 1`; opcionalmente, fixtures com valores desconhecidos para teste de decode tolerante.
-- `snap-battle/Services/Debug/MusicDiagnostics/MusicalRunDiagnostics.swift` — o campo `algorithmVersion` já existe (Incremento 1); verificar que é alimentado com `1` pela pipeline.
+- `Dap/Domain/Pedal/Pedal.swift` — adicionar `generatorVersion: Int?` a `PhotoPedal`; ajustar `updating`/`updatingMetadata` para preservar o campo; adicionar inicializador público com default.
+- `Dap/Domain/Pedal/VisualAnalysis.swift` (novo) — struct `VisualAnalysis` (§6.1).
+- `Dap/Domain/Pedal/VisualAnalyzer.swift` (novo) — enum `VisualAnalyzer` com `analyze(preparedImage:)` (§6.2).
+- `Dap/Domain/Pedal/MusicalProfile.swift` (novo) — struct `MusicalProfile` (§6.3) e helpers de invariantes.
+- `Dap/Domain/Pedal/MelodicContour.swift` (novo) — enum `MelodicContour` (§6.4).
+- `Dap/Domain/Pedal/TonalFamily.swift` (novo) — enum `TonalFamily` (§6.5).
+- `Dap/Services/Pedal/PhotoColorAnalyzer.swift` — possivelmente estendido para emitir `VisualAnalysis` no mesmo loop, ou `VisualAnalyzer` separado que consome o mesmo `PreparedImage`; decisão de implementação livre desde que a saída de `PhotoColorProfile` permaneça byte-idêntica e o total de passadas sobre o buffer não exceda 2 (1 para o perfil, 1 para a análise estendida, com reuso de buffers).
+- `Dap/Services/Pedal/DapPipeline.swift` — calcular `VisualAnalysis` no caminho de produção (ou em hook DEBUG-only); emitir `PerformanceDiagnostics.event("generatorVersion", ...)` e `PerformanceDiagnostics.event("musicAnalysis", ...)`; passar `generatorVersion: 1` ao construir `PhotoPedal`.
+- `Dap/Services/Pedal/PedalHeuristics.swift` — sem mudança obrigatória nesta entrega; qualquer nova constante necessária para o cálculo de histogramas (e.g., número de bins) é adicionada aqui com valores explícitos.
+- `Dap/Services/Persistence/PedalStore.swift` — sem mudança obrigatória; o decode tolerante é automático via `Codable` sintetizado. A spec exige a verificação explícita de que `validateMetadataUpdateTemporaryJSON` continua funcionando sem alteração (§13.5 do design).
+- `Dap/Features/Library/Debug/LibraryDebugFixtures.swift` — fixtures de pedais sintéticos passam a incluir `generatorVersion = 1`; opcionalmente, fixtures com valores desconhecidos para teste de decode tolerante.
+- `Dap/Services/Debug/MusicDiagnostics/MusicalRunDiagnostics.swift` — o campo `algorithmVersion` já existe (Incremento 1); verificar que é alimentado com `1` pela pipeline.
 
-Testes (novo alvo `snap-battleTests/`):
+Testes (novo alvo `DapTests/`):
 
-- `snap-battleTests/VersioningTests.swift` (novo) — 6 testes do contrato `generatorVersion` (§8 do design, §13.10).
-- `snap-battleTests/VisualAnalysisDeterminismTests.swift` (novo) — determinismo, histogramas normalizados, invariantes da struct, reuso de buffer (medição de tempo opcional).
-- `snap-battleTests/MusicalProfileInvariantTests.swift` (novo) — invariantes via construção direta.
-- `snap-battleTests/V1EquivalenceTests.swift` (novo) — extensão de `PhotoPedalStabilizationTests`: pipeline produz `PedalSequence` byte-idêntica com/sem cálculo de `VisualAnalysis`; presença/ausência de `generatorVersion` no JSON não altera `PedalSequence`.
-- `snap-battleTests/PhotoPedalStampingTests.swift` (novo) — `updatingMetadata`/`updating` preservam `generatorVersion`; recodificação de pedal legado omite o campo; decode tolerante de `nil`/`1`/`2`/`99`/`-1`.
+- `DapTests/VersioningTests.swift` (novo) — 6 testes do contrato `generatorVersion` (§8 do design, §13.10).
+- `DapTests/VisualAnalysisDeterminismTests.swift` (novo) — determinismo, histogramas normalizados, invariantes da struct, reuso de buffer (medição de tempo opcional).
+- `DapTests/MusicalProfileInvariantTests.swift` (novo) — invariantes via construção direta.
+- `DapTests/V1EquivalenceTests.swift` (novo) — extensão de `PhotoPedalStabilizationTests`: pipeline produz `PedalSequence` byte-idêntica com/sem cálculo de `VisualAnalysis`; presença/ausência de `generatorVersion` no JSON não altera `PedalSequence`.
+- `DapTests/PhotoPedalStampingTests.swift` (novo) — `updatingMetadata`/`updating` preservam `generatorVersion`; recodificação de pedal legado omite o campo; decode tolerante de `nil`/`1`/`2`/`99`/`-1`.
 
 Documentação:
 
@@ -426,7 +426,7 @@ Critério de rollback:
 - **Design v2:** `specs/current/photo-midi-variety-v2.md` (autoridade para contratos de `generatorVersion`, `VisualAnalysis`, `MusicalProfile`, `MelodicContour`, `TonalFamily`).
 - **ADRs:** 0001 (geração local determinística), 0002 (persistência literal dos resultados gerados).
 - **Spec de identidade cromática:** `specs/current/pitch-color-identity.md` (garante que `dominantPitchClass` continua sendo derivada da sequência e a paleta é única por pitch class).
-- **Infraestrutura Incremento 1:** `snap-battle/Services/Debug/MusicDiagnostics/` (`MusicalRunDiagnostics`, `MusicalDiagnosticsHarness`, `ProceduralCorpus`) já em `origin/main` desde o squash `2bd84b8`.
+- **Infraestrutura Incremento 1:** `Dap/Services/Debug/MusicDiagnostics/` (`MusicalRunDiagnostics`, `MusicalDiagnosticsHarness`, `ProceduralCorpus`) já em `origin/main` desde o squash `2bd84b8`.
 - **`ImageInputPreparer`:** `fingerprint(of:runID:)` produz o `String` hex de 64 chars consumido por `VisualAnalysis.fingerprint` e, no Incremento 3, por `seedFromFingerprint`.
 
 ## 21. Itens Explicitamente Adiados

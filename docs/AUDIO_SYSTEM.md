@@ -2,7 +2,7 @@
 
 ## Current Implementation
 
-`Services/Audio/PhotoPedalSynth.swift` owns an `AVAudioEngine` graph:
+`Services/Audio/DapSynth.swift` owns an `AVAudioEngine` graph:
 
 `AVAudioSourceNode -> AVAudioUnitReverb -> AVAudioUnitDistortion -> mainMixerNode`
 
@@ -12,9 +12,9 @@ It uses stereo 44.1 kHz output, duplicates a mono rendered sample into both chan
 
 ## Session And Playback
 
-`PhotoPedalSynth.play(_:)` stops existing playback, configures `AVAudioSession` with category `.playback` and mode `.default`, activates the session, applies the selected effect, prepares the rendered buffer, and starts the engine.
+`DapSynth.play(_:)` stops existing playback, configures `AVAudioSession` with category `.playback` and mode `.default`, activates the session, applies the selected effect, prepares the rendered buffer, and starts the engine.
 
-`PhotoPedalSynth` exposes a minimal stop-reason callback for coordinators. Requested stops are distinct from interruption and engine-failure stops, so explicit `stop()` calls do not look like unexpected playback failures.
+`DapSynth` exposes a minimal stop-reason callback for coordinators. Requested stops are distinct from interruption and engine-failure stops, so explicit `stop()` calls do not look like unexpected playback failures.
 
 `PedalboardPlaybackCoordinator` reuses this player path for sequential board playback. Because the synth does not emit a natural end-of-buffer completion, board progression uses the same sample-aligned duration formula as rendering: `samplesPerStep = max(1, Int(sampleRate * 60 / bpm / 4))`, `totalSamples = samplesPerStep * 16`, and `duration = totalSamples / sampleRate`. Rests, gate, and note count do not change total duration because the synth renders all 16 steps.
 

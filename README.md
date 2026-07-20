@@ -13,21 +13,21 @@ The app is an MVP. A roadmap item is not necessarily implemented; see [the roadm
 - A physical iOS device for camera, VisionKit, audio, and live Apple Foundation Models validation
 - Apple Intelligence and a supported current locale for model-generated pedal metadata; creation continues with fallback metadata when semantic metadata generation is unavailable or fails
 
-The project uses Swift, SwiftUI, PhotosUI, AVFoundation, Vision, VisionKit, Apple Foundation Models, App Intents, and Swift Testing. The project is `Dap.xcodeproj`; the scheme, source directories, and bundle identifier retain the pre-pivot `snap-battle` name.
+The project uses Swift, SwiftUI, PhotosUI, AVFoundation, Vision, VisionKit, Apple Foundation Models, App Intents, and Swift Testing. The project is `Dap.xcodeproj`; the source directories and bundle identifier also use Dap.
 
 ## Repository Overview
 
-- `snap-battle/`: app target, including capture, pedal presentation, domain types, and services
-- `snap-battleTests/`: current Swift Testing target; it also contains legacy game tests
+- `Dap/`: app target, including capture, pedal presentation, domain types, and services
+- `DapTests/`: current Swift Testing target; it also contains legacy game tests
 - `docs/`: product, architecture, contracts, validation, and decisions
 - `specs/`: active and planned feature specifications
 
 ## Build And Test
 
-Open `Dap.xcodeproj` in Xcode and run the `snap-battle` scheme. To test against an installed simulator:
+Open `Dap.xcodeproj` in Xcode and run the `Dap` scheme. To test against an installed simulator:
 
 ```sh
-xcodebuild test -project "Dap.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>'
+xcodebuild test -project "Dap.xcodeproj" -scheme "Dap" -destination 'platform=iOS Simulator,name=<installed simulator>'
 ```
 
 Device-only integrations require manual validation. See [Testing](docs/TESTING.md) and [Device validation](docs/DEVICE_VALIDATION.md).

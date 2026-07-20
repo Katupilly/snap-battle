@@ -55,7 +55,7 @@ A spec permanece com `Status: Ready` enquanto o desenho descrito em §7–§17 n
 
 ## 1. Contexto
 
-O Dap transforma uma foto em uma capa 2-bit, uma sequência MIDI determinística, um perfil sonoro e metadados opcionais. O pipeline essencial (`PhotoPedalPipeline.runEssential`) consome:
+O Dap transforma uma foto em uma capa 2-bit, uma sequência MIDI determinística, um perfil sonoro e metadados opcionais. O pipeline essencial (`DapPipeline.runEssential`) consome:
 
 1. `ImageInputPreparer.makePixelBuffer` e `ImagePreparationExecutor.prepare` para normalizar e gerar um pixel buffer;
 2. `RetroImageProcessor.process` para a capa 2-bit;
@@ -91,7 +91,7 @@ A causa provável do viés é o mapeamento `root = floor(hue / 30)`, conforme co
 
 ### 3.1 Onde a imagem vira descritores visuais
 
-`snap-battle/Services/Pedal/PhotoColorAnalyzer.swift`:
+`Dap/Services/Pedal/PhotoColorAnalyzer.swift`:
 
 - `analyze(_:side:)` produz `PhotoColorProfile` com `hue`, `saturation`, `luminance`, `hueVarianceDegrees`, `edgeDensity` a partir de uma amostragem RGBA em sRGB 64×64 (`PedalHeuristics.analysisSide = 64`).
 - `sobelEdgeDensity` é calculada a partir de uma única matriz grayscale e contabiliza arestas com gradiente ≥ `0.18`.
@@ -100,7 +100,7 @@ A causa provável do viés é o mapeamento `root = floor(hue / 30)`, conforme co
 
 ### 3.2 Onde root, pitch class, escala, oitava, duração, densidade e rests são definidos
 
-`snap-battle/Services/Pedal/ImageSequenceGenerator.swift`:
+`Dap/Services/Pedal/ImageSequenceGenerator.swift`:
 
 ```swift
 let harmony = PedalHarmony(
@@ -120,7 +120,7 @@ let harmony = PedalHarmony(
 
 ### 3.3 Onde o fingerprint é calculado
 
-`snap-battle/Services/ImageInputPreparer.swift`:
+`Dap/Services/ImageInputPreparer.swift`:
 
 - `fingerprint(of:runID:)` calcula SHA-256 sobre um reescalonamento 32×32 da imagem normalizada.
 - O fingerprint é uma string hexadecimais minúsculos (64 caracteres).
@@ -134,7 +134,7 @@ let harmony = PedalHarmony(
 - `analyzeTones` reescala a capa 2-bit para 16×8 e calcula luminância por célula, quantizada em 4 níveis (`0`–`3`).
 - Cada célula `level > 0` produz uma `PedalNote(step, row, midiNote, velocity)`. Rests são apenas a ausência de evento.
 - A ordem de varredura é `for row in 0..<8 { for step in 0..<16 }`. Não há ordenação por step antes da dominante.
-- Não há `duration` modelada no domínio (`Domain/Pedal/Pedal.swift`). A duração efetiva de cada nota é controlada pelo `gate` do `PedalSoundProfile`, e o sequenciador (`PhotoPedalSynth.renderSequence`) cobre o step inteiro com attack/decay/release fixos.
+- Não há `duration` modelada no domínio (`Domain/Pedal/Pedal.swift`). A duração efetiva de cada nota é controlada pelo `gate` do `PedalSoundProfile`, e o sequenciador (`DapSynth.renderSequence`) cobre o step inteiro com attack/decay/release fixos.
 
 ### 3.5 Como notas repetidas, acordes e silêncios são produzidos
 
@@ -146,32 +146,32 @@ let harmony = PedalHarmony(
 
 - `ImageSequenceGenerator.makeSequence` define `rootPitchClass` na harmonia.
 - `PedalSequence.harmony.rootName` e `PedalSequence.dominantPitchClass` (via `DominantPitchClassResolver`) são expostos em `PedalResultView`, `PedalDetailView`, `PedalboardDetailView`, `PedalPickerView`, `LibraryGridView` e `LibraryPresentation` (acessibilidade).
-- `PhotoPedalPipeline` usa `dominantPitchClass` para selecionar `PitchColorIdentity.tonalPalette`, que por sua vez é passada para `RetroImageProcessor.recolor`.
+- `DapPipeline` usa `dominantPitchClass` para selecionar `PitchColorIdentity.tonalPalette`, que por sua vez é passada para `RetroImageProcessor.recolor`.
 - Foundation Models (`FoundationModelsPedalGenerator`) consome `harmony.rootName`, `harmony.scale.rawValue` e `harmony.bpm` no prompt semântico, mas apenas como **contexto textual**, não para controlar a geração musical (`docs/FOUNDATION_MODELS.md`).
 
 A identidade cromática por pitch é, portanto, uma função determinística do conteúdo da sequência, e qualquer mudança no algoritmo musical pode alterar a cor. Esta spec trata isso explicitamente.
 
 ### 3.7 Testes já existentes
 
-- `snap-battleTests/PhotoPedalStabilizationTests.swift`:
+- `DapTests/PhotoPedalStabilizationTests.swift`:
   - `identicalNormalizedInputProducesEqualMusicalData`
   - `boundaryPreparationPreservesColorCoverAndSequence`
   - `gridLevelsProduceCurrentRestsAndVelocitiesInOrder`
   - `sequenceBoundsThresholdsAndSoundProfileRemainCurrent`
-- `snap-battleTests/CreatureAuditTests.swift`:
+- `DapTests/CreatureAuditTests.swift`:
   - `circularHueVarianceTreatsRedBoundaryAsConcentrated`
   - `sobelDensitySeparatesFlatAndHardEdges`
   - `imageParametersChooseModesAndRanges`
   - `fourSignificantRetroTonesCreateWideRange`
-- `snap-battleTests/DominantPitchClassResolverTests.swift` cobre a resolução da pitch class predominante a partir de sequências arbitrárias.
-- `snap-battleTests/PitchClassDomainTests.swift` cobre domínio cromático, normalização MIDI e identidade cromática.
+- `DapTests/DominantPitchClassResolverTests.swift` cobre a resolução da pitch class predominante a partir de sequências arbitrárias.
+- `DapTests/PitchClassDomainTests.swift` cobre domínio cromático, normalização MIDI e identidade cromática.
 - Não há testes de distribuição estatística, corpus de imagens, golden fixtures de seed ou regressão de sequências com fixtures extensas.
 
 ### 3.8 Fixtures DEBUG reutilizáveis
 
-- `snap-battle/Features/Library/Debug/LibraryDebugFixtures.swift` instala 50/200/500 pedais sintéticos com root determinístico baseado em `index % 12`. Útil para validar UI/galeria, **não** para validar geração, porque os pedais são construídos diretamente sem passar pelo pipeline.
+- `Dap/Features/Library/Debug/LibraryDebugFixtures.swift` instala 50/200/500 pedais sintéticos com root determinístico baseado em `index % 12`. Útil para validar UI/galeria, **não** para validar geração, porque os pedais são construídos diretamente sem passar pelo pipeline.
 - `BattleDebugFixtures` cobre criaturas, não geração musical.
-- `snap-battleTests/.../PhotoPedalStabilizationTests.swift` define `Fixtures.patternImage` e `Fixtures.levelPatternImage`, ambos sintéticos em `UIGraphicsImageRenderer`. Podem ser usados como seeds do corpus, mas não cobrem categorias visuais.
+- `DapTests/.../PhotoPedalStabilizationTests.swift` define `Fixtures.patternImage` e `Fixtures.levelPatternImage`, ambos sintéticos em `UIGraphicsImageRenderer`. Podem ser usados como seeds do corpus, mas não cobrem categorias visuais.
 
 ### 3.9 Métricas, logs e diagnósticos existentes
 
@@ -181,7 +181,7 @@ A identidade cromática por pitch é, portanto, uma função determinística do 
 
 ### 3.10 Como a identidade cromática por pitch está conectada
 
-`specs/current/pitch-color-identity.md` e `snap-battle/Domain/Music/PitchColorIdentity.swift`:
+`specs/current/pitch-color-identity.md` e `Dap/Domain/Music/PitchColorIdentity.swift`:
 
 - `PitchColorIdentity.tonalPalette(for: dominantPitchClass)` produz `shadow/dark/base/highlight`.
 - A paleta é persistida indiretamente porque é a capa recolorida que é salva; não há migração destrutiva.
@@ -194,7 +194,7 @@ A spec atual **não pode** quebrar esta cadeia. A `dominantPitchClass` deve cont
 
 - `PedalHarmony`, `PedalSequence`, `PedalNote`, `PedalSoundProfile`, `PhotoPedal` (`Domain/Pedal/Pedal.swift`).
 - O `PedalSequence` é decodificado com fallback de `PedalSoundProfile.legacy` se ausente, mas não há fallback equivalente para `harmony` ou `notes`.
-- `PedalStore` (`snap-battle/Services/Persistence/PedalStore.swift`) persiste JSON por UUID e PNG por UUID. A coleção cresce com novos pedais; registros antigos permanecem decodificáveis.
+- `PedalStore` (`Dap/Services/Persistence/PedalStore.swift`) persiste JSON por UUID e PNG por UUID. A coleção cresce com novos pedais; registros antigos permanecem decodificáveis.
 - Não existe `generatorVersion` no JSON. `docs/DATA_MODEL.md` e `docs/ROADMAP.md` reconhecem isso como dívida planejada.
 - Não existe migração automática para pedais antigos além do legacy `latest-pedal.json/png` → `pedals/<uuid>.json/png`.
 
@@ -853,7 +853,7 @@ A spec não altera a persistência em DEBUG. O modo A/B (ver 15) usa um sink em 
 
 A integração com `PitchColorIdentity` permanece:
 
-- `PhotoPedalPipeline` continua resolvendo `dominantPitchClass` após a geração da sequência;
+- `DapPipeline` continua resolvendo `dominantPitchClass` após a geração da sequência;
 - a paleta tonal continua sendo aplicada por `RetroImageProcessor.recolor`;
 - a persistência continua guardando apenas a capa recolorida, não a paleta.
 
@@ -915,7 +915,7 @@ struct MusicalRunDiagnostics: Sendable, Equatable {
 }
 ```
 
-`PhotoPedalPipeline` produz esse diagnóstico em `#if DEBUG` e o anexa a um sink opcional, configurável para testes e para o launcher DEBUG.
+`DapPipeline` produz esse diagnóstico em `#if DEBUG` e o anexa a um sink opcional, configurável para testes e para o launcher DEBUG.
 
 ### 15.3 A/B DEBUG
 
@@ -1248,11 +1248,11 @@ Não altera geração de produção.
 
 Entrega Incremento 1:
 
-- infraestrutura DEBUG em `snap-battle/Services/Debug/MusicDiagnostics/`:
+- infraestrutura DEBUG em `Dap/Services/Debug/MusicDiagnostics/`:
   `CorpusCategory`, `MusicalRunDiagnostics`, `MusicalCorpusReport`,
   `MusicalCorpusReportAggregator`, `MusicalDiagnosticsCalculator`,
   `ProceduralCorpus`, `MusicalDiagnosticsHarness`;
-- testes em `snap-battleTests/`: `MusicalDiagnosticsCalculatorTests`,
+- testes em `DapTests/`: `MusicalDiagnosticsCalculatorTests`,
   `MusicalCorpusReportTests`, `ProceduralCorpusTests`,
   `MusicalDiagnosticsEquivalenceTests`;
 - ponto de entrada DEBUG no `LibraryDebugLauncher` (botão
@@ -1476,14 +1476,14 @@ Esta spec recomenda começar a investigar (1) como um experimento isolado, em um
 
 Esta spec não altera arquivos. A futura implementação deverá tocar (entre outros):
 
-- `snap-battle/Services/Pedal/PhotoColorAnalyzer.swift` (estender para emitir `VisualAnalysis`).
-- `snap-battle/Services/Pedal/ImageSequenceGenerator.swift` (substituir pela nova pipeline `VisualAnalysis → MusicalProfile → Compositor`).
-- `snap-battle/Services/Pedal/PedalHeuristics.swift` (novos limites calibráveis).
-- `snap-battle/Services/Pedal/PhotoPedalPipeline.swift` (integração da nova pipeline, instrumentação, A/B DEBUG).
-- `snap-battle/Domain/Pedal/Pedal.swift` (adicionar `generatorVersion: Int?`).
-- `snap-battle/Services/Persistence/PedalStore.swift` (atualizar validação para tolerar `generatorVersion`).
-- `snap-battle/Features/Library/Debug/LibraryDebugFixtures.swift` (atualizar fixtures para incluir `generatorVersion`).
-- `snap-battleTests/` (novos testes: `SeedContractTests`, `VisualAnalysisTests`, `MusicalProfileTests`, `RootAndScaleStrategyTests`, `CompositionTests`, `VersioningTests`, `ABComparisonTests`, `DistributionTests`, `CompatibilityTests`).
+- `Dap/Services/Pedal/PhotoColorAnalyzer.swift` (estender para emitir `VisualAnalysis`).
+- `Dap/Services/Pedal/ImageSequenceGenerator.swift` (substituir pela nova pipeline `VisualAnalysis → MusicalProfile → Compositor`).
+- `Dap/Services/Pedal/PedalHeuristics.swift` (novos limites calibráveis).
+- `Dap/Services/Pedal/DapPipeline.swift` (integração da nova pipeline, instrumentação, A/B DEBUG).
+- `Dap/Domain/Pedal/Pedal.swift` (adicionar `generatorVersion: Int?`).
+- `Dap/Services/Persistence/PedalStore.swift` (atualizar validação para tolerar `generatorVersion`).
+- `Dap/Features/Library/Debug/LibraryDebugFixtures.swift` (atualizar fixtures para incluir `generatorVersion`).
+- `DapTests/` (novos testes: `SeedContractTests`, `VisualAnalysisTests`, `MusicalProfileTests`, `RootAndScaleStrategyTests`, `CompositionTests`, `VersioningTests`, `ABComparisonTests`, `DistributionTests`, `CompatibilityTests`).
 - `docs/IMAGE_TO_MUSIC.md` (atualizar contrato para a v2).
 - `docs/DATA_MODEL.md` (documentar `generatorVersion`).
 - `specs/planned/music-generation-v2.md` (mover para `superseded` quando a v2 for promovida).
@@ -1703,7 +1703,7 @@ A numeração corresponde à da segunda passagem para rastreabilidade. Nenhuma d
 
 **Evidência disponível.**
 
-- O código atual (`snap-battle/Services/Pedal/ImageSequenceGenerator.swift`) define `scale(for: colorProfile)` apenas com base em `hueVarianceDegrees` e `saturation`; `bpm = clamp(70 + luminance * 70, 70, 140)`. Não há leitura de seed; tudo é função pura do `PhotoColorProfile`.
+- O código atual (`Dap/Services/Pedal/ImageSequenceGenerator.swift`) define `scale(for: colorProfile)` apenas com base em `hueVarianceDegrees` e `saturation`; `bpm = clamp(70 + luminance * 70, 70, 140)`. Não há leitura de seed; tudo é função pura do `PhotoColorProfile`.
 - A spec §10.11 diz que `pickScale(analysis, scaleSeed)` é determinística e usa `scaleSeed` para escolher entre `majorPentatonic`, `minorPentatonic`, `dorian` e `wholeTone`, preservando as regras de monotonicidade como vieses. Mas não diz se `MelodicContour` influencia `pickScale`.
 - ADR 0001 proíbe a dependência de aleatoriedade não-determinística; isso implica que qualquer “escolha” precisa ser função pura de `(analysis, scaleSeed)`.
 - §11 (Estratégia de Composição) define `MelodicContour` como `ascending | descending | arched | stable | meandering`, usado pelo compositor para moldar a linha melódica. Isso é coerente com a leitura literal: contorno modela **o movimento das notas**, não a **escolha de escala**.
@@ -1840,7 +1840,7 @@ A numeração corresponde à da segunda passagem para rastreabilidade. Nenhuma d
 **Evidência disponível.**
 
 - O baseline v1 mostra que 4 escalas cobrem os 4 perfis visuais mais básicos (warm/cool/neutral/extreme). Não há evidência de que adicionar mais escalas melhoraria a variedade global, porque o problema atual é o mapeamento **dentro** de uma escala, não a **escolha** de escala.
-- `PedalScale` é `String, Codable, CaseIterable, Sendable` (ver `snap-battle/Domain/Pedal/Pedal.swift`). O raw value é o nome do case (string). Adicionar um case no final do enum é retrocompatível para decodificação (casos desconhecidos fazem decode falhar; novos cases não quebram JSONs antigos que não os referenciam).
+- `PedalScale` é `String, Codable, CaseIterable, Sendable` (ver `Dap/Domain/Pedal/Pedal.swift`). O raw value é o nome do case (string). Adicionar um case no final do enum é retrocompatível para decodificação (casos desconhecidos fazem decode falhar; novos cases não quebram JSONs antigos que não os referenciam).
 - A spec §10.12 já lista os itens que uma evolução futura precisaria tratar: codificação retrocompatível, migração opcional, impacto em UI/a11y, testes de persistência, rollout.
 
 **Alternativas consideradas.**

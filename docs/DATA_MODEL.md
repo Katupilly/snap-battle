@@ -34,7 +34,7 @@
 
 ### Semantic Metadata
 
-`PhotoPedal.name` and `PhotoPedal.description` are initially the valid fallback metadata: name `Photo Pedal`; description `A photo-generated sound pedal.`. The fallback record is persisted and playable before semantic enrichment runs. If Foundation Models metadata later succeeds and validates, `PedalStore` updates only `name` and `description` for the same `PhotoPedal.id`. If enrichment is unavailable, refused, failed, empty, invalid, stale, cancelled, or unable to update the existing record, the fallback remains. These values do not define the musical result.
+`PhotoPedal.name` and `PhotoPedal.description` are initially the valid fallback metadata: name `Dap`; description `A photo-generated sound pedal.`. The fallback record is persisted and playable before semantic enrichment runs. If Foundation Models metadata later succeeds and validates, `PedalStore` updates only `name` and `description` for the same `PhotoPedal.id`. If enrichment is unavailable, refused, failed, empty, invalid, stale, cancelled, or unable to update the existing record, the fallback remains. These values do not define the musical result.
 
 ## Serialization And Storage
 
@@ -55,7 +55,7 @@ The `generatorVersion` field records the algorithm version that produced the per
 
 ## Storage Scope
 
-- **Ephemeral session state:** `PhotoPedalViewModel` holds the currently displayed pedal, cover, selected effect, and synth playback state while the app runs.
+- **Ephemeral session state:** `DapViewModel` holds the currently displayed pedal, cover, selected effect, and synth playback state while the app runs.
 - **Collection storage:** `PedalStore` loads, validates, orders, saves, deletes, and migrates local pedal pairs.
 - **Pedalboard storage:** `PedalboardStore` loads, validates, orders, saves, and deletes pedalboard documents in `Application Support/pedalboards/`. It only references pedals by `StoredPedal.ID` and never reads, writes, or deletes `PedalStore` records.
 - **Gallery:** presents valid persisted pedals; invalid pairs are excluded without blocking valid records.
