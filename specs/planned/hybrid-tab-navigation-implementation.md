@@ -368,6 +368,112 @@ visible; regression-checked on Jam and dark mode):
 - Values may be refined during the real integration; any
   refinement must be global, never device-specific.
 
+### CaptureTabAccessory visibility (product decision, 2026-07-20)
+
+**Capture is a global creation action available from the root
+surfaces. It is not available inside inspection, editing, detail,
+or capture workflows.**
+
+The accessory appears **only** on the main roots: Gallery root and
+Jam root. It disappears when entering: Photo Inspector / pedal
+detail, Pedalboard detail, the Capture flow (picker, camera,
+processing, save retry, result), and any route that today derives
+`BottomBarPresentation.hidden` — including any screen with
+contextual actions such as Save Pedal or Retake.
+
+Gallery and Jam remain the selected tabs even while the tab bar
+and the accessory are hidden.
+
+Hiding the accessory must not:
+
+- change the selected tab;
+- reset the `NavigationStack`;
+- cancel a navigation;
+- create parallel visibility state;
+- depend on isolated offsets or opacity tricks.
+
+### Single visibility source (product decision, 2026-07-20)
+
+The native tab bar and the `CaptureTabAccessory` share one
+visibility contract:
+
+```swift
+enum RootNavigationVisibility {
+    case visible
+    case hidden
+}
+```
+
+Rule:
+
+- root navigation visible → native tab bar visible →
+  `CaptureTabAccessory` visible;
+- root navigation hidden → native tab bar hidden →
+  `CaptureTabAccessory` hidden.
+
+The visibility value is **derived from the current route or
+presentation**; it is never stored independently. The
+implementation must not create: an independent
+`isCaptureButtonVisible`; per-screen duplicated logic;
+uncoordinated hide animations; or an accessory visible over a
+screen whose tab bar is hidden.
+
+### Visibility matrix (confirmed against `BottomBarPresentation` and the real routes, 2026-07-20)
+
+| Surface | Tab bar | Capture accessory | Contextual actions |
+| --- | --- | --- | --- |
+| Gallery root | Visible | Visible | Hidden |
+| Jam root | Visible | Visible | Hidden |
+| Photo Inspector (pedal detail) | Hidden | Hidden | Per screen contract (today: `.hidden(.pedalDetail)`) |
+| Pedalboard detail | Hidden | Hidden | Per screen contract (today: `.hidden(.pedalDetail)`) |
+| Capture picker | Hidden | Hidden | Visible (Open Camera / Cancel) |
+| Camera | Hidden | Hidden | Hidden (`.hidden(.camera)`) |
+| Processing | Hidden | Hidden | Hidden (`.hidden(.processing)`) |
+| Save Retry | Hidden | Hidden | Visible (Try Again / Discard) |
+| Result | Hidden | Hidden | Visible (Save Pedal / Retake) |
+
+This table was checked against
+`snap-battle/Features/Navigation/AppNavigationModel.swift`
+(`BottomBarPresentation.forNavigation` and `.captureFlow`) and the
+routes in `snap-battle/Features/Capture/CaptureView.swift`; it
+does not replace code investigation in later increments.
+
+### Transitions (product decision, 2026-07-20)
+
+- Opening the Photo Inspector: Gallery root → tab bar and Capture
+  disappear together → the inspector occupies the surface.
+- Returning: inspector → tab bar and Capture reappear together →
+  Gallery and its previous state remain selected.
+- The same rule applies to Jam and Pedalboard detail.
+- The native API (`.toolbar(.hidden, for: .tabBar)`) hides the tab
+  bar; the accessory observes the same `RootNavigationVisibility`
+  state and transitions together.
+- With Reduce Motion: a simple visibility change, no independent
+  motion.
+
+### Capture shape and emphasis (gate)
+
+**Product review required before Increment 3.** The circular
+format recorded above is the spike's validated baseline, not an
+immutable final contract: a larger capsule-shaped Capture action
+(with more width, glass, possible color or gradient, and more
+visual weight to balance the tab bar) is under product
+evaluation.
+
+Already decided (not reopened by the review): Capture remains a
+`Button`; remains separate from the tab bar; is not a tab; uses
+public glass APIs; appears only on the roots; disappears in detail
+and contextual flows.
+
+Pending visual decision: circle or capsule; final width; normal
+glass, tinted glass, or gradient composition; `camera.fill` or
+another symbol combination; final gap relative to the
+Gallery/Jam capsule.
+
+**Increment 1 is not blocked** (visual-neutral refactor).
+**Increment 3 is blocked** until the visual direction is approved,
+because it introduces the definitive accessory.
+
 ### Single-source-of-truth strategy
 
 `TabView(selection:)` binds to the **existing** selection source.
@@ -432,20 +538,27 @@ implementation's validation matrix. Status at promotion time:
 
 ## Preference Key Contract
 
-`TabBarVisibility` (working name, introduced in Increment 3):
+`RootNavigationVisibility` (defined in Increment 1; the preference
+key itself is introduced in Increment 3 when the accessory lands):
 
-- A `PreferenceKey` with a `Bool` value; default `true` (visible).
-- Written by the `NavigationStack` boundaries that hide the tab
-  bar (`.toolbar(.hidden, for: .tabBar)`) in Gallery, Jam, and any
-  detail flow, so the value always reflects the system's tab bar
-  visibility for the current navigation state.
-- Read by `CaptureTabAccessory` only. The accessory renders
-  `EmptyView` when the value is `false`.
-- Symmetric and deterministic: hiding the tab bar hides the
-  accessory; showing it shows the accessory. There is no
-  independent visibility state for the accessory.
-- Reduced to the smallest surface: one key, one writer site per
-  navigation boundary, one reader. Removed together with the
+- An enum value `{ visible, hidden }` derived from the current
+  route/presentation state — the single visibility source shared
+  by the native tab bar and the `CaptureTabAccessory` (product
+  decision, see "Single visibility source").
+- Increment 1 introduces the type and derives it from
+  `AppNavigationModel` (hidden when a detail route is on the path
+  or the capture flow is presented; visible on the roots). No
+  independent storage.
+- Increment 2/3 wire the same value to
+  `.toolbar(.hidden, for: .tabBar)` at the `NavigationStack`
+  boundaries and to the accessory (via a small preference key or
+  direct observation of the same model), so both surfaces
+  transition together.
+- Symmetric and deterministic: hiding root navigation hides both
+  the tab bar and the accessory; showing it shows both. There is
+  no independent visibility state for the accessory, no
+  `isCaptureButtonVisible`, and no per-screen duplicated logic.
+- Reduced to the smallest surface; removed together with the
   accessory in the removal plan.
 
 ## Documentation Updates
@@ -476,7 +589,20 @@ by this specification when started on its own branch.** The plan is
 reviewed against the spike's evidence: no increment was shown unsafe
 or unnecessary; Increment 3 adopts the decisions in "Selected
 Implementation Decisions" (shared container, normal glass,
-12/4/offset-14 baseline, `TabBarVisibility` per the contract above).
+12/4/offset-14 baseline, `RootNavigationVisibility` per the contract
+above).
+
+**Increment 3 is blocked until the Capture shape/emphasis visual
+review is approved** (see "Capture shape and emphasis (gate)").
+Increments 1, 2, 4, and 5 are not blocked by that review.
+
+Increment 1 (authorized 2026-07-20, after the visibility contract
+decisions above were recorded) must: be visually neutral; preserve
+the current bar; separate root-navigation state from contextual
+state; preserve `AppNavigationModel.selectedDestination`; prepare
+the single `RootNavigationVisibility` source for tab bar +
+accessory; not implement the new button; not choose circle vs.
+capsule; keep the existing tests green.
 
 The single-source-of-truth decision is recorded above: the
 implementation adapts `AppNavigationModel.selectedDestination` as
