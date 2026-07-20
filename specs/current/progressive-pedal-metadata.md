@@ -6,7 +6,7 @@ Last updated: 2026-07-16
 
 ## Context
 
-Photo Pedal currently treats the playable result and semantic metadata as one
+Dap currently treats the playable result and semantic metadata as one
 blocking pipeline result. The user sees `PedalResultView` only after image
 preparation, cover generation, color analysis, sequence generation, subject
 extraction, object analysis, Foundation Models generation, validation, and
@@ -540,9 +540,9 @@ Future implementation must run focused tests, the full simulator suite, Debug
 and Release builds, and whitespace validation:
 
 ```sh
-xcodebuild test -project "snap-battle.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>'
-xcodebuild build -project "snap-battle.xcodeproj" -scheme "snap-battle" -configuration Debug
-xcodebuild build -project "snap-battle.xcodeproj" -scheme "snap-battle" -configuration Release
+xcodebuild test -project "Dap.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>'
+xcodebuild build -project "Dap.xcodeproj" -scheme "snap-battle" -configuration Debug
+xcodebuild build -project "Dap.xcodeproj" -scheme "snap-battle" -configuration Release
 git diff --check
 ```
 

@@ -1,21 +1,21 @@
-# Photo Pedal Roadmap
+# Dap Roadmap
 
 ## Current Focus
 
-Current focus: validate and refine the existing Photo Pedal vertical slice, resolve open music-generation decisions, and improve non-legacy test coverage.
+Current focus: validate and refine the existing Dap vertical slice, resolve open music-generation decisions, and improve non-legacy test coverage.
 
 ### Current Stabilization
 
 - Correct documentation/code divergences.
 - Validate the current flow on a physical device.
-- Expand Photo Pedal-specific test coverage.
+- Expand Dap-specific test coverage.
 - Define any future fingerprint responsibility through an approved spec.
 - Decide whether and when generator versioning is needed.
 - Review the [Music Generation V2 draft](../specs/planned/music-generation-v2.md).
 
 ### Legacy Pivot
 
-The current app target still compiles Creature/Battle-era code. `ObjectObservation`, `CreatureMaterial`, `SubjectExtracting`, `ObjectAnalyzing`, and `AppError` remain reused by the Photo Pedal flow and require investigation before any removal. Other legacy areas may be isolated from the active flow but are not safe to delete without target-membership and test analysis. See [Architecture](ARCHITECTURE.md).
+The current app target still compiles Creature/Battle-era code. `ObjectObservation`, `CreatureMaterial`, `SubjectExtracting`, `ObjectAnalyzing`, and `AppError` remain reused by the Dap flow and require investigation before any removal. Other legacy areas may be isolated from the active flow but are not safe to delete without target-membership and test analysis. See [Architecture](ARCHITECTURE.md).
 
 Legacy cleanup requires a dedicated audit and an approved cleanup spec.
 
@@ -44,7 +44,7 @@ This document defines product direction and sequencing. It is not an implementat
 
 ## Product Vision
 
-Photo Pedal transforms images into small, collectible musical objects.
+Dap transforms images into small, collectible musical objects.
 
 Each photo generates:
 
@@ -138,7 +138,7 @@ These profiles should be treated as part of the app’s musical identity, not as
 
 # Phase 1 — Data Model and Gallery (Ready)
 
-Ready: [Photo Pedal Library specification](../specs/current/pedal-library.md). The older [Gallery specification](../specs/planned/gallery.md) is superseded.
+Ready: [Dap Library specification](../specs/current/pedal-library.md). The older [Gallery specification](../specs/planned/gallery.md) is superseded.
 
 **Priority: Highest**
 **Complexity: Medium**

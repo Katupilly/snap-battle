@@ -48,7 +48,7 @@ UIKit/AVFoundation support camera capture; PhotosUI imports images; Vision/Visio
 
 ### Legacy And Apparently Isolated
 
-The target also compiles legacy `Creature*` domain/services, `Services/Battle/`, `Features/Generation/`, `Features/Result/`, and `Features/Battle/`. These areas are not reached from the active Photo Pedal flow, but this observation alone does not make them safe to remove because target membership and tests still compile them.
+The target also compiles legacy `Creature*` domain/services, `Services/Battle/`, `Features/Generation/`, `Features/Result/`, and `Features/Battle/`. These areas are not reached from the active Dap flow, but this observation alone does not make them safe to remove because target membership and tests still compile them.
 
 ### Naming Legacy
 

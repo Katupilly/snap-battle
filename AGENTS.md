@@ -2,7 +2,7 @@
 
 ## Project Summary
 
-Photo Pedal is an iOS app that turns a photo into a 2-bit cover, deterministic musical sequence, playable synth sound, effect configuration, and generated metadata. The current core flow is capture/import, processing, playback, and saving the latest pedal.
+Dap is an iOS app that turns a photo into a 2-bit cover, deterministic musical sequence, playable synth sound, effect configuration, and generated metadata. The current core flow is capture/import, processing, playback, and saving the latest pedal.
 
 ## Sources Of Truth
 

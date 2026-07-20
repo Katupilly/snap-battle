@@ -1,11 +1,11 @@
-# Spec: Photo Pedal Vertical Slice Stabilization
+# Spec: Dap Vertical Slice Stabilization
 
 Status: Ready
 Priority: P0
 
 ## Context
 
-The current Photo Pedal vertical slice captures or imports a photo, prepares it, produces a four-tone cover, generates a deterministic `PedalSequence`, generates semantic metadata or static fallback metadata, plays it through `PhotoPedalSynth`, and persists the latest result. The product flow is active. The `snap-battleTests` target currently has 62 tests in 6 suites, including focused Photo Pedal coverage for deterministic generation, metadata fallback, latest-pedal persistence, audio lifecycle coordination, and App Intent routing where testable without device/framework invocation.
+The current Dap vertical slice captures or imports a photo, prepares it, produces a four-tone cover, generates a deterministic `PedalSequence`, generates semantic metadata or static fallback metadata, plays it through `PhotoPedalSynth`, and persists the latest result. The product flow is active. The `snap-battleTests` target currently has 62 tests in 6 suites, including focused Dap coverage for deterministic generation, metadata fallback, latest-pedal persistence, audio lifecycle coordination, and App Intent routing where testable without device/framework invocation.
 
 This specification stabilizes existing behavior. It does not authorize creative changes to the image-to-music algorithm or product expansion.
 
@@ -53,11 +53,11 @@ Users can complete the existing photo-to-pedal flow when semantic metadata servi
 - `PedalStore.save(_:cover:)` and `PedalStore.loadLatest()` in `snap-battle/Services/Persistence/PedalStore.swift` overwrite/load `latest-pedal.json` and `latest-pedal.png` in Application Support. `loadLatest()` returns `nil` if either component cannot load.
 - `PhotoPedalViewModel` in `snap-battle/Features/Capture/CaptureViewModel.swift` blocks duplicate `process(_:)` calls while `isProcessing`, resets that state with `defer`, saves generated results, reloads the latest pedal at initialization, and calls `synth.play(_:)` from `play()`.
 - `CreatePedalIntent` and `PlayLastPedalIntent` in `snap-battle/Intents/PhotoPedalIntents.swift` set `AppIntentRouter.shared.request`; `ContentView` in `snap-battle/Features/Capture/CaptureView.swift` handles `.create` by resetting and opening `CameraScreen`, and `.playLast` by calling `PhotoPedalViewModel.playLast()`.
-- Current Photo Pedal coverage includes deterministic generation, fallback metadata paths through `PedalMetadataGenerating`, storage replacement/reload behavior, selected audio lifecycle coordination, and App Intent routing. Legacy Snap Battle coverage remains present.
+- Current Dap coverage includes deterministic generation, fallback metadata paths through `PedalMetadataGenerating`, storage replacement/reload behavior, selected audio lifecycle coordination, and App Intent routing. Legacy Snap Battle coverage remains present.
 
 ## In Scope
 
-- Focused Photo Pedal domain regression tests for the current deterministic generation contract.
+- Focused Dap domain regression tests for the current deterministic generation contract.
 - Minimal deterministic fixtures that do not use the fingerprint as a contract.
 - Metadata fallback for unavailable, refused, failed, empty, or invalid Foundation Models output through the existing `PedalMetadataGenerating` seam.
 - Focused tests for latest-pedal storage: save, reload, replacement, and absence.
@@ -149,7 +149,7 @@ Users can complete the existing photo-to-pedal flow when semantic metadata servi
 
 ### Pure Deterministic Tests
 
-- Add Photo Pedal-focused tests under a new `snap-battleTests/PhotoPedalStabilizationTests.swift` file. Keep legacy tests untouched unless a shared current behavior requires a narrowly scoped correction.
+- Add Dap-focused tests under a new `snap-battleTests/PhotoPedalStabilizationTests.swift` file. Keep legacy tests untouched unless a shared current behavior requires a narrowly scoped correction.
 - Use synthetic `UIImage` inputs and explicit `PhotoColorProfile`/domain values. Do not add large photos, binary snapshots, or fingerprint-based expectations.
 - Cover identical input producing equal `PedalSequence` values across repeated generation.
 - Cover `level == 0` as no `PedalNote` event and levels `1...3` as note events with current velocities.
@@ -175,7 +175,7 @@ Users can complete the existing photo-to-pedal flow when semantic metadata servi
 
 ### Regression Scope
 
-New tests must protect Photo Pedal code. This work does not pursue coverage percentage or expand legacy Snap Battle tests.
+New tests must protect Dap code. This work does not pursue coverage percentage or expand legacy Snap Battle tests.
 
 ## Device Validation Requirements
 
@@ -214,7 +214,7 @@ Follow [Device Validation](../../docs/DEVICE_VALIDATION.md). Record each result 
 
 ## Acceptance Criteria
 
-- [ ] Focused Photo Pedal tests protect the current deterministic generation contract.
+- [ ] Focused Dap tests protect the current deterministic generation contract.
 - [ ] An identical synthetic fixture produces equal essential musical data across repeated runs.
 - [ ] Tests exclude UUID, creation date, and generated metadata from deterministic assertions.
 - [ ] Tests cover `level == 0` as a rest and levels `1...3` as notes with current velocities.
@@ -306,14 +306,14 @@ Non-blocking follow-up: musical-variation, fingerprint-responsibility, generator
 Run focused and full tests using the shared scheme and an installed simulator:
 
 ```sh
-xcodebuild test -project "snap-battle.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>'
+xcodebuild test -project "Dap.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>'
 ```
 
 Build both configurations using the current project and scheme:
 
 ```sh
-xcodebuild build -project "snap-battle.xcodeproj" -scheme "snap-battle" -configuration Debug
-xcodebuild build -project "snap-battle.xcodeproj" -scheme "snap-battle" -configuration Release
+xcodebuild build -project "Dap.xcodeproj" -scheme "snap-battle" -configuration Debug
+xcodebuild build -project "Dap.xcodeproj" -scheme "snap-battle" -configuration Release
 git diff --check
 ```
 

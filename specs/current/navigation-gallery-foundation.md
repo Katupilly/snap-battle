@@ -6,7 +6,7 @@ Last updated: 2026-07-17
 
 ## Context
 
-The active Photo Pedal vertical slice captures or imports an image, creates a four-tone cover and deterministic `PedalSequence`, generates metadata or fallback metadata, automatically persists the result, and presents `PedalResultView`. `ContentView` is in `snap-battle/Features/Capture/CaptureView.swift`; it currently presents either the private `PedalCaptureView` or `PedalResultView` in one `NavigationStack`. `CameraScreen` is a sheet and photo-library import uses `PhotosPicker`.
+The active Dap vertical slice captures or imports an image, creates a four-tone cover and deterministic `PedalSequence`, generates metadata or fallback metadata, automatically persists the result, and presents `PedalResultView`. `ContentView` is in `snap-battle/Features/Capture/CaptureView.swift`; it currently presents either the private `PedalCaptureView` or `PedalResultView` in one `NavigationStack`. `CameraScreen` is a sheet and photo-library import uses `PhotosPicker`.
 
 `PhotoPedalViewModel.process(_:)` in `snap-battle/Features/Capture/CaptureViewModel.swift` blocks duplicate processing with `isProcessing`, runs `PhotoPedalPipeline`, updates in-memory state, and calls `PedalStore.save(_:cover:)`. `PedalStore` currently writes only `latest-pedal.json` and `latest-pedal.png` in Application Support. `PhotoPedal` in `snap-battle/Domain/Pedal/Pedal.swift` already has UUID identity, creation date, final sequence, effect, sound settings, metadata, and a cover filename.
 
@@ -16,7 +16,7 @@ This work follows [ADR 0001](../../docs/decisions/0001-deterministic-local-music
 
 This specification remains the source of truth for the implemented navigation and persistence foundation: persistent Gallery and Jam roots, transient Capture, automatic save/result completion, collection storage, legacy migration, safe writes, deletion, playback coordination, App Intent routing, and shared latest-pedal selection.
 
-It is no longer the source of truth for the future visual Library experience. The future Photos-like Library grid, chronological visual order, month grouping, initial scroll position, shared-element transition, standardized detail cover frame, and scroll preservation are governed by [Photo Pedal Library](pedal-library.md).
+It is no longer the source of truth for the future visual Library experience. The future Photos-like Library grid, chronological visual order, month grouping, initial scroll position, shared-element transition, standardized detail cover frame, and scroll preservation are governed by [Dap Library](pedal-library.md).
 
 Until that promotion happens, the implemented Gallery list remains valid current behavior. Do not use the baseline list/card requirements in this foundation spec to block or override the future Library feature spec.
 
@@ -308,16 +308,16 @@ Validate manually: main navigation and Capture control, camera, library import, 
 
 ## Open Questions
 
-None for this foundation. Automatic persistence, post-save behavior, Gallery as initial destination, no cover sharing, Jam empty state, migration, safe writes, latest selection, and foundation accessibility requirements are resolved. Future visual Library behavior is governed by [Photo Pedal Library](pedal-library.md).
+None for this foundation. Automatic persistence, post-save behavior, Gallery as initial destination, no cover sharing, Jam empty state, migration, safe writes, latest selection, and foundation accessibility requirements are resolved. Future visual Library behavior is governed by [Dap Library](pedal-library.md).
 
 ## Verification
 
 For implementation work, run focused and full tests using the current scheme and an installed simulator, then build both configurations:
 
 ```sh
-xcodebuild test -project "snap-battle.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>'
-xcodebuild build -project "snap-battle.xcodeproj" -scheme "snap-battle" -configuration Debug
-xcodebuild build -project "snap-battle.xcodeproj" -scheme "snap-battle" -configuration Release
+xcodebuild test -project "Dap.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>'
+xcodebuild build -project "Dap.xcodeproj" -scheme "snap-battle" -configuration Debug
+xcodebuild build -project "Dap.xcodeproj" -scheme "snap-battle" -configuration Release
 git diff --check
 ```
 

@@ -1,4 +1,4 @@
-## Photo Pedal Pedalboard Phase 2 Foundation
+## Dap Pedalboard Phase 2 Foundation
 
 Status: Ready
 Last updated: 2026-07-17
@@ -8,12 +8,12 @@ Framework: SwiftUI
 
 ## Context
 
-Photo Pedal already persists multiple saved pedals, exposes them through the Library, opens detail by persisted UUID, and replays the stored musical result without regenerating it. The app also has a persistent Jam root, but that root is still a placeholder with no domain model, persistence, or playback of ordered saved pedals.
+Dap already persists multiple saved pedals, exposes them through the Library, opens detail by persisted UUID, and replays the stored musical result without regenerating it. The app also has a persistent Jam root, but that root is still a placeholder with no domain model, persistence, or playback of ordered saved pedals.
 
 The current sources of truth for existing behavior remain:
 
 - [Navigation and Gallery Foundation](navigation-gallery-foundation.md)
-- [Photo Pedal Library](pedal-library.md)
+- [Dap Library](pedal-library.md)
 - [Architecture](../../docs/ARCHITECTURE.md)
 - [Data Model](../../docs/DATA_MODEL.md)
 - [Audio System](../../docs/AUDIO_SYSTEM.md)
