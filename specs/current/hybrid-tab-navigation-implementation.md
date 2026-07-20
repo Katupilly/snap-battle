@@ -20,9 +20,9 @@ Last updated: 2026-07-20
 > `specs/planned/native-tab-navigation-migration.md`, increment by
 > increment, each on its own branch. The migration spec remains
 > `Draft` as the decision document until the migration reaches
-> `Done`. The approved visual uses **normal glass**
-> (`.glassEffect(.regular.interactive(), in: .circle)`), not a
-> tinted surface.
+> `Done`. The approved Increment 3 visual uses a **capsule Capture
+> accessory** with a blue luminous gradient under interactive
+> regular Liquid Glass.
 >
 > File paths in this document were updated to the post-rename
 > layout (`snap-battle/`).
@@ -298,14 +298,24 @@ capsule.
 
 ### Accessory surface (glass)
 
-**Normal system glass — final decision:**
+**Blue luminous capsule under normal system glass — final decision:**
 
 ```swift
 .glassEffect(
     .regular.interactive(),
-    in: .circle
+    in: .capsule
 )
 ```
+
+The button uses `Image(systemName: "camera.fill")`, centered, with
+no visible text label. The gradient language is blue photographic
+light: deep blue, electric blue, cyan, contained white highlight,
+darkened ends, and short contained glow. The gradient sits under
+interactive regular Liquid Glass and remains visible through it.
+
+Adjustable during production validation, globally only: exact width
+within 112–132 pt, gap relative to the tab bar, beam placement, and
+glow intensity.
 
 Tested and rejected by visual direction (not the main
 implementation; **not** an automatic fallback — retrievable only by
@@ -314,7 +324,7 @@ an explicit future product decision):
 ```swift
 .glassEffect(
     .regular.tint(.accentColor).interactive(),
-    in: .circle
+    in: .capsule
 )
 ```
 
@@ -323,19 +333,20 @@ look visually separated from the tab bar; communicates more CTA
 priority than desired; reduces coherence with the native
 navigation material.
 
-Also rejected: `Circle` + tint; `.buttonStyle(.glass)` and
-`.buttonStyle(.glassProminent)` (intrinsic sizing overflows the
-56×56 frame and clips); `GlassEffectContainer` (no effect for a
-single element).
+Also rejected: tinted-glass-only emphasis; `.buttonStyle(.glass)`
+and `.buttonStyle(.glassProminent)` if they distort sizing;
+`GlassEffectContainer` for this single accessory unless later
+needed by measurement.
 
 Increment 3 renders the button as:
 
 ```swift
 Image(systemName: "camera.fill")
-    .frame(minWidth: 56, minHeight: 56)
+    .frame(width: 124, height: 58)
+    .background { CaptureGradientBackground().clipShape(Capsule()) }
     .glassEffect(
         .regular.interactive(),
-        in: .circle
+        in: .capsule
     )
 ```
 
@@ -451,28 +462,25 @@ does not replace code investigation in later increments.
 - With Reduce Motion: a simple visibility change, no independent
   motion.
 
-### Capture shape and emphasis (gate)
+### Capture shape and emphasis
 
-**Product review required before Increment 3.** The circular
-format recorded above is the spike's validated baseline, not an
-immutable final contract: a larger capsule-shaped Capture action
-(with more width, glass, possible color or gradient, and more
-visual weight to balance the tab bar) is under product
-evaluation.
+**Product review approved the Increment 3 direction on
+2026-07-20.** Capture is a larger capsule-shaped global action with
+a blue luminous gradient under interactive regular Liquid Glass.
 
-Already decided (not reopened by the review): Capture remains a
+Already decided and not reopened: Capture remains a
 `Button`; remains separate from the tab bar; is not a tab; uses
 public glass APIs; appears only on the roots; disappears in detail
 and contextual flows.
 
-Pending visual decision: circle or capsule; final width; normal
-glass, tinted glass, or gradient composition; `camera.fill` or
-another symbol combination; final gap relative to the
-Gallery/Jam capsule.
+Approved: capsule shape; `camera.fill`; blue luminous gradient
+under `.glassEffect(.regular.interactive(), in: .capsule)`;
+Gallery/Jam roots only. Adjustable after implementation evidence:
+exact width, gap, beam placement, glow intensity, and final optical
+alignment.
 
 **Increment 1 is not blocked** (visual-neutral refactor).
-**Increment 3 is blocked** until the visual direction is approved,
-because it introduces the definitive accessory.
+**Increment 3 is authorized** by this approved visual direction.
 
 ### Single-source-of-truth strategy
 
@@ -491,18 +499,13 @@ implementation evidence shows the model has become redundant.
 Recorded from the spike report (Round 2, "Remaining Differences
 vs. Figma"):
 
-1. **Tint (intentional divergence).** The Figma frame suggests a
-   tinted Liquid Glass surface. The final product decision
-   overrides this: normal glass is the approved surface so Capture
-   belongs to the tab bar's visual family instead of reading as a
-   colored CTA. This is a product decision, not a technical
-   limitation.
-2. **Size.** The accessory is 56×56 pt; the Figma frame sizes
-   Capture to the tab bar's intrinsic item size. 56 pt keeps a
-   comfortable hit area and may be tuned during integration
+1. **Surface.** The production accessory uses a blue luminous
+   gradient under interactive regular Liquid Glass.
+2. **Size.** The accessory starts at approximately 124×58 pt and
+   may be tuned within 112–132 pt width during integration
    (globally, never per device).
-3. **Gap.** 40 pt between the capsule's trailing edge and the
-   accessory's leading edge at trailing 12 pt.
+3. **Gap.** The target visual gap between the tab bar capsule and
+   Capture capsule is approximately 12–16 pt, tuned optically.
 4. **Structure.** Capture is a SwiftUI `Button` sibling, not a
    system tab bar item. No public API on the baseline produces a
    non-tab action inside the bar; `tabViewBottomAccessory`
@@ -588,13 +591,13 @@ plan for production implementation. **Each increment is authorized
 by this specification when started on its own branch.** The plan is
 reviewed against the spike's evidence: no increment was shown unsafe
 or unnecessary; Increment 3 adopts the decisions in "Selected
-Implementation Decisions" (shared container, normal glass,
-12/4/offset-14 baseline, `RootNavigationVisibility` per the contract
-above).
+Implementation Decisions" (shared container, capsule Capture
+accessory, blue luminous gradient under interactive regular Liquid
+Glass, optical positioning, `RootNavigationVisibility` per the
+contract above).
 
-**Increment 3 is blocked until the Capture shape/emphasis visual
-review is approved** (see "Capture shape and emphasis (gate)").
-Increments 1, 2, 4, and 5 are not blocked by that review.
+**Increment 3 is authorized.** Increments 4 and 5 are not part of
+this step.
 
 Increment 1 is complete in commit `66063380`
 (`refactor(navigation): separate root navigation visibility`). It
