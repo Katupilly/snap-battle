@@ -113,7 +113,7 @@ struct NavigationGalleryTests {
         #expect(!navigation.isPresentingCapture)
     }
 
-    @Test func bottomBarRootIncludesGalleryAndJamDestinations() {
+    @Test func nativeRootTabsIncludeOnlyGalleryAndJamDestinations() {
         let navigation = AppNavigationModel()
         let root = navigation.rootNavigation
 
@@ -124,15 +124,22 @@ struct NavigationGalleryTests {
         #expect(RootNavigationState.destinations.map(\.accessibilityIdentifier) == ["bottomBar.destination.gallery", "bottomBar.destination.jam"])
     }
 
-    @Test func bottomBarRootKeepsPedalboardsInNavigation() {
+    @Test func tabSelectionUsesAppNavigationModelAsSingleSource() {
         let navigation = AppNavigationModel()
-        navigation.selectedDestination = .jam
-        let root = navigation.rootNavigation
+        #expect(navigation.selectedDestination == .gallery)
 
+        navigation.selectedDestination = .jam
+        #expect(navigation.rootNavigation.selectedDestination == .jam)
+
+        navigation.selectedDestination = .gallery
+        #expect(navigation.rootNavigation.selectedDestination == .gallery)
+        #expect(RootNavigationState.destinations.map(\.appDestination) == [.gallery, .jam])
+    }
+
+    @Test func captureIsNotAPersistentTabDestination() {
         #expect(RootNavigationState.destinations == [.gallery, .jam])
-        #expect(root.selectedDestination == .jam)
-        #expect(root.visibility == .visible)
-        #expect(RootNavigationState.destinations.map(\.accessibilityIdentifier).contains("bottomBar.destination.jam"))
+        #expect(RootNavigationState.destinations.map(\.appDestination).contains(.gallery))
+        #expect(RootNavigationState.destinations.map(\.appDestination).contains(.jam))
     }
 
     @Test func detailRoutesHideRootNavigationWithoutChangingSelection() {
@@ -164,6 +171,27 @@ struct NavigationGalleryTests {
         #expect(navigation.rootNavigation.selectedDestination == .jam)
     }
 
+    @Test func tabStacksRemainIndependentAcrossSelectionChanges() {
+        let navigation = AppNavigationModel()
+        let pedalID = UUID()
+        let boardID = UUID()
+
+        navigation.galleryPath = [.pedalDetail(pedalID)]
+        navigation.selectedDestination = .jam
+        navigation.jamPath = [.pedalboardDetail(boardID)]
+
+        #expect(navigation.rootNavigation.visibility == .hidden)
+        #expect(navigation.path == [.pedalboardDetail(boardID)])
+
+        navigation.selectedDestination = .gallery
+        #expect(navigation.rootNavigation.visibility == .hidden)
+        #expect(navigation.path == [.pedalDetail(pedalID)])
+
+        navigation.galleryPath.removeAll()
+        #expect(navigation.rootNavigation.visibility == .visible)
+        #expect(navigation.jamPath == [.pedalboardDetail(boardID)])
+    }
+
     @Test func captureFlowHidesRootNavigationAndCancelRestoresIt() {
         let navigation = AppNavigationModel()
         navigation.selectedDestination = .jam
@@ -189,15 +217,11 @@ struct NavigationGalleryTests {
 
         #expect(navigation.selectedDestination == .gallery)
         #expect(navigation.path == [.pedalDetail(pedalID)])
-        #expect(BottomBarPresentation.forNavigation(navigation) == .hidden(.pedalDetail))
+        #expect(navigation.rootNavigation.visibility == .hidden)
 
         navigation.path.removeLast()
-        guard case .navigation(let configuration) = BottomBarPresentation.forNavigation(navigation) else {
-            Issue.record("Expected Library root presentation after returning from detail")
-            return
-        }
-        #expect(configuration.selectedDestination == .gallery)
-        #expect(configuration.captureAction?.id == .capture)
+        #expect(navigation.rootNavigation.visibility == .visible)
+        #expect(navigation.rootNavigation.selectedDestination == .gallery)
     }
 
     @Test func pedalboardDetailRouteHidesBottomBarWithoutChangingSelectedRoot() {
@@ -208,7 +232,7 @@ struct NavigationGalleryTests {
 
         #expect(navigation.selectedDestination == .jam)
         #expect(navigation.path == [.pedalboardDetail(boardID)])
-        #expect(BottomBarPresentation.forNavigation(navigation) == .hidden(.pedalDetail))
+        #expect(navigation.rootNavigation.visibility == .hidden)
     }
 
     @Test func navigationOpensPedalboardDetailByPersistentID() {
@@ -217,6 +241,7 @@ struct NavigationGalleryTests {
 
         navigation.openPedalboard(id: boardID)
 
+        #expect(navigation.selectedDestination == .jam)
         #expect(navigation.path == [.pedalboardDetail(boardID)])
     }
 
@@ -233,9 +258,9 @@ struct NavigationGalleryTests {
         navigation.path = [.pedalDetail(UUID())]
         navigation.beginCapture()
 
-        #expect(navigation.path.isEmpty)
+        #expect(navigation.path.count == 1)
         #expect(navigation.isPresentingCapture)
-        #expect(BottomBarPresentation.forNavigation(navigation) == .root(selected: .gallery))
+        #expect(navigation.rootNavigation.visibility == .hidden)
     }
 
     @Test func bottomBarCapturePhasesDeriveExpectedPresentations() {

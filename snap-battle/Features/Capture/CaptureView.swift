@@ -15,63 +15,68 @@ struct ContentView: View {
 
     var body: some View {
         @Bindable var navigation = navigation
-        NavigationStack(path: $navigation.path) {
-            Group {
-                switch navigation.selectedDestination {
-                case .gallery:
+        TabView(selection: $navigation.selectedDestination) {
+            Tab(RootDestination.gallery.title, systemImage: RootDestination.gallery.systemImage, value: AppNavigationModel.Destination.gallery) {
+                NavigationStack(path: $navigation.galleryPath) {
                     GalleryView(
                         model: gallery,
                         beginCapture: navigation.beginCapture,
                         thumbnailLoader: thumbnailLoader,
                         transitionNamespace: libraryTransitionNamespace
                     )
-                case .jam:
+                    .navigationDestination(for: AppRoute.self) { route in
+                        switch route {
+                        case .pedalDetail(let id):
+                            PedalDetailView(itemID: id, model: gallery, transitionNamespace: libraryTransitionNamespace)
+                        case .pedalboardDetail:
+                            EmptyView()
+                        }
+                    }
+                    .toolbar(navigation.isShowingGalleryDetail ? .hidden : .visible, for: .tabBar)
+                    .rootCaptureToolbar(
+                        isVisible: !navigation.isShowingGalleryDetail && !navigation.isPresentingCapture,
+                        perform: navigation.beginCapture
+                    )
+                    #if DEBUG
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Library Debug", systemImage: "wrench.and.screwdriver") {
+                                showingLibraryDebug = true
+                            }
+                            .accessibilityHint("Abre datasets determinísticos para validar a Biblioteca")
+                            .accessibilityIdentifier("debug.openLibrary")
+                        }
+                    }
+                    .navigationDestination(isPresented: $showingLibraryDebug) {
+                        LibraryDebugLauncher()
+                    }
+                    #endif
+                }
+            }
+
+            Tab(RootDestination.jam.title, systemImage: RootDestination.jam.systemImage, value: AppNavigationModel.Destination.jam) {
+                NavigationStack(path: $navigation.jamPath) {
                     PedalboardsView(
                         model: pedalboards,
                         openBoard: navigation.openPedalboard
                     )
-                }
-            }
-            .navigationDestination(for: AppRoute.self) { route in
-                switch route {
-                case .pedalDetail(let id):
-                    PedalDetailView(itemID: id, model: gallery, transitionNamespace: libraryTransitionNamespace)
-                case .pedalboardDetail(let id):
-                    PedalboardDetailView(boardID: id, model: pedalboards)
-                }
-            }
-            #if DEBUG
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Library Debug", systemImage: "wrench.and.screwdriver") {
-                        showingLibraryDebug = true
-                    }
-                    .accessibilityHint("Abre datasets determinísticos para validar a Biblioteca")
-                    .accessibilityIdentifier("debug.openLibrary")
-                }
-            }
-            .navigationDestination(isPresented: $showingLibraryDebug) {
-                LibraryDebugLauncher()
-            }
-            #endif
-            .safeAreaInset(edge: .bottom) {
-                ContextualBottomBar(
-                    presentation: .forNavigation(navigation),
-                    namespace: bottomBarNamespace,
-                    perform: { action in
-                        switch action {
-                        case .capture:
-                            navigation.beginCapture()
-                        default:
-                            break
+                    .navigationDestination(for: AppRoute.self) { route in
+                        switch route {
+                        case .pedalDetail:
+                            EmptyView()
+                        case .pedalboardDetail(let id):
+                            PedalboardDetailView(boardID: id, model: pedalboards)
                         }
-                    },
-                    selectDestination: { destination in
-                        navigation.selectedDestination = destination.appDestination
                     }
-                )
+                    .toolbar(navigation.isShowingJamDetail ? .hidden : .visible, for: .tabBar)
+                    .rootCaptureToolbar(
+                        isVisible: !navigation.isShowingJamDetail && !navigation.isPresentingCapture,
+                        perform: navigation.beginCapture
+                    )
+                }
             }
         }
+        .toolbar(navigation.rootNavigation.visibility == .hidden ? .hidden : .visible, for: .tabBar)
         .task {
             #if DEBUG
             if CommandLine.arguments.contains("--install-fixtures") {
@@ -100,6 +105,32 @@ struct ContentView: View {
             }
             AppIntentRouter.shared.request = nil
         }
+    }
+}
+
+private struct RootCaptureToolbar: ViewModifier {
+    let isVisible: Bool
+    let perform: () -> Void
+
+    func body(content: Content) -> some View {
+        content
+            .toolbar {
+                if isVisible {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button(BottomBarAction.capture.title, systemImage: BottomBarAction.capture.systemImage, action: perform)
+                            .accessibilityLabel(BottomBarAction.capture.accessibilityLabel ?? BottomBarAction.capture.title)
+                            .accessibilityHint(BottomBarAction.capture.accessibilityHint ?? "")
+                            .accessibilityIdentifier("bottomBar.action.capture")
+                    }
+                }
+            }
+    }
+}
+
+private extension View {
+    /// ponytail: temporary root Capture trigger; replace with CaptureTabAccessory in Increment 3.
+    func rootCaptureToolbar(isVisible: Bool, perform: @escaping () -> Void) -> some View {
+        modifier(RootCaptureToolbar(isVisible: isVisible, perform: perform))
     }
 }
 

@@ -12,12 +12,26 @@ final class AppNavigationModel {
     enum Destination: Hashable { case gallery, jam }
 
     var selectedDestination: Destination = .gallery
-    var path: [AppRoute] = []
+    var galleryPath: [AppRoute] = []
+    var jamPath: [AppRoute] = []
+    var path: [AppRoute] {
+        get {
+            switch selectedDestination {
+            case .gallery: galleryPath
+            case .jam: jamPath
+            }
+        }
+        set {
+            switch selectedDestination {
+            case .gallery: galleryPath = newValue
+            case .jam: jamPath = newValue
+            }
+        }
+    }
     var isPresentingCapture = false
     private(set) var destinationBeforeCapture: Destination = .gallery
 
     func beginCapture() {
-        path.removeAll()
         destinationBeforeCapture = selectedDestination
         isPresentingCapture = true
     }
@@ -29,14 +43,42 @@ final class AppNavigationModel {
 
     func completeCapture() {
         isPresentingCapture = false
+        galleryPath.removeAll()
         selectedDestination = .gallery
     }
 
     func openPedalboard(id: Pedalboard.ID) {
-        path.append(.pedalboardDetail(id))
+        selectedDestination = .jam
+        jamPath.append(.pedalboardDetail(id))
     }
 
     var isShowingPedalDetail: Bool {
+        currentPathContainsDetail
+    }
+
+    var isShowingGalleryDetail: Bool {
+        galleryPath.contains { route in
+            switch route {
+            case .pedalDetail:
+                true
+            case .pedalboardDetail:
+                false
+            }
+        }
+    }
+
+    var isShowingJamDetail: Bool {
+        jamPath.contains { route in
+            switch route {
+            case .pedalDetail:
+                false
+            case .pedalboardDetail:
+                true
+            }
+        }
+    }
+
+    private var currentPathContainsDetail: Bool {
         path.contains { route in
             switch route {
             case .pedalDetail, .pedalboardDetail:
