@@ -1,7 +1,7 @@
 import Foundation
 
 /// Single visibility source shared by the native tab bar and the
-/// future `CaptureTabAccessory`. Derived from the current
+/// `CaptureTabAccessory`. Derived from the current
 /// route/presentation state in `AppNavigationModel` — never stored
 /// independently. Product rule: root navigation visible → tab bar
 /// and accessory visible; root navigation hidden → both hidden.
