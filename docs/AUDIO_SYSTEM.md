@@ -36,4 +36,4 @@ Route-change handling, pause/resume, lifecycle recovery, board UI integration, a
 
 ## Validation Boundary
 
-Pure sequence construction is unit-testable. AVAudioEngine graph behavior is integration-testable at best. Camera, audible output, route changes, Bluetooth, interruptions, and perceived latency are device-only checks. There are currently no dedicated Photo Pedal audio tests.
+Pure sequence construction is unit-testable. AVAudioEngine graph behavior is integration-testable at best. Camera, audible output, route changes, Bluetooth, interruptions, and perceived latency are device-only checks. There are currently no dedicated Dap audio tests.

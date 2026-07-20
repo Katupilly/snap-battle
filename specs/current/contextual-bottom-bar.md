@@ -11,7 +11,7 @@ The transition must feel like two persistent physical pieces reorganizing themse
 
 ## User Value
 
-People should keep a stable spatial anchor at the bottom of Photo Pedal. Root screens expose navigation and capture. Creation result review exposes `Retake` and `Save Pedal`. Immersive camera UI hides the bar. Playback preview remains close to the pedal content where the user can evaluate sound before saving/completing the flow.
+People should keep a stable spatial anchor at the bottom of Dap. Root screens expose navigation and capture. Creation result review exposes `Retake` and `Save Pedal`. Immersive camera UI hides the bar. Playback preview remains close to the pedal content where the user can evaluate sound before saving/completing the flow.
 
 ## Current Context
 
@@ -80,7 +80,7 @@ These divergences are recorded but do not block the bar:
 
 ### Swift And Concurrency Settings
 
-Current build settings from `snap-battle.xcodeproj/project.pbxproj`:
+Current build settings from `Dap.xcodeproj/project.pbxproj`:
 
 - app target `snap-battle` is defined at `project.pbxproj:108-128`;
 - test target `snap-battleTests` is defined at `project.pbxproj:130-145`;

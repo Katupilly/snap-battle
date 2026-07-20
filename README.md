@@ -1,6 +1,6 @@
-# Photo Pedal
+# Dap
 
-Photo Pedal is an iOS prototype that turns a captured or imported photo into a playable musical object. The current flow is:
+Dap is an iOS prototype that turns a captured or imported photo into a playable musical object. The current flow is:
 
 `photo input -> image preparation -> 2-bit cover -> deterministic note sequence -> fallback metadata -> saved pedal -> playable result -> enriched name and description when available`
 
@@ -13,7 +13,7 @@ The app is an MVP. A roadmap item is not necessarily implemented; see [the roadm
 - A physical iOS device for camera, VisionKit, audio, and live Apple Foundation Models validation
 - Apple Intelligence and a supported current locale for model-generated pedal metadata; creation continues with fallback metadata when semantic metadata generation is unavailable or fails
 
-The project uses Swift, SwiftUI, PhotosUI, AVFoundation, Vision, VisionKit, Apple Foundation Models, App Intents, and Swift Testing. The project is `snap-battle.xcodeproj`; its names remain from the pre-pivot project.
+The project uses Swift, SwiftUI, PhotosUI, AVFoundation, Vision, VisionKit, Apple Foundation Models, App Intents, and Swift Testing. The project is `Dap.xcodeproj`; the scheme, source directories, and bundle identifier retain the pre-pivot `snap-battle` name.
 
 ## Repository Overview
 
@@ -24,10 +24,10 @@ The project uses Swift, SwiftUI, PhotosUI, AVFoundation, Vision, VisionKit, Appl
 
 ## Build And Test
 
-Open `snap-battle.xcodeproj` in Xcode and run the `snap-battle` scheme. To test against an installed simulator:
+Open `Dap.xcodeproj` in Xcode and run the `snap-battle` scheme. To test against an installed simulator:
 
 ```sh
-xcodebuild test -project "snap-battle.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>'
+xcodebuild test -project "Dap.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>'
 ```
 
 Device-only integrations require manual validation. See [Testing](docs/TESTING.md) and [Device validation](docs/DEVICE_VALIDATION.md).

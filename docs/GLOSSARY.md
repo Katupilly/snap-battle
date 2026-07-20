@@ -34,4 +34,4 @@ Not a current domain type. The roadmap may use it descriptively for a sound-prod
 
 ## Deprecated Game Terms
 
-Do not introduce Creature, Battle, Stats, Attack, Defense, Enemy, Signal, Overdrive, Noise Shield, or Tempo Shift into new Photo Pedal features. Some remain in compiled legacy code and tests.
+Do not introduce Creature, Battle, Stats, Attack, Defense, Enemy, Signal, Overdrive, Noise Shield, or Tempo Shift into new Dap features. Some remain in compiled legacy code and tests.

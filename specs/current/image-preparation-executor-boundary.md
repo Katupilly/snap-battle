@@ -8,7 +8,7 @@ Last updated: 2026-07-16
 
 Remove the confirmed synchronous `imagePreparation` block from the MainActor
 without changing the visual, musical, persistence, cancellation, or result
-presentation behavior of the Photo Pedal flow.
+presentation behavior of the Dap flow.
 
 The device evidence motivating this spec is a warmed median of 196.3 ms and a
 maximum of 394.5 ms for `imagePreparation` on the main executor. This spec does
@@ -27,7 +27,7 @@ experiment to choose between representations:
    The code has no approved immutable representation for sending prepared image
    data to another executor without adding another unsafe suppression.
 2. The repository documentation says Swift 6, but the project declares
-   `SWIFT_VERSION = 5.0` in `snap-battle.xcodeproj/project.pbxproj` at the app
+   `SWIFT_VERSION = 5.0` in `Dap.xcodeproj/project.pbxproj` at the app
    and test configurations. The implementation must first decide whether to
    validate the boundary under the current language mode or separately migrate
    strict concurrency. This spec does not authorize that migration.
@@ -248,10 +248,10 @@ Do not run these commands as part of this documentation task. Future
 implementation validation should use:
 
 ```sh
-xcodebuild test -project "snap-battle.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>' -only-testing:snap-battleTests/PhotoPedalStabilizationTests
-xcodebuild test -project "snap-battle.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>'
-xcodebuild build -project "snap-battle.xcodeproj" -scheme "snap-battle" -configuration Debug
-xcodebuild build -project "snap-battle.xcodeproj" -scheme "snap-battle" -configuration Release
+xcodebuild test -project "Dap.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>' -only-testing:snap-battleTests/PhotoPedalStabilizationTests
+xcodebuild test -project "Dap.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>'
+xcodebuild build -project "Dap.xcodeproj" -scheme "snap-battle" -configuration Debug
+xcodebuild build -project "Dap.xcodeproj" -scheme "snap-battle" -configuration Release
 git diff --check
 ```
 

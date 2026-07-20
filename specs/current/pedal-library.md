@@ -1,4 +1,4 @@
-# Photo Pedal Library
+# Dap Library
 
 Status: Ready
 Last updated: 2026-07-17
@@ -8,13 +8,13 @@ Framework: SwiftUI
 
 ## Goal
 
-Define the next Library experience for saved Photo Pedals: a dense chronological visual gallery with detail navigation, spatial transition, stable states, and clear technical responsibilities.
+Define the next Library experience for saved Dap pedals: a dense chronological visual gallery with detail navigation, spatial transition, stable states, and clear technical responsibilities.
 
 This specification is implementation authorization only for the explicitly approved phase and step.
 
 ## User Value
 
-Users can quickly recognize, find, and open any saved pedal through a familiar visual history inspired by the iPhone Photos library, adapted to Photo Pedal's visual and musical objects.
+Users can quickly recognize, find, and open any saved pedal through a familiar visual history inspired by the iPhone Photos library, adapted to Dap's visual and musical objects.
 
 The Library acts as the visual and sonic history of the user's creations. Covers are the primary interface element, while metadata, playback, effects, and actions stay available without making the grid feel like a list of cards.
 
