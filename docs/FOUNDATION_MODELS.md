@@ -14,7 +14,7 @@ The prompt instructs the model not to use creature, stats, combat, or game mecha
 
 The generator requires `SystemLanguageModel.default.availability == .available` and current-locale support for model-generated metadata. Unavailable, refused, failed, empty, invalid, stale, cancelled, or unpersistable metadata output does not abort creation because the musical result is already saved with fallback metadata:
 
-- name: `Photo Pedal`
+- name: `Dap`
 - description: `A photo-generated sound pedal.`
 
 Image preparation, cover generation, color analysis, initial persistence, and musical sequence generation failures still abort the essential flow. The fallback is only for semantic metadata and does not change the musical sequence, fingerprint, persistence schema, filenames, cover, or audio lifecycle. Successful enrichment updates only `name` and `description` for the existing `PhotoPedal.id`.

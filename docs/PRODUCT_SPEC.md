@@ -2,7 +2,7 @@
 
 ## Product Statement
 
-Photo Pedal transforms photos into playable and collectible musical objects.
+Dap transforms photos into playable and collectible musical objects.
 
 ## Target User Experience
 
@@ -43,7 +43,7 @@ A person without music-production knowledge can capture or choose a photo, recei
 
 ## Non-Goals
 
-Photo Pedal is not a DAW, professional synthesizer, multitrack editor, manual MIDI sequencer, social network, or cloud collaboration platform in the current MVP.
+Dap is not a DAW, professional synthesizer, multitrack editor, manual MIDI sequencer, social network, or cloud collaboration platform in the current MVP.
 
 ## Product Risks
 

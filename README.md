@@ -1,6 +1,6 @@
-# Photo Pedal
+# Dap
 
-Photo Pedal is an iOS prototype that turns a captured or imported photo into a playable musical object. The current flow is:
+Dap is an iOS prototype that turns a captured or imported photo into a playable musical object. The current flow is:
 
 `photo input -> image preparation -> 2-bit cover -> deterministic note sequence -> fallback metadata -> saved pedal -> playable result -> enriched name and description when available`
 
@@ -13,21 +13,21 @@ The app is an MVP. A roadmap item is not necessarily implemented; see [the roadm
 - A physical iOS device for camera, VisionKit, audio, and live Apple Foundation Models validation
 - Apple Intelligence and a supported current locale for model-generated pedal metadata; creation continues with fallback metadata when semantic metadata generation is unavailable or fails
 
-The project uses Swift, SwiftUI, PhotosUI, AVFoundation, Vision, VisionKit, Apple Foundation Models, App Intents, and Swift Testing. The project is `snap-battle.xcodeproj`; its names remain from the pre-pivot project.
+The project uses Swift, SwiftUI, PhotosUI, AVFoundation, Vision, VisionKit, Apple Foundation Models, App Intents, and Swift Testing. The project is `Dap.xcodeproj`; the source directories and bundle identifier also use Dap.
 
 ## Repository Overview
 
-- `snap-battle/`: app target, including capture, pedal presentation, domain types, and services
-- `snap-battleTests/`: current Swift Testing target; it also contains legacy game tests
+- `Dap/`: app target, including capture, pedal presentation, domain types, and services
+- `DapTests/`: current Swift Testing target; it also contains legacy game tests
 - `docs/`: product, architecture, contracts, validation, and decisions
 - `specs/`: active and planned feature specifications
 
 ## Build And Test
 
-Open `snap-battle.xcodeproj` in Xcode and run the `snap-battle` scheme. To test against an installed simulator:
+Open `Dap.xcodeproj` in Xcode and run the `Dap` scheme. To test against an installed simulator:
 
 ```sh
-xcodebuild test -project "snap-battle.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>'
+xcodebuild test -project "Dap.xcodeproj" -scheme "Dap" -destination 'platform=iOS Simulator,name=<installed simulator>'
 ```
 
 Device-only integrations require manual validation. See [Testing](docs/TESTING.md) and [Device validation](docs/DEVICE_VALIDATION.md).
@@ -36,7 +36,7 @@ Device-only integrations require manual validation. See [Testing](docs/TESTING.m
 
 Implemented: camera or photo-library input, 2-bit cover processing, deterministic music generation, local synth playback, reverb/distortion selection, local collection persistence, Gallery browsing/detail/delete/playback, Foundation Models metadata enrichment with static fallback, and two App Intents.
 
-Not implemented: generator versioning, boards, sharing, collaboration, offline rendering, video export, and the roadmap's effect macro labels.
+Not implemented: boards, sharing, collaboration, offline rendering, video export, v2 music generation, and the roadmap's effect macro labels.
 
 ## Documentation
 

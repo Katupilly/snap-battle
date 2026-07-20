@@ -2,7 +2,7 @@
 
 ## Current Contract
 
-`PhotoPedalPipeline` uses `ImageInputPreparer`, `RetroImageProcessor`, `PhotoColorAnalyzer`, and `ImageSequenceGenerator`. Foundation Models output does not affect music.
+`DapPipeline` uses `ImageInputPreparer`, `RetroImageProcessor`, `PhotoColorAnalyzer`, and `ImageSequenceGenerator`. Foundation Models output does not affect music.
 
 ## Inputs
 
@@ -39,7 +39,7 @@ Cross-device equivalence of image rendering and end-to-end deterministic regress
 
 This contract does not include the `PhotoPedal` UUID, creation date, name, description, Foundation Models metadata, or temporary playback state. These values do not define musical identity and may vary between creations.
 
-There is no `generatorVersion` in the current model. Compatibility between future algorithm versions is not guaranteed by current code.
+`PhotoPedal.generatorVersion` is a metadata field added in Increment 2 of the photo-to-MIDI v2 evolution. It records the algorithm that produced the persisted sequence and is treated as `1` when absent. The v1 algorithm is still the only one in use in production, so `generatorVersion == 1` is written for new pedals; future increments of the v2 spec will introduce `2` (and beyond) without regenerating pre-existing pedals. Compatibility between algorithm versions is preserved by the literal-replay contract (ADR 0002): the persisted `PedalSequence` is never recalculated, regardless of `generatorVersion`.
 
 ## Edge Cases
 

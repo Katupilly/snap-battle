@@ -45,7 +45,7 @@ A Ready or In Progress specification in `current/` authorizes only its stated sc
 
 ## Current Specifications
 
-- [Photo Pedal Vertical Slice Stabilization](current/vertical-slice-stabilization.md) (`Ready`)
+- [Dap Vertical Slice Stabilization](current/vertical-slice-stabilization.md) (`Ready`)
 - [Navigation and Gallery Foundation](current/navigation-gallery-foundation.md) (`Ready`)
 - [Contextual Bottom Bar Morph](current/contextual-bottom-bar.md) (`Ready`)
-- [Photo Pedal Library](current/pedal-library.md) (`Ready`)
+- [Dap Library](current/pedal-library.md) (`Ready`)

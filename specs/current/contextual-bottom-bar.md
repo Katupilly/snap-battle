@@ -11,7 +11,7 @@ The transition must feel like two persistent physical pieces reorganizing themse
 
 ## User Value
 
-People should keep a stable spatial anchor at the bottom of Photo Pedal. Root screens expose navigation and capture. Creation result review exposes `Retake` and `Save Pedal`. Immersive camera UI hides the bar. Playback preview remains close to the pedal content where the user can evaluate sound before saving/completing the flow.
+People should keep a stable spatial anchor at the bottom of Dap. Root screens expose navigation and capture. Creation result review exposes `Retake` and `Save Pedal`. Immersive camera UI hides the bar. Playback preview remains close to the pedal content where the user can evaluate sound before saving/completing the flow.
 
 ## Current Context
 
@@ -19,12 +19,12 @@ Implementation is the source of truth for this specification.
 
 ### App Shell And Entry Point
 
-- `snap_battleApp` is the app entry point and instantiates `ContentView` in `snap-battle/snap_battleApp.swift:10-14`.
-- `ContentView` in `snap-battle/Features/Capture/CaptureView.swift:10-73` is the current app shell even though it lives in the Capture feature folder.
-- `ContentView` owns `AppNavigationModel` and `GalleryViewModel` at `snap-battle/Features/Capture/CaptureView.swift:11-12`.
-- The shell uses one root `NavigationStack` at `snap-battle/Features/Capture/CaptureView.swift:19`.
-- The shell switches root content with `navigation.selectedDestination` at `snap-battle/Features/Capture/CaptureView.swift:21-24`.
-- The current bottom bar is `MainNavigationBar`, inserted with `.safeAreaInset(edge: .bottom)` at `snap-battle/Features/Capture/CaptureView.swift:26-28`.
+- `DapApp` is the app entry point and instantiates `ContentView` in `Dap/DapApp.swift:10-14`.
+- `ContentView` in `Dap/Features/Capture/CaptureView.swift:10-73` is the current app shell even though it lives in the Capture feature folder.
+- `ContentView` owns `AppNavigationModel` and `GalleryViewModel` at `Dap/Features/Capture/CaptureView.swift:11-12`.
+- The shell uses one root `NavigationStack` at `Dap/Features/Capture/CaptureView.swift:19`.
+- The shell switches root content with `navigation.selectedDestination` at `Dap/Features/Capture/CaptureView.swift:21-24`.
+- The current bottom bar is `MainNavigationBar`, inserted with `.safeAreaInset(edge: .bottom)` at `Dap/Features/Capture/CaptureView.swift:26-28`.
 
 There is no native `TabView`, no `NavigationPath`, and no independent root history today.
 
@@ -32,24 +32,24 @@ There is no native `TabView`, no `NavigationPath`, and no independent root histo
 
 The real root destinations in code are:
 
-- `.gallery`, selected by default in `snap-battle/Features/Navigation/AppNavigationModel.swift:6-8`;
-- `.jam`, also present in `AppNavigationModel.Destination`, but currently only a placeholder rendered as `JamPlaceholderView` in `snap-battle/Features/Gallery/GalleryView.swift:170-175`.
+- `.gallery`, selected by default in `Dap/Features/Navigation/AppNavigationModel.swift:6-8`;
+- `.jam`, also present in `AppNavigationModel.Destination`, but currently only a placeholder rendered as `JamPlaceholderView` in `Dap/Features/Gallery/GalleryView.swift:170-175`.
 
 The first implementation of this bar includes the current Gallery root and the existing Jam root placeholder in the navigation piece. Jam collaboration and an active Jam session are explicitly out of scope for this implementation. The navigation piece must support a variable destination collection so future roots or real Jam behavior can be added later by a separate approved spec without changing the morph mechanism.
 
-This spec uses `Gallery` only as the current implemented product vocabulary from code (`GalleryView`, `navigationTitle("Gallery")`, and current empty-state copy in `snap-battle/Features/Gallery/GalleryView.swift:11` and `snap-battle/Features/Gallery/GalleryView.swift:45`). It does not rename the product surface or introduce `Home`, `Library`, `Pedals`, `Profile`, or `Pedalboards` as final labels.
+This spec uses `Gallery` only as the current implemented product vocabulary from code (`GalleryView`, `navigationTitle("Gallery")`, and current empty-state copy in `Dap/Features/Gallery/GalleryView.swift:11` and `Dap/Features/Gallery/GalleryView.swift:45`). It does not rename the product surface or introduce `Home`, `Library`, `Pedals`, `Profile`, or `Pedalboards` as final labels.
 
 ### Capture And Camera Presentation
 
 Capture is currently presented by the shell as a sheet:
 
-- `ContentView` presents `CaptureFlowView` through `.sheet(isPresented: $navigation.isPresentingCapture)` at `snap-battle/Features/Capture/CaptureView.swift:50-59`.
-- `AppNavigationModel.beginCapture()` records `destinationBeforeCapture` and opens the sheet at `snap-battle/Features/Navigation/AppNavigationModel.swift:12-15`.
-- `AppNavigationModel.cancelCapture()` closes the sheet and restores the previous destination at `snap-battle/Features/Navigation/AppNavigationModel.swift:17-20`.
-- `AppNavigationModel.completeCapture()` closes the sheet and selects Gallery at `snap-battle/Features/Navigation/AppNavigationModel.swift:22-25`.
-- `CaptureFlowView` owns an inner `NavigationStack` at `snap-battle/Features/Capture/CaptureView.swift:157`.
-- `CameraScreen` is presented as a nested sheet from `CaptureFlowView` at `snap-battle/Features/Capture/CaptureView.swift:176-181`.
-- No `fullScreenCover` exists in the app code. `CameraScreen` appears immersive because `CameraPreview` uses `ignoresSafeArea()` at `snap-battle/Features/Capture/CaptureView.swift:252`.
+- `ContentView` presents `CaptureFlowView` through `.sheet(isPresented: $navigation.isPresentingCapture)` at `Dap/Features/Capture/CaptureView.swift:50-59`.
+- `AppNavigationModel.beginCapture()` records `destinationBeforeCapture` and opens the sheet at `Dap/Features/Navigation/AppNavigationModel.swift:12-15`.
+- `AppNavigationModel.cancelCapture()` closes the sheet and restores the previous destination at `Dap/Features/Navigation/AppNavigationModel.swift:17-20`.
+- `AppNavigationModel.completeCapture()` closes the sheet and selects Gallery at `Dap/Features/Navigation/AppNavigationModel.swift:22-25`.
+- `CaptureFlowView` owns an inner `NavigationStack` at `Dap/Features/Capture/CaptureView.swift:157`.
+- `CameraScreen` is presented as a nested sheet from `CaptureFlowView` at `Dap/Features/Capture/CaptureView.swift:176-181`.
+- No `fullScreenCover` exists in the app code. `CameraScreen` appears immersive because `CameraPreview` uses `ignoresSafeArea()` at `Dap/Features/Capture/CaptureView.swift:252`.
 
 The first implementation must keep this presentation model. Owning the bar in the shell does not require permanently incorporating the camera into a `TabView` or replacing the sheet with a new route system.
 
@@ -57,9 +57,9 @@ The first implementation must keep this presentation model. Owning the bar in th
 
 `PedalResultView` currently keeps preview controls in content:
 
-- `Tocar pedal` is a content button at `snap-battle/Features/Pedal/PedalResultView.swift:37`;
-- `Ver na Gallery` currently calls `onDone()` at `snap-battle/Features/Pedal/PedalResultView.swift:38`;
-- result metadata animation already respects Reduce Motion at `snap-battle/Features/Pedal/PedalResultView.swift:8` and `snap-battle/Features/Pedal/PedalResultView.swift:21`.
+- `Tocar pedal` is a content button at `Dap/Features/Pedal/PedalResultView.swift:37`;
+- `Ver na Gallery` currently calls `onDone()` at `Dap/Features/Pedal/PedalResultView.swift:38`;
+- result metadata animation already respects Reduce Motion at `Dap/Features/Pedal/PedalResultView.swift:8` and `Dap/Features/Pedal/PedalResultView.swift:21`.
 
 The new bar changes result actions to:
 
@@ -73,17 +73,17 @@ The new bar changes result actions to:
 
 These divergences are recorded but do not block the bar:
 
-- `specs/current/navigation-gallery-foundation.md` describes a pre-implementation context where `PedalStore` writes only `latest-pedal.json` and `latest-pedal.png`, but current `PedalStore` stores UUID-associated collection records under `pedals/` at `snap-battle/Services/Persistence/PedalStore.swift:49-125`.
+- `specs/current/navigation-gallery-foundation.md` describes a pre-implementation context where `PedalStore` writes only `latest-pedal.json` and `latest-pedal.png`, but current `PedalStore` stores UUID-associated collection records under `pedals/` at `Dap/Services/Persistence/PedalStore.swift:49-125`.
 - `specs/planned/gallery.md` says only the latest pedal is persisted, which is obsolete relative to current code.
 - `docs/DATA_MODEL.md` describes UUID-associated collection records at `docs/DATA_MODEL.md:36-40`, but its gap list still says there is no gallery model at `docs/DATA_MODEL.md:54`.
 - `docs/ROADMAP.md` mentions `generatorVersion` and original-image retention as planned direction. This bar spec does not introduce either.
 
 ### Swift And Concurrency Settings
 
-Current build settings from `snap-battle.xcodeproj/project.pbxproj`:
+Current build settings from `Dap.xcodeproj/project.pbxproj`:
 
-- app target `snap-battle` is defined at `project.pbxproj:108-128`;
-- test target `snap-battleTests` is defined at `project.pbxproj:130-145`;
+- app target `Dap` is defined at `project.pbxproj:108-128`;
+- test target `DapTests` is defined at `project.pbxproj:130-145`;
 - project Debug/Release `IPHONEOS_DEPLOYMENT_TARGET = 26.5` at `project.pbxproj:280` and `project.pbxproj:338`;
 - app target Debug/Release `SWIFT_VERSION = 5.0` at `project.pbxproj:381` and `project.pbxproj:418`;
 - test target Debug/Release `SWIFT_VERSION = 5.0` at `project.pbxproj:441` and `project.pbxproj:465`;
@@ -219,7 +219,7 @@ For result review:
 
 ### Hidden Mode
 
-Hidden mode applies to `CameraScreen` in the first implementation. The camera already owns a close button and shutter control at `snap-battle/Features/Capture/CaptureView.swift:258-264`, and starts/stops the camera at `snap-battle/Features/Capture/CaptureView.swift:269-270`.
+Hidden mode applies to `CameraScreen` in the first implementation. The camera already owns a close button and shutter control at `Dap/Features/Capture/CaptureView.swift:258-264`, and starts/stops the camera at `Dap/Features/Capture/CaptureView.swift:269-270`.
 
 The Jam root placeholder remains a `navigation` state in this increment. Future active Jam sessions, immersive experiences, or keyboard-heavy editors must not show camera, but those flows are not part of the first increment and their contextual or hidden bar behavior remains undefined until a separate approved spec.
 
@@ -307,7 +307,7 @@ If the result is dismissed without `Save Pedal`, implementation must preserve cu
 
 ### App Intents
 
-The current app has App Intents rather than URL deep links. `CreatePedalIntent` sets `.create`; `PlayLastPedalIntent` sets `.playLast` in `snap-battle/Intents/PhotoPedalIntents.swift:6-31`.
+The current app has App Intents rather than URL deep links. `CreatePedalIntent` sets `.create`; `PlayLastPedalIntent` sets `.playLast` in `Dap/Intents/PhotoPedalIntents.swift:6-31`.
 
 The new bar must preserve:
 
@@ -377,7 +377,7 @@ When `accessibilityReduceMotion` is true:
 - switch state with an immediate change or short opacity transition;
 - preserve the same semantic actions and focus behavior.
 
-The current app already reads `accessibilityReduceMotion` for bar press feedback at `snap-battle/Features/Capture/CaptureView.swift:79` and disables press animation at `snap-battle/Features/Capture/CaptureView.swift:137-138`.
+The current app already reads `accessibilityReduceMotion` for bar press feedback at `Dap/Features/Capture/CaptureView.swift:79` and disables press animation at `Dap/Features/Capture/CaptureView.swift:137-138`.
 
 ## Accessibility
 
@@ -431,7 +431,7 @@ Actions must use real disabled state when unavailable. Loading actions should:
 
 ### Camera Accessibility
 
-This feature touches camera presentation state. If implementation edits `CameraScreen`, add an explicit accessibility label/hint for the shutter button currently defined at `snap-battle/Features/Capture/CaptureView.swift:261-264`.
+This feature touches camera presentation state. If implementation edits `CameraScreen`, add an explicit accessibility label/hint for the shutter button currently defined at `Dap/Features/Capture/CaptureView.swift:261-264`.
 
 ### Metadata Announcements
 

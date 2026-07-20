@@ -6,7 +6,7 @@ Last updated: 2026-07-16
 
 ## Context
 
-Photo Pedal currently treats the playable result and semantic metadata as one
+Dap currently treats the playable result and semantic metadata as one
 blocking pipeline result. The user sees `PedalResultView` only after image
 preparation, cover generation, color analysis, sequence generation, subject
 extraction, object analysis, Foundation Models generation, validation, and
@@ -140,7 +140,7 @@ normal `PhotoPedal` with:
 - the generated `PedalSequence`;
 - selected effect and sound profile;
 - the processed cover filename;
-- fallback name `Photo Pedal`;
+- fallback name `Dap`;
 - fallback description `A photo-generated sound pedal.`.
 
 The fallback values are valid under `PedalDraftValidator` and must be persisted
@@ -173,8 +173,8 @@ The active creation has two independent state tracks:
 
 | Track | States | Owner |
 | --- | --- | --- |
-| Essential creation | idle, preparing, making cover, saving, presented, failed, cancelled | `PhotoPedalViewModel` on MainActor |
-| Semantic enrichment | notStarted, loading, succeeded, failed, cancelled, staleIgnored | `PhotoPedalViewModel` on MainActor |
+| Essential creation | idle, preparing, making cover, saving, presented, failed, cancelled | `DapViewModel` on MainActor |
+| Semantic enrichment | notStarted, loading, succeeded, failed, cancelled, staleIgnored | `DapViewModel` on MainActor |
 
 `PedalResultView` reads the current pedal value and an accessible enrichment
 state. Gallery reads persisted records from `PedalStore` and updates by ID.
@@ -216,7 +216,7 @@ an update to the existing list/detail item, never an insertion.
 
 ## Concurrency Strategy
 
-`PhotoPedalViewModel` owns the creation task and the enrichment task for the
+`DapViewModel` owns the creation task and the enrichment task for the
 capture/result flow. Both update UI state only on the MainActor. Essential
 image/music generation remains sequential and must not wait on semantic
 enrichment.
@@ -455,27 +455,27 @@ run IDs so future device measurements can compare real improvements.
 
 ### Expected
 
-- `snap-battle/Services/Pedal/PhotoPedalPipeline.swift`
-- `snap-battle/Features/Capture/CaptureViewModel.swift`
-- `snap-battle/Features/Capture/CaptureView.swift`
-- `snap-battle/Features/Pedal/PedalResultView.swift`
-- `snap-battle/Services/Persistence/PedalStore.swift`
-- `snap-battle/Features/Gallery/GalleryViewModel.swift`
-- `snap-battle/Features/Gallery/GalleryView.swift`
-- `snap-battle/Domain/Pedal/Pedal.swift`, only for a narrow metadata-preserving
+- `Dap/Services/Pedal/DapPipeline.swift`
+- `Dap/Features/Capture/CaptureViewModel.swift`
+- `Dap/Features/Capture/CaptureView.swift`
+- `Dap/Features/Pedal/PedalResultView.swift`
+- `Dap/Services/Persistence/PedalStore.swift`
+- `Dap/Features/Gallery/GalleryViewModel.swift`
+- `Dap/Features/Gallery/GalleryView.swift`
+- `Dap/Domain/Pedal/Pedal.swift`, only for a narrow metadata-preserving
   helper if needed
-- focused tests under `snap-battleTests/`
+- focused tests under `DapTests/`
 
 ### Conditional
 
-- `snap-battle/Supporting/PerformanceDiagnostics.swift`, only for DEBUG-only
+- `Dap/Supporting/PerformanceDiagnostics.swift`, only for DEBUG-only
   run ID/signpost coverage listed above.
-- `snap-battle/Supporting/AppError.swift`, only if an existing error cannot
+- `Dap/Supporting/AppError.swift`, only if an existing error cannot
   represent missing/deleted metadata update failure.
-- A new small service/coordinator under `snap-battle/Services/Pedal/` or
-  `snap-battle/Features/Capture/`, only if it keeps enrichment ownership more
+- A new small service/coordinator under `Dap/Services/Pedal/` or
+  `Dap/Features/Capture/`, only if it keeps enrichment ownership more
   localized than expanding view code.
-- `snap-battle/Intents/PhotoPedalIntents.swift`, only if routing tests reveal a
+- `Dap/Intents/PhotoPedalIntents.swift`, only if routing tests reveal a
   pending-metadata regression.
 
 ### Documentation
@@ -540,9 +540,9 @@ Future implementation must run focused tests, the full simulator suite, Debug
 and Release builds, and whitespace validation:
 
 ```sh
-xcodebuild test -project "snap-battle.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>'
-xcodebuild build -project "snap-battle.xcodeproj" -scheme "snap-battle" -configuration Debug
-xcodebuild build -project "snap-battle.xcodeproj" -scheme "snap-battle" -configuration Release
+xcodebuild test -project "Dap.xcodeproj" -scheme "Dap" -destination 'platform=iOS Simulator,name=<installed simulator>'
+xcodebuild build -project "Dap.xcodeproj" -scheme "Dap" -configuration Debug
+xcodebuild build -project "Dap.xcodeproj" -scheme "Dap" -configuration Release
 git diff --check
 ```
 

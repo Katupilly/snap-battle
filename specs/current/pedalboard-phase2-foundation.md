@@ -1,4 +1,4 @@
-## Photo Pedal Pedalboard Phase 2 Foundation
+## Dap Pedalboard Phase 2 Foundation
 
 Status: Ready
 Last updated: 2026-07-17
@@ -8,12 +8,12 @@ Framework: SwiftUI
 
 ## Context
 
-Photo Pedal already persists multiple saved pedals, exposes them through the Library, opens detail by persisted UUID, and replays the stored musical result without regenerating it. The app also has a persistent Jam root, but that root is still a placeholder with no domain model, persistence, or playback of ordered saved pedals.
+Dap already persists multiple saved pedals, exposes them through the Library, opens detail by persisted UUID, and replays the stored musical result without regenerating it. The app also has a persistent Jam root, but that root is still a placeholder with no domain model, persistence, or playback of ordered saved pedals.
 
 The current sources of truth for existing behavior remain:
 
 - [Navigation and Gallery Foundation](navigation-gallery-foundation.md)
-- [Photo Pedal Library](pedal-library.md)
+- [Dap Library](pedal-library.md)
 - [Architecture](../../docs/ARCHITECTURE.md)
 - [Data Model](../../docs/DATA_MODEL.md)
 - [Audio System](../../docs/AUDIO_SYSTEM.md)
@@ -101,11 +101,11 @@ This phase must not include:
 
 ## Scroll Comment Triage Note
 
-PR #1 left one automated review comment on `snap-battle/Features/Library/LibraryGridView.swift` about `scrollTargetLayout()` placement relative to `scrollPosition.scrollTo(id:)`.
+PR #1 left one automated review comment on `Dap/Features/Library/LibraryGridView.swift` about `scrollTargetLayout()` placement relative to `scrollPosition.scrollTo(id:)`.
 
 Triage result for this round: `Non-blocking debt`.
 
-- File and line referenced by the PR comment: `snap-battle/Features/Library/LibraryGridView.swift`, line 154 in the merged PR commit.
+- File and line referenced by the PR comment: `Dap/Features/Library/LibraryGridView.swift`, line 154 in the merged PR commit.
 - Alleged behavior: the initial Library scroll target may fail to resolve the most recent cell UUID because the grid cell targets live inside `LazyVGrid` while `.scrollTargetLayout()` is applied at the outer container.
 - Relevant current concerns: initial position near recent items, `scrollPosition`, `scrollTargetLayout`, reload-driven view recreation, tab switch back to Library, and collections with tied dates.
 - Not currently evidenced as a confirmed functional regression in this round because no runtime reproduction was completed here.
@@ -296,7 +296,7 @@ The final API may differ, but the architectural role must remain separate from t
 
 For Phase 2 foundation, one pedal ends when its rendered sequence duration finishes under the current saved sequence BPM and step count.
 
-Because `PhotoPedalSynth` currently renders one sequence at a time and does not expose a completion callback, implementation may add the smallest correct seam to determine sequence duration or completion. That seam must not move audio graph ownership into SwiftUI.
+Because `DapSynth` currently renders one sequence at a time and does not expose a completion callback, implementation may add the smallest correct seam to determine sequence duration or completion. That seam must not move audio graph ownership into SwiftUI.
 
 Step 2 implementation resolves this by centralizing the synth's sample-aligned duration formula and injecting a cancellable scheduler into the coordinator. The duration uses the fixed rendered step count (`16`) and saved BPM; rests, gate, and note count do not shorten playback because the synth renders every step.
 
@@ -335,7 +335,7 @@ Step 2 differentiates normal absence from structural load failure: a missing rec
 
 ### Existing Synth Reuse
 
-- Reuse the current `PedalPlaying` seam and `PhotoPedalSynth` behavior for actual per-pedal rendering.
+- Reuse the current `PedalPlaying` seam and `DapSynth` behavior for actual per-pedal rendering.
 - Do not duplicate sequence generation.
 - Do not move engine creation into a view.
 
@@ -511,7 +511,7 @@ Do not add large datasets beyond what is already justified for Library debug val
 
 ## Risks
 
-- `PhotoPedalSynth` is currently single-pedal oriented and does not expose natural completion callbacks.
+- `DapSynth` is currently single-pedal oriented and does not expose natural completion callbacks.
 - Board playback may need a minimal new seam for sequence duration or completion notification.
 - The current app has two playback surfaces, Gallery detail and future board playback, so concurrency policy must be explicit.
 - Missing-pedal handling can become confusing if the UI does not clearly distinguish unavailable entries from playable ones.
