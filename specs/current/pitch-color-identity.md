@@ -8,7 +8,7 @@ Framework: SwiftUI
 
 ## Context
 
-- A capa atual usa uma paleta retrô fixa (`RetroImageConfiguration.snapBattle`) e não comunica uma propriedade musical do pedal.
+- A capa atual usa uma paleta retrô fixa (`RetroImageConfiguration.fourToneRetro`) e não comunica uma propriedade musical do pedal.
 - Cada pedal já possui sequência musical determinística persistida em `PhotoPedal.sequence`.
 - Biblioteca, detalhe, picker e pedalboard consomem a capa persistida e se beneficiam de leitura musical-visual mais rápida antes de organizar Jam/pedalboards.
 - Foundation Models continua restrito a metadados semânticos; não deve controlar sequência, harmonia ou perfil sonoro.
