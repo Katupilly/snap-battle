@@ -43,8 +43,8 @@ iPad-specific layout.
 
 - [`specs/planned/native-tab-navigation-migration.md`](../planned/native-tab-navigation-migration.md) — direction, technical contract, risk surface, incremental plan, decision document (remains `Draft` until the migration reaches `Done`).
 - [`docs/audits/hybrid-tab-navigation-spike.md`](../../docs/audits/hybrid-tab-navigation-spike.md) — Phase 0 spike report, two rounds; approved-visual evidence (normal glass) at `docs/audits/assets/hybrid-tab-spike/34-final-gallery-light(-annotated).png`, `35-final-jam-light(-annotated).png`, `36-final-gallery-dark(-annotated).png`.
-- [`specs/current/contextual-bottom-bar.md`](../current/contextual-bottom-bar.md) — Ready; current root navigation and contextual actions; partially superseded after this spec reaches `Ready`.
-- [`specs/current/navigation-gallery-foundation.md`](../current/navigation-gallery-foundation.md) — Ready; invariants preserved by this migration.
+- [`specs/current/contextual-bottom-bar.md`](contextual-bottom-bar.md) — Ready; current root navigation and contextual actions; partially superseded after this spec reaches `Ready`.
+- [`specs/current/navigation-gallery-foundation.md`](navigation-gallery-foundation.md) — Ready; invariants preserved by this migration.
 - [`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) — app shell and dependencies.
 - [`docs/DEVICE_VALIDATION.md`](../../docs/DEVICE_VALIDATION.md) — manual validation list.
 - [`docs/TESTING.md`](../../docs/TESTING.md) — testing conventions.
@@ -596,13 +596,19 @@ above).
 review is approved** (see "Capture shape and emphasis (gate)").
 Increments 1, 2, 4, and 5 are not blocked by that review.
 
-Increment 1 (authorized 2026-07-20, after the visibility contract
-decisions above were recorded) must: be visually neutral; preserve
-the current bar; separate root-navigation state from contextual
-state; preserve `AppNavigationModel.selectedDestination`; prepare
-the single `RootNavigationVisibility` source for tab bar +
-accessory; not implement the new button; not choose circle vs.
-capsule; keep the existing tests green.
+Increment 1 is complete in commit `66063380`
+(`refactor(navigation): separate root navigation visibility`). It
+was visually neutral, preserved the current bar, separated
+root-navigation state from contextual state, preserved
+`AppNavigationModel.selectedDestination`, and introduced the single
+derived `RootNavigationVisibility` source without implementing the
+new button or choosing circle vs. capsule.
+
+Increment 2 is authorized next: introduce the native `TabView` for
+Gallery and Jam, bind it to `AppNavigationModel.selectedDestination`,
+preserve contextual actions, keep Capture as a temporary non-tab
+trigger until Increment 3, and do not implement the final
+`CaptureTabAccessory`.
 
 The single-source-of-truth decision is recorded above: the
 implementation adapts `AppNavigationModel.selectedDestination` as

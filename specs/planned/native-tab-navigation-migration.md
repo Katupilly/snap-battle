@@ -9,7 +9,7 @@ Last updated: 2026-07-20
 > Approved for production implementation**
 > (`docs/audits/hybrid-tab-navigation-spike.md`). The positioning,
 > padding, glass, and selection-source decisions are recorded in
-> `specs/planned/hybrid-tab-navigation-implementation.md`
+> `specs/current/hybrid-tab-navigation-implementation.md`
 > (promoted to `Ready`) and reflected in the "Capture Button
 > Technical Proposal" and "Open Questions" sections below. File
 > paths in this document were updated to the post-rename layout
@@ -1363,7 +1363,7 @@ The spike:
 
 The spike's required behavior, scope, and evidence format are
 defined in the successor implementation specification
-`specs/planned/hybrid-tab-navigation-implementation.md`, Phase 0.
+`specs/current/hybrid-tab-navigation-implementation.md`, Phase 0.
 That specification is the only authority for what the spike does.
 
 The successor implementation specification is promoted to `Ready` (or
@@ -1375,7 +1375,7 @@ this Draft alone.
 ## Next Steps To Promote To Ready
 
 1. The successor implementation specification
-   `specs/planned/hybrid-tab-navigation-implementation.md` is written
+   `specs/current/hybrid-tab-navigation-implementation.md` is written
    in `Draft` state. It references this specification, the captured
    `Current Decision`, the `Visual Contract`, the `Technical
    Investigation` answers, the `CaptureTabAccessory` proposal, the

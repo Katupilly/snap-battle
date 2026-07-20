@@ -62,7 +62,7 @@ listed in the "Not validated" sections below.
 ## Round 1 Detail — Goal And Conclusions (superseded in part by Round 2)
 
 The spike answered the three open questions in
-`specs/planned/hybrid-tab-navigation-implementation.md` (Goal section).
+`specs/current/hybrid-tab-navigation-implementation.md` (Goal section).
 
 1. **Positioning technique.** **Shared container
    (`ZStack(alignment: .bottomTrailing)`)** is the chosen technique.
