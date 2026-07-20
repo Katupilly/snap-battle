@@ -1,6 +1,6 @@
 # App Intents
 
-`Intents/PhotoPedalIntents.swift` defines two foreground-app intents:
+`Dap/Intents/DapIntents.swift` defines two foreground-app intents:
 
 | Intent | Behavior | Limitation |
 | --- | --- | --- |

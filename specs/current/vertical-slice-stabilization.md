@@ -52,7 +52,7 @@ Users can complete the existing photo-to-pedal flow when semantic metadata servi
 - `DapSynth.play(_:)` in `Dap/Services/Audio/DapSynth.swift` calls `stop()`, configures `AVAudioSession` as `.playback` with `.default` mode, activates it, renders the current 16-step sequence to memory, and starts `AVAudioEngine`. `stop()` detaches the source node, clears playback, stops the engine, and clears `isPlaying`. An interruption beginning calls `stop()`.
 - `PedalStore.save(_:cover:)` and `PedalStore.loadLatest()` in `Dap/Services/Persistence/PedalStore.swift` overwrite/load `latest-pedal.json` and `latest-pedal.png` in Application Support. `loadLatest()` returns `nil` if either component cannot load.
 - `DapViewModel` in `Dap/Features/Capture/CaptureViewModel.swift` blocks duplicate `process(_:)` calls while `isProcessing`, resets that state with `defer`, saves generated results, reloads the latest pedal at initialization, and calls `synth.play(_:)` from `play()`.
-- `CreatePedalIntent` and `PlayLastPedalIntent` in `Dap/Intents/PhotoPedalIntents.swift` set `AppIntentRouter.shared.request`; `ContentView` in `Dap/Features/Capture/CaptureView.swift` handles `.create` by resetting and opening `CameraScreen`, and `.playLast` by calling `DapViewModel.playLast()`.
+- `CreatePedalIntent` and `PlayLastPedalIntent` in `Dap/Intents/DapIntents.swift` set `AppIntentRouter.shared.request`; `ContentView` in `Dap/Features/Capture/CaptureView.swift` handles `.create` by opening Capture, and `.playLast` by asking Gallery to play the latest pedal.
 - Current Dap coverage includes deterministic generation, fallback metadata paths through `PedalMetadataGenerating`, storage replacement/reload behavior, selected audio lifecycle coordination, and App Intent routing. Legacy Snap Battle coverage remains present.
 
 ## In Scope
@@ -149,7 +149,7 @@ Users can complete the existing photo-to-pedal flow when semantic metadata servi
 
 ### Pure Deterministic Tests
 
-- Add Dap-focused tests under a new `DapTests/PhotoPedalStabilizationTests.swift` file. Keep legacy tests untouched unless a shared current behavior requires a narrowly scoped correction.
+- Add Dap-focused tests under a new `DapTests/DapStabilizationTests.swift` file. Keep legacy tests untouched unless a shared current behavior requires a narrowly scoped correction.
 - Use synthetic `UIImage` inputs and explicit `PhotoColorProfile`/domain values. Do not add large photos, binary snapshots, or fingerprint-based expectations.
 - Cover identical input producing equal `PedalSequence` values across repeated generation.
 - Cover `level == 0` as no `PedalNote` event and levels `1...3` as note events with current velocities.

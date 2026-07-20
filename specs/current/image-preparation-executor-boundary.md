@@ -75,7 +75,7 @@ Inspected symbols and current locations:
 - DEBUG-only signposts in
   `Dap/Supporting/PerformanceDiagnostics.swift:13-73`.
 - Existing focused deterministic, orientation, fingerprint, cover, and
-  sequence tests in `DapTests/PhotoPedalStabilizationTests.swift:8-128`
+  sequence tests in `DapTests/DapStabilizationTests.swift:8-128`
   and `DapTests/CreatureAuditTests.swift:42-76`.
 
 Relevant contracts are defined by [Architecture](../../docs/ARCHITECTURE.md),
@@ -248,7 +248,7 @@ Do not run these commands as part of this documentation task. Future
 implementation validation should use:
 
 ```sh
-xcodebuild test -project "Dap.xcodeproj" -scheme "Dap" -destination 'platform=iOS Simulator,name=<installed simulator>' -only-testing:DapTests/PhotoPedalStabilizationTests
+xcodebuild test -project "Dap.xcodeproj" -scheme "Dap" -destination 'platform=iOS Simulator,name=<installed simulator>' -only-testing:DapTests/DapStabilizationTests
 xcodebuild test -project "Dap.xcodeproj" -scheme "Dap" -destination 'platform=iOS Simulator,name=<installed simulator>'
 xcodebuild build -project "Dap.xcodeproj" -scheme "Dap" -configuration Debug
 xcodebuild build -project "Dap.xcodeproj" -scheme "Dap" -configuration Release

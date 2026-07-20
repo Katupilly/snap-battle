@@ -475,7 +475,7 @@ run IDs so future device measurements can compare real improvements.
 - A new small service/coordinator under `Dap/Services/Pedal/` or
   `Dap/Features/Capture/`, only if it keeps enrichment ownership more
   localized than expanding view code.
-- `Dap/Intents/PhotoPedalIntents.swift`, only if routing tests reveal a
+- `Dap/Intents/DapIntents.swift`, only if routing tests reveal a
   pending-metadata regression.
 
 ### Documentation

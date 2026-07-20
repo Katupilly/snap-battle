@@ -286,7 +286,7 @@ Validate manually: main navigation and Capture control, camera, library import, 
 ### Conditional
 
 - `Dap/Domain/Pedal/Pedal.swift`, only for minimum UUID-associated cover-filename or collection support.
-- `Dap/Intents/PhotoPedalIntents.swift`, only for shared collection/latest integration.
+- `Dap/Intents/DapIntents.swift`, only for shared collection/latest integration.
 - `Dap/Services/Audio/DapSynth.swift`, only for demonstrated deletion/playback coordination defect.
 - `Dap/Features/Capture/CameraPicker.swift`, only for transient presentation/dismiss integration.
 

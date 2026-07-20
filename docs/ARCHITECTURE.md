@@ -28,7 +28,7 @@ VisionKit + Vision -> FoundationModelsPedalGenerator -> name and description
 | Audio | `Services/Audio/DapSynth.swift` |
 | Persistence | `Services/Persistence/PedalStore.swift` |
 | Metadata | `Services/Vision/`, `Services/FoundationModels/FoundationModelsPedalGenerator.swift` |
-| Shortcuts | `Intents/PhotoPedalIntents.swift` |
+| Shortcuts | `Intents/DapIntents.swift` |
 
 Dependencies currently flow from SwiftUI views to `DapViewModel`, then to pipeline, storage, and audio services. Services construct and consume domain values; SwiftUI views present and forward user actions. `DapViewModel` currently bridges UI, services, storage, and playback, so it is the main state owner for the active flow.
 

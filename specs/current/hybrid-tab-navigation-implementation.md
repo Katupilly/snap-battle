@@ -25,7 +25,7 @@ Last updated: 2026-07-20
 > regular Liquid Glass.
 >
 > File paths in this document were updated to the post-rename
-> layout (`snap-battle/`).
+> layout (`Dap/`).
 
 ## Target Platform
 
@@ -162,16 +162,16 @@ The spike must not:
 - adopt `tabViewStyle(.sidebarAdaptable)` or any sidebar-style
   layout;
 - introduce abstractions whose only justification is iPad support;
-- modify any file in `snap-battle/` beyond a self-contained demo file or
+- modify any file in `Dap/` beyond a self-contained demo file or
   folder clearly named under a spike prefix;
-- modify `snap-battle/Features/Capture/CaptureView.swift`,
-  `snap-battle/Features/Navigation/AppNavigationModel.swift`,
-  `snap-battle/Features/Gallery/GalleryView.swift`, or any other currently
+- modify `Dap/Features/Capture/CaptureView.swift`,
+  `Dap/Features/Navigation/AppNavigationModel.swift`,
+  `Dap/Features/Gallery/GalleryView.swift`, or any other currently
   live production file;
 - remove, rename, or refactor `ContextualBottomBar`,
   `BottomBarPresentation`, `RootDestination`,
   `NavigationBarConfiguration`, or any related type;
-- touch `PedalStore`, `CaptureViewModel`, `PhotoPedalPipeline`, `PhotoPedalSynth`,
+- touch `PedalStore`, `CaptureViewModel`, `DapPipeline`, `DapSynth`,
   `CameraScreen`, or `AppIntentRouter`;
 - add a third-party dependency;
 - change the `IPHONEOS_DEPLOYMENT_TARGET`, `SWIFT_VERSION`, or
@@ -444,9 +444,9 @@ screen whose tab bar is hidden.
 | Result | Hidden | Hidden | Visible (Save Pedal / Retake) |
 
 This table was checked against
-`snap-battle/Features/Navigation/AppNavigationModel.swift`
+`Dap/Features/Navigation/AppNavigationModel.swift`
 (`BottomBarPresentation.forNavigation` and `.captureFlow`) and the
-routes in `snap-battle/Features/Capture/CaptureView.swift`; it
+routes in `Dap/Features/Capture/CaptureView.swift`; it
 does not replace code investigation in later increments.
 
 ### Transitions (product decision, 2026-07-20)
@@ -665,10 +665,13 @@ implementation evidence shows the model has become redundant.
   phases (picker, camera, processing, save retry, result) →
   hidden. The single value drives both the tab bar
   (`.toolbar(.hidden, for: .tabBar)`) and the `CaptureTabAccessory`
-  (`if` on the same value). Asserted by
+  (`if` on the same value). Covered by compiled-but-unexecuted
+  tests
   `rootVisibilityMatrixIsConsistentForEverySurface` and
   `rootNavigationVisibilityIsTheSingleSourceForTabBarAndAccessory`
-  in `snap-battleTests/NavigationGalleryTests.swift`.
+  in `DapTests/NavigationGalleryTests.swift`; these were not
+  executed in this session because the focused `xcodebuild test`
+  runner did not launch.
 - **Transitions.** `beginCapture` flips a single boolean
   (`isPresentingCapture`) which the visibility source observes;
   there is no transient frame in which the tab bar is visible
@@ -676,21 +679,24 @@ implementation evidence shows the model has become redundant.
   disappear out of step with the tab bar because both observe
   the same value. The per-frame ordering is enforced by
   SwiftUI's reaction to a single `RootNavigationState` change,
-  not by two independent triggers. Asserted by
+  not by two independent triggers. Covered by compiled-but-unexecuted
+  test
   `noTransientTriggerBetweenSelectionAndRootVisibility`.
 - **Hit testing.** The accessory's `.contentShape(Capsule())` is
-  applied at the outermost view (after padding), so the 8 pt
-  trailing and 4 pt bottom visual padding never extends the hit
-  area beyond the visible capsule. Only the capsule receives
-  taps; the Jam tab stays accessible in the rest of its area.
-  The `.offset(y: 14)` moves the hit area with the rendering.
-  Behaviour is visually verified on iPhone 17 Pro simulator
-  (iOS 26.5); no automated hit-test was added in this increment.
+  applied inside `CaptureTabAccessory` on the button label before
+  the outer positioning padding, so the 8 pt trailing and 4 pt
+  bottom visual padding do not become tappable. The outer
+  `.contentShape(Capsule())` was removed during Dap rename
+  reconciliation because it would have shaped the padded container
+  instead of the visible capsule. The `.offset(y: 14)` is inferred
+  to move the hit area with the rendering; no automated hit-test
+  was added in this increment.
 - **Path preservation.** Hiding the root navigation does not
   clear any per-tab path. `beginCapture`, `cancelCapture`, and
   `completeCapture` keep `galleryPath` and `jamPath` intact
   except for `completeCapture`'s existing product behaviour
-  (clears `galleryPath`, selects Gallery). Asserted by
+  (clears `galleryPath`, selects Gallery). Covered by
+  compiled-but-unexecuted test
   `hidingRootNavigationDoesNotClearNavigationPaths`.
 - **No parallel visibility state.** The per-tab
   `.toolbar(.hidden, for: .tabBar)` modifiers and the
