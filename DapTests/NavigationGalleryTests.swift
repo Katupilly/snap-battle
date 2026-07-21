@@ -113,7 +113,7 @@ struct NavigationGalleryTests {
         #expect(!navigation.isPresentingCapture)
     }
 
-    @Test func nativeRootTabsIncludeOnlyGalleryAndJamDestinations() {
+    @Test func customRootNavigationIncludesOnlyGalleryAndJamDestinations() {
         let navigation = AppNavigationModel()
         let root = navigation.rootNavigation
 
@@ -136,6 +136,17 @@ struct NavigationGalleryTests {
         #expect(RootNavigationState.destinations.map(\.appDestination) == [.gallery, .jam])
     }
 
+    @Test func appTabIsThePersistentRootSelectionModel() {
+        let navigation = AppNavigationModel()
+        let tabs: Set<AppTab> = [.gallery, .jam]
+
+        #expect(tabs == Set(RootNavigationState.destinations.map(\.appDestination)))
+        #expect(navigation.selectedDestination == AppTab.gallery)
+
+        navigation.selectedDestination = .jam
+        #expect(navigation.rootNavigation.selectedDestination == .jam)
+    }
+
     @Test func captureIsNotAPersistentTabDestination() {
         #expect(RootNavigationState.destinations == [.gallery, .jam])
         #expect(RootNavigationState.destinations.map(\.appDestination).contains(.gallery))
@@ -143,8 +154,8 @@ struct NavigationGalleryTests {
     }
 
     @Test func detailRoutesHideRootNavigationWithoutChangingSelection() {
-        // Photo Inspector: tab bar and Capture disappear together;
-        // on return both reappear with Gallery and its state intact.
+        // Photo Inspector: root navigation disappears; on return it
+        // reappears with Gallery and its state intact.
         let navigation = AppNavigationModel()
         let pedalID = UUID()
         navigation.path = [.pedalDetail(pedalID)]
@@ -210,10 +221,8 @@ struct NavigationGalleryTests {
         #expect(navigation.rootNavigation.selectedDestination == .gallery)
     }
 
-    // Increment 4: visibility matrix. The single RootNavigationVisibility
-    // value drives the native tab bar and the CaptureTabAccessory together.
-    // These tests assert the matrix that ContentView's `.toolbar` modifier
-    // and the accessory's `if` both observe.
+    // Increment 5A: visibility matrix. The single RootNavigationVisibility
+    // value drives the custom bottom navigation cluster.
     @Test func rootVisibilityMatrixIsConsistentForEverySurface() {
         let navigation = AppNavigationModel()
 
@@ -257,23 +266,21 @@ struct NavigationGalleryTests {
         #expect(navigation.rootNavigation.selectedDestination == .jam)
     }
 
-    // Increment 4: the CaptureTabAccessory and the native tab bar
-    // observe the SAME RootNavigationVisibility. There is no parallel
-    // accessory-visibility state; the same property drives both.
-    @Test func rootNavigationVisibilityIsTheSingleSourceForTabBarAndAccessory() {
+    // Increment 5A: the custom root navigation observes the same
+    // RootNavigationVisibility. There is no parallel accessory state.
+    @Test func rootNavigationVisibilityIsTheSingleSourceForCustomNavigation() {
         let navigation = AppNavigationModel()
         let initial = navigation.rootNavigation
         #expect(initial.visibility == .visible)
         #expect(initial.selectedDestination == .gallery)
 
-        // Detail path: single flip, both surfaces hide together.
+        // Detail path: single flip hides the cluster.
         navigation.path = [.pedalDetail(UUID())]
         #expect(navigation.rootNavigation.visibility == .hidden)
         navigation.path.removeAll()
         #expect(navigation.rootNavigation.visibility == .visible)
 
-        // Capture: single flip, both surfaces hide together,
-        // selection preserved.
+        // Capture: single flip hides the cluster, selection preserved.
         navigation.selectedDestination = .jam
         navigation.beginCapture()
         #expect(navigation.rootNavigation.visibility == .hidden)
@@ -290,7 +297,7 @@ struct NavigationGalleryTests {
         #expect(navigation.rootNavigation.selectedDestination == .gallery)
     }
 
-    // Increment 4: hiding the root navigation does not clear the
+    // Increment 5A: hiding the root navigation does not clear the
     // per-tab path; the user's stack is preserved across the
     // visibility flip.
     @Test func hidingRootNavigationDoesNotClearNavigationPaths() {
@@ -313,11 +320,11 @@ struct NavigationGalleryTests {
         #expect(navigation.rootNavigation.visibility == .hidden)
     }
 
-    // Increment 4: contextual states (picker, camera, processing,
+    // Increment 5A: contextual states (picker, camera, processing,
     // save retry, result) are presented via the capture sheet, which
-    // covers the tab bar and the CaptureTabAccessory. The contextual
+    // covers the custom root navigation. The contextual
     // bar inside the sheet is the only bottom surface during these
-    // phases; no root accessory is rendered behind it.
+    // phases; no root navigation is rendered behind it.
     @Test func contextualCapturePhasesDoNotDeriveRootAccessoryVisibility() {
         let navigation = AppNavigationModel()
         navigation.beginCapture()
@@ -330,10 +337,10 @@ struct NavigationGalleryTests {
         navigation.cancelCapture()
     }
 
-    // Increment 4: there is no transient trigger between the user's
+    // Increment 5A: there is no transient trigger between the user's
     // selection and the visibility state. A single read of
     // rootNavigation.visibility is sufficient to render the bar and
-    // the accessory.
+    // the cluster.
     @Test func noTransientTriggerBetweenSelectionAndRootVisibility() {
         let navigation = AppNavigationModel()
         navigation.selectedDestination = .jam
