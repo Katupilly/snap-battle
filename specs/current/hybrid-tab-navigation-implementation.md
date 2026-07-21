@@ -52,6 +52,102 @@ iPad-specific layout.
 
 ## Current Decision
 
+**Increment 5A update — the native-tab direction is superseded.**
+The production implementation no longer uses `TabView`, `UITabBar`,
+or a native tab bar accessory for root navigation. The approved
+result is a fully custom SwiftUI bottom navigation cluster:
+
+```text
+[ Gallery | Jam ]    [ camera ]
+```
+
+The document name remains unchanged for traceability. Historical
+sections below that describe native tab-bar positioning are preserved
+as rejected/obsolete context only; they are not authorization for new
+implementation work.
+
+### Increment 5A Final Architecture
+
+- `ContentView` is the app shell and remains the single owner of
+  root navigation state through `AppNavigationModel`.
+- `AppTab` is the explicit persistent root-selection model:
+  `.gallery` and `.jam` only. Capture is not an `AppTab`.
+- Gallery and Jam each keep their own `NavigationStack` and path:
+  `galleryPath` and `jamPath`.
+- Both stacks remain mounted as siblings in a `ZStack`. The active
+  stack gets `opacity(1)`, hit testing, accessibility, and higher
+  `zIndex`; the inactive stack gets `opacity(0)`,
+  `allowsHitTesting(false)`, and `accessibilityHidden(true)`.
+- Root bottom navigation is inserted centrally with
+  `safeAreaInset(edge: .bottom)`. Child screens do not apply local
+  bottom compensation.
+- `RootNavigationVisibility` remains the single derived visibility
+  source. It hides the custom root navigation for detail routes and
+  Capture presentation.
+
+### Increment 5A Final Metrics
+
+- Gallery/Jam capsule: 212 × 58 pt.
+- Capture capsule: 88 × 58 pt.
+- Cluster gap: 22 pt.
+- Horizontal margin: 18 pt.
+- Bottom padding inside the safe-area inset: 10 pt.
+- No structural `offset`, `transformEffect`, trailing safe-area
+  hacks, transparent spacers, or native-tab measurements are used.
+
+### Increment 5A Capture Behavior
+
+Capture remains an independent action in the custom cluster. Tapping
+it calls the existing `beginCapture()` flow and presents the existing
+Capture sheet. Cancel restores the previously selected tab. Complete
+closes Capture, returns to Gallery, clears the Gallery path per the
+existing product contract, and triggers the Gallery save reload path.
+
+### Increment 5A Accessibility
+
+- Gallery and Jam expose labels matching their titles and add the
+  selected trait when active.
+- Capture exposes label `Capture`, hint `Opens the camera`, and a
+  88 × 58 pt touch target.
+- The inactive root stack is hidden from accessibility.
+- Selection animation is disabled when Reduce Motion is enabled.
+- State is indicated by accent fill/stroke and selected trait, not
+  color alone.
+
+### Increment 5A Validation Record
+
+Automated validation required for the final implementation:
+
+- `git diff --check`
+- Debug build on iPhone 17 Pro simulator
+- Release build on iPhone 17 Pro simulator
+- Relevant navigation/persistence tests
+
+Manual visual validation required:
+
+- Gallery dark and light mode
+- Jam dark and light mode
+- repeated Gallery ↔ Jam switching
+- open/close Capture
+- Gallery detail hides root navigation
+- Jam editor/detail hides root navigation
+- return preserves the previous tab/path where the product contract
+  requires it
+
+Screenshots captured for Increment 5A:
+
+- `docs/audits/assets/custom-bottom-navigation/01-gallery-light.jpg`
+- `docs/audits/assets/custom-bottom-navigation/02-jam-light.jpg`
+- `docs/audits/assets/custom-bottom-navigation/03-jam-dark.jpg`
+- `docs/audits/assets/custom-bottom-navigation/04-gallery-dark.jpg`
+- `docs/audits/assets/custom-bottom-navigation/05-capture-sheet-dark.jpg`
+- `docs/audits/assets/custom-bottom-navigation/06-gallery-detail-hidden-dark.jpg`
+- `docs/audits/assets/custom-bottom-navigation/07-jam-editor-hidden-dark.jpg`
+
+Known limitation: preservation of scroll position and visual centerY
+alignment are validated manually because current tests cover the
+navigation model, not rendered SwiftUI scroll geometry.
+
 **Phase 0 is complete.** The spike ran in two rounds on branch
 `spike/iphone-hybrid-tab-navigation` (closed after the report; **not
 merged**). The report is
