@@ -15,81 +15,32 @@ struct ContentView: View {
 
     var body: some View {
         @Bindable var navigation = navigation
-        ZStack(alignment: .bottomTrailing) {
-            TabView(selection: $navigation.selectedDestination) {
-                Tab(RootDestination.gallery.title, systemImage: RootDestination.gallery.systemImage, value: AppNavigationModel.Destination.gallery) {
-                    NavigationStack(path: $navigation.galleryPath) {
-                        GalleryView(
-                            model: gallery,
-                            beginCapture: navigation.beginCapture,
-                            thumbnailLoader: thumbnailLoader,
-                            transitionNamespace: libraryTransitionNamespace
-                        )
-                        .navigationDestination(for: AppRoute.self) { route in
-                            switch route {
-                            case .pedalDetail(let id):
-                                PedalDetailView(itemID: id, model: gallery, transitionNamespace: libraryTransitionNamespace)
-                            case .pedalboardDetail:
-                                EmptyView()
-                            }
-                        }
-                        #if DEBUG
-                        .toolbar {
-                            ToolbarItem(placement: .topBarTrailing) {
-                                Button("Library Debug", systemImage: "wrench.and.screwdriver") {
-                                    showingLibraryDebug = true
-                                }
-                                .accessibilityHint("Abre datasets determinísticos para validar a Biblioteca")
-                                .accessibilityIdentifier("debug.openLibrary")
-                            }
-                        }
-                        .navigationDestination(isPresented: $showingLibraryDebug) {
-                            LibraryDebugLauncher()
-                        }
-                        #endif
-                    }
-                }
+        ZStack {
+            galleryStack
+                .opacity(navigation.selectedDestination == .gallery ? 1 : 0)
+                .disabled(navigation.selectedDestination != .gallery)
+                .allowsHitTesting(navigation.selectedDestination == .gallery)
+                .accessibilityHidden(navigation.selectedDestination != .gallery)
+                .zIndex(navigation.selectedDestination == .gallery ? 1 : 0)
 
-                Tab(RootDestination.jam.title, systemImage: RootDestination.jam.systemImage, value: AppNavigationModel.Destination.jam) {
-                    NavigationStack(path: $navigation.jamPath) {
-                        PedalboardsView(
-                            model: pedalboards,
-                            openBoard: navigation.openPedalboard
-                        )
-                        .navigationDestination(for: AppRoute.self) { route in
-                            switch route {
-                            case .pedalDetail:
-                                EmptyView()
-                            case .pedalboardDetail(let id):
-                                PedalboardDetailView(boardID: id, model: pedalboards)
-                            }
-                        }
-                    }
-                }
-            }
-            .toolbar(navigation.rootNavigation.visibility == .hidden ? .hidden : .visible, for: .tabBar)
-
-            // The accessory observes the same RootNavigationVisibility
-            // as the tab bar above. .transition(.opacity) keeps its
-            // appearance synchronized with the tab bar's native fade
-            // so the two surfaces do not flicker relative to each
-            // other. Hit testing is constrained inside
-            // CaptureTabAccessory before the positioning padding is
-            // applied, so the padding does not steal taps from the
-            // Jam tab. The accessory is anchored to the bottomTrailing
-            // of the ZStack with a 20pt trailing margin; the native
-            // tab capsule stays exactly where the system positions it,
-            // and the natural gap between the two surfaces matches
-            // the 24pt visual target without measuring, repositioning,
-            // or resizing the TabView.
+            jamStack
+                .opacity(navigation.selectedDestination == .jam ? 1 : 0)
+                .disabled(navigation.selectedDestination != .jam)
+                .allowsHitTesting(navigation.selectedDestination == .jam)
+                .accessibilityHidden(navigation.selectedDestination != .jam)
+                .zIndex(navigation.selectedDestination == .jam ? 1 : 0)
+        }
+        .safeAreaInset(edge: .bottom) {
             if navigation.rootNavigation.visibility == .visible {
-                CaptureTabAccessory(action: navigation.beginCapture)
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 4)
-                    .offset(y: 14)
-                    .transition(.opacity)
+                CustomBottomNavigation(
+                    selectedTab: navigation.rootNavigation.selectedDestination,
+                    selectTab: { navigation.selectedDestination = $0.appDestination },
+                    capture: navigation.beginCapture
+                )
+                .transition(.opacity)
             }
         }
+        .animation(.easeInOut(duration: 0.16), value: navigation.rootNavigation.visibility)
         .task {
             #if DEBUG
             if CommandLine.arguments.contains("--install-fixtures") {
@@ -119,79 +70,58 @@ struct ContentView: View {
             AppIntentRouter.shared.request = nil
         }
     }
-}
 
-private struct CaptureTabAccessory: View {
-    // ponytail: width is a single localized value that targets the
-    // remaining trailing space after the native tab bar and the 24pt
-    // visual gap on iPhone 17 Pro. The capsule is placed at the
-    // bottomTrailing of the ZStack with a 20pt trailing margin; the
-    // natural centering of the native tab capsule produces the 24pt
-    // visual gap without measuring, resizing, or repositioning the
-    // TabView. The single 64pt value keeps the layout simple and
-    // stays outside the rejected 72–84pt range.
-    private enum Metrics {
-        static let width: CGFloat = 64
-        static let height: CGFloat = 58
-        static let iconSize: CGFloat = 20
+    private var galleryStack: some View {
+        @Bindable var navigation = navigation
+        return NavigationStack(path: $navigation.galleryPath) {
+            GalleryView(
+                model: gallery,
+                beginCapture: navigation.beginCapture,
+                thumbnailLoader: thumbnailLoader,
+                transitionNamespace: libraryTransitionNamespace
+            )
+            .accessibilityHidden(navigation.selectedDestination != .gallery)
+            .navigationDestination(for: AppRoute.self) { route in
+                switch route {
+                case .pedalDetail(let id):
+                    PedalDetailView(itemID: id, model: gallery, transitionNamespace: libraryTransitionNamespace)
+                case .pedalboardDetail:
+                    EmptyView()
+                }
+            }
+            #if DEBUG
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Library Debug", systemImage: "wrench.and.screwdriver") {
+                        showingLibraryDebug = true
+                    }
+                    .accessibilityHint("Abre datasets determinísticos para validar a Biblioteca")
+                    .accessibilityIdentifier("debug.openLibrary")
+                }
+            }
+            .navigationDestination(isPresented: $showingLibraryDebug) {
+                LibraryDebugLauncher()
+            }
+            #endif
+        }
     }
 
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: "camera.fill")
-                .font(.system(size: Metrics.iconSize, weight: .semibold))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-        .frame(width: Metrics.width, height: Metrics.height)
-        .background {
-            CaptureGradientBackground()
-                .clipShape(Capsule())
-        }
-        .glassEffect(.regular.interactive(), in: .capsule)
-        .contentShape(Capsule())
-        .buttonStyle(.plain)
-        .accessibilityLabel("Capture")
-        .accessibilityHint("Abre a câmera para criar um pedal")
-        .accessibilityIdentifier("bottomBar.action.capture")
-    }
-}
-
-private struct CaptureGradientBackground: View {
-    var body: some View {
-        // ponytail: the capsule is narrower than the previous 112pt
-        // build (~64pt ideal). The central white highlight and the
-        // radial glow are softened so the camera.fill stays legible
-        // against the brighter, more concentrated beam.
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.01, green: 0.05, blue: 0.22),
-                    Color(red: 0.00, green: 0.22, blue: 0.72),
-                    Color(red: 0.05, green: 0.74, blue: 1.00),
-                    .white.opacity(0.72),
-                    Color(red: 0.04, green: 0.52, blue: 1.00),
-                    Color(red: 0.01, green: 0.05, blue: 0.22)
-                ],
-                startPoint: .leading,
-                endPoint: .trailing
+    private var jamStack: some View {
+        @Bindable var navigation = navigation
+        return NavigationStack(path: $navigation.jamPath) {
+            PedalboardsView(
+                model: pedalboards,
+                openBoard: navigation.openPedalboard
             )
-
-            LinearGradient(
-                colors: [.clear, .white.opacity(0.55), .cyan.opacity(0.22), .clear],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .blur(radius: 8)
-
-            RadialGradient(
-                colors: [.white.opacity(0.62), .cyan.opacity(0.22), .clear],
-                center: .center,
-                startRadius: 2,
-                endRadius: 34
-            )
+            .accessibilityHidden(navigation.selectedDestination != .jam)
+            .navigationDestination(for: AppRoute.self) { route in
+                switch route {
+                case .pedalDetail:
+                    EmptyView()
+                case .pedalboardDetail(let id):
+                    PedalboardDetailView(boardID: id, model: pedalboards)
+                }
+            }
         }
     }
 }

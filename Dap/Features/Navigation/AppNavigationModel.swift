@@ -6,10 +6,15 @@ enum AppRoute: Hashable {
     case pedalboardDetail(UUID)
 }
 
+enum AppTab: Hashable {
+    case gallery
+    case jam
+}
+
 @MainActor
 @Observable
 final class AppNavigationModel {
-    enum Destination: Hashable { case gallery, jam }
+    typealias Destination = AppTab
 
     var selectedDestination: Destination = .gallery
     var galleryPath: [AppRoute] = []
