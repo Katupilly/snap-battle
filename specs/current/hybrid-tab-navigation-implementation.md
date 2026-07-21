@@ -720,6 +720,127 @@ implementation evidence shows the model has become redundant.
   increment. Recorded as a runner/launch limitation, not an
   assertion failure.
 
+### Increment 5A — Compact Capture Accessory (visual refinement)
+
+**Goal:** retune the `CaptureTabAccessory` to match the Figma node
+`121-1351` composition `[Gallery | Jam]    [camera.fill]`, where
+the Capture capsule is a compact icon-only surface sitting next to
+the native tab capsule with a 24 pt visual gap, instead of the
+earlier wide 112 pt capsule.
+
+#### Visual contract (final, 2026-07-20)
+
+- Capture accessory:
+  compact icon-only capsule based on Figma node `121-1351`.
+- Symbol:
+  `camera.fill` (20 pt, semibold, white).
+- Gap:
+  24 pt initial visual target. The gap emerges from the natural
+  centering of the native tab capsule plus the 20 pt trailing
+  margin of the accessory; no manual gap measurement.
+- Width:
+  64 pt. The 64 pt value targets the remaining trailing space
+  after the native tab bar and the 24 pt visual gap on iPhone 17
+  Pro. It is a single localized value inside the accessory, not a
+  generic layout system. It stays outside the rejected 72–84 pt
+  range and the rejected ~144 pt fixed width.
+- Height:
+  58 pt (matches the native tab capsule's visual height).
+- Vertical alignment:
+  `padding(.bottom, 4)` and `offset(y: 14)`, identical to
+  Increment 3.
+- Trailing alignment:
+  `padding(.trailing, 20)` at the call site; the accessory
+  inherits the ZStack's `bottomTrailing` alignment.
+- Gradient:
+  the central white highlight is softened (0.92 → 0.72) and the
+  radial glow is softened (0.85 → 0.62, endRadius 46 → 34) so
+  the `camera.fill` stays legible in the narrower frame.
+- Glass:
+  unchanged — `.glassEffect(.regular.interactive(), in: .capsule)`.
+
+#### Native tab bar contract (must not be violated)
+
+The native tab bar:
+
+- must not be repositioned, resized, introspected, measured, or
+  compensated;
+- must stay exactly where the system positions it;
+- must keep its full bounds, full hit area, and unmodified
+  geometry.
+
+The accessory adapts to the remaining trailing space around the
+native tab bar; the native tab bar does not adapt to the
+accessory.
+
+#### Rejected approaches (preserved for traceability)
+
+- Fixed Capture capsule near 144 pt: required manipulation of the
+  native tab bar geometry (frame shrinking, safe-area insets,
+  trailing ignores) or produced visual/interactive overlap with
+  Jam. The visual was not viable without breaking the native tab
+  bar's bounds, hit area, or centering.
+- 72–84 pt fixed Capture capsule (intermediate exploration):
+  produced a similar overlap problem at 72 pt and a hard-overlap
+  with Jam at 84 pt on iPhone 17 Pro; replaced by the 64 pt
+  compact accessory approved in node `121-1351`.
+- `TabView.offset`, `transformEffect` on the `TabView` or on the
+  `NavigationStack`s, narrow `TabView` frame, negative padding to
+  compensate content, `safeAreaInset(edge: .trailing)` to move
+  the tab bar, `ignoresSafeArea(.container, edges: .trailing)` on
+  the `NavigationStack`s, `GeometryReader` to measure the tab
+  bar, `UIScreen.main.bounds`, UIKit introspection, a constant
+  representing the inner width of the tab bar, a transparent
+  `Spacer` overlaid on Gallery or Jam, and hit-testing hacks to
+  patch overlap: all rejected and not used.
+- Mathematical centering of the two capsules as one cluster:
+  rejected. The native tab capsule must keep its system-defined
+  center; the accessory is anchored to the trailing area.
+
+#### Diagnosis preserved from the prior spike attempt
+
+The prior attempt on this increment demonstrated that, on the
+current native tab API:
+
+- the native TabView capsule remains centered in its own bounds;
+- `safeAreaInset(edge: .trailing)` does not reposition the native
+  capsule;
+- shrinking the TabView's bounds compresses or clips the tab
+  content;
+- translating the TabView and compensating the `NavigationStack`s
+  breaks the navigation chrome;
+- a fixed ~144 pt Capture capsule does not fit next to the
+  native capsule without overlap or without manipulating the
+  private geometry of the TabView.
+
+These findings are preserved to prevent re-exploring the same
+rejected paths in future increments.
+
+#### Visual validation (2026-07-20, iPhone 17 Pro simulator)
+
+- Gallery, light mode: pass — capsule is 64×58 pt, gap ≈ 24 pt,
+  icon centered, no overlap.
+- Gallery, dark mode: pass — gradient and glass adapt, icon
+  legible, no overlap.
+- Jam uses the same ZStack structure, so the visual is identical
+  by construction; the Jam tab remains fully tappable, including
+  the trailing region, because the accessory's `.contentShape(
+  Capsule())` is applied inside `CaptureTabAccessory` before the
+  outer positioning padding, matching the Increment 4 contract.
+- Navigation title, toolbar, and navigation chrome are unmodified;
+  the navigation stack is not transformed, offset, or padded to
+  compensate the accessory.
+- The accessory is hidden on detail screens and during the
+  Capture flow via the same `RootNavigationVisibility` source
+  established in Increment 4.
+
+#### Commits
+
+- `fix(navigation): refine compact Capture accessory` — the
+  implementation commit.
+- `docs(native-tab-navigation): record compact accessory decision`
+  — this documentation commit.
+
 ## Acceptance Criteria for Phase 0 Completion
 
 Phase 0 is complete when:
