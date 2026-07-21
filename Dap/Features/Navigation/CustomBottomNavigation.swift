@@ -39,58 +39,103 @@ private struct GalleryJamCapsule: View {
     let selectedTab: RootDestination
     let selectTab: (RootDestination) -> Void
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Namespace private var glassNamespace
 
     var body: some View {
-        HStack(spacing: 4) {
-            tabButton(.gallery)
-            Divider()
-                .frame(height: 26)
-                .overlay(.primary.opacity(0.12))
-                .accessibilityHidden(true)
-            tabButton(.jam)
+        ZStack {
+            GlassEffectContainer(spacing: 8) {
+                Capsule()
+                    .fill(.clear)
+                    .glassEffect(.regular.tint(backgroundTint).interactive(), in: .capsule)
+                    .glassEffectID("gallery-jam-background", in: glassNamespace)
+
+                selectedGlassLayer
+            }
+
+            HStack(spacing: 4) {
+                tabButton(.gallery)
+                Divider()
+                    .frame(height: 24)
+                    .overlay(.primary.opacity(colorScheme == .dark ? 0.14 : 0.10))
+                    .accessibilityHidden(true)
+                tabButton(.jam)
+            }
+            .padding(6)
         }
-        .padding(6)
-        .background(glassBackground)
-        .glassEffect(.regular.interactive(), in: .capsule)
         .overlay {
             Capsule()
-                .stroke(.primary.opacity(colorScheme == .dark ? 0.16 : 0.10), lineWidth: 1)
+                .stroke(.primary.opacity(colorScheme == .dark ? 0.12 : 0.08), lineWidth: 1)
         }
-        .shadow(color: .black.opacity(colorScheme == .dark ? 0.24 : 0.12), radius: 14, y: 7)
+        .shadow(color: .black.opacity(colorScheme == .dark ? 0.26 : 0.12), radius: 16, y: 8)
     }
 
     private func tabButton(_ tab: RootDestination) -> some View {
         let isSelected = selectedTab == tab
         return Button {
-            selectTab(tab)
+            if reduceMotion {
+                selectTab(tab)
+            } else {
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
+                    selectTab(tab)
+                }
+            }
         } label: {
             Label(tab.title, systemImage: tab.systemImage)
                 .font(.subheadline.weight(isSelected ? .semibold : .medium))
                 .lineLimit(1)
                 .minimumScaleFactor(0.82)
-                .foregroundStyle(isSelected ? Color.accentColor : Color.primary.opacity(0.82))
+                .foregroundStyle(isSelected ? Color.white : Color.primary.opacity(0.72))
+                .shadow(color: isSelected ? .black.opacity(0.24) : .clear, radius: 2, y: 1)
                 .frame(maxWidth: .infinity, minHeight: 44)
-                .background(isSelected ? Color.accentColor.opacity(0.16) : .clear, in: .capsule)
-                .overlay {
-                    Capsule()
-                        .stroke(isSelected ? Color.accentColor.opacity(0.40) : .clear, lineWidth: 1)
-                }
                 .contentShape(.capsule)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressFeedbackButtonStyle(reduceMotion: reduceMotion))
         .accessibilityLabel(tab.title)
         .accessibilityHint("Shows \(tab.title)")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
         .accessibilityIdentifier(tab.accessibilityIdentifier)
     }
 
-    private var glassBackground: some View {
-        Capsule()
-            .fill(.ultraThinMaterial)
-            .overlay {
-                Capsule()
-                    .fill(Color.primary.opacity(colorScheme == .dark ? 0.05 : 0.02))
+    private var selectedGlassLayer: some View {
+        HStack(spacing: 4) {
+            if selectedTab == .gallery {
+                selectedGlass
+            } else {
+                Color.clear
             }
+
+            Color.clear
+                .frame(width: 1)
+
+            if selectedTab == .jam {
+                selectedGlass
+            } else {
+                Color.clear
+            }
+        }
+        .padding(6)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private var selectedGlass: some View {
+        Capsule()
+            .fill(.clear)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .glassEffect(.regular.tint(Color.accentColor.opacity(colorScheme == .dark ? 0.34 : 0.24)), in: .capsule)
+            .glassEffectID("gallery-jam-selection", in: glassNamespace)
+            .glassEffectTransition(reduceMotion ? .identity : .matchedGeometry)
+            .overlay(alignment: .topLeading) {
+                Capsule()
+                    .stroke(.white.opacity(colorScheme == .dark ? 0.20 : 0.34), lineWidth: 1)
+                    .padding(1)
+            }
+            .shadow(color: Color.accentColor.opacity(colorScheme == .dark ? 0.22 : 0.14), radius: 10, y: 3)
+    }
+
+    private var backgroundTint: Color {
+        Color.primary.opacity(colorScheme == .dark ? 0.10 : 0.04)
     }
 }
 
@@ -111,7 +156,7 @@ private struct CaptureCapsule: View {
             CaptureGradientBackground()
                 .clipShape(Capsule())
         }
-        .glassEffect(.regular.interactive(), in: .capsule)
+        .glassEffect(.regular.tint(.cyan.opacity(0.12)).interactive(), in: .capsule)
         .overlay {
             Capsule()
                 .stroke(.white.opacity(0.28), lineWidth: 1)
