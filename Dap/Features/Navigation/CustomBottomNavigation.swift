@@ -2,13 +2,13 @@ import SwiftUI
 
 struct CustomBottomNavigation: View {
     private enum Metrics {
-        static let height: CGFloat = 66
-        static let galleryJamWidth: CGFloat = 212
+        static let height: CGFloat = 68
+        static let galleryJamWidth: CGFloat = 216
         static let captureWidth: CGFloat = 88
         static let gap: CGFloat = 22
         static let horizontalMargin: CGFloat = 18
         static let bottomPadding: CGFloat = 10
-        static let cornerRadius: CGFloat = 33
+        static let cornerRadius: CGFloat = 34
     }
 
     let selectedTab: RootDestination
@@ -36,20 +36,23 @@ struct CustomBottomNavigation: View {
 
 private struct GalleryJamCapsule: View {
     private enum Metrics {
-        static let outerRadius: CGFloat = 33
-        static let inset: CGFloat = 4
+        static let outerRadius: CGFloat = 34
+        static let inset: CGFloat = 5
         static let innerRadius: CGFloat = outerRadius - inset
-        static let indicatorWidth: CGFloat = 102
+        static let indicatorWidth: CGFloat = 103
         static let indicatorHeight: CGFloat = 58
         static let indicatorTravel: CGFloat = indicatorWidth / 2
-        static let itemSpacing: CGFloat = 3
-        static let iconSize: CGFloat = 19
+        static let itemSpacing: CGFloat = 4
+        static let iconSize: CGFloat = 20
+        static let iconFrame: CGFloat = 24
+        static let pressDirectionalOffset: CGFloat = 7
     }
 
     let selectedTab: RootDestination
     let selectTab: (RootDestination) -> Void
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @GestureState private var pressedTab: RootDestination?
 
     var body: some View {
         ZStack {
@@ -66,7 +69,7 @@ private struct GalleryJamCapsule: View {
             .padding(Metrics.inset)
             .zIndex(2)
         }
-        .clipShape(RoundedRectangle(cornerRadius: Metrics.outerRadius, style: .continuous))
+        .clipShape(Capsule())
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.26 : 0.12), radius: 16, y: 8)
     }
 
@@ -83,20 +86,26 @@ private struct GalleryJamCapsule: View {
         } label: {
             VStack(spacing: Metrics.itemSpacing) {
                 Image(systemName: tabSymbol(tab))
-                    .font(.system(size: Metrics.iconSize, weight: isSelected ? .semibold : .medium))
-                    .symbolRenderingMode(.hierarchical)
+                    .font(.system(size: Metrics.iconSize, weight: .semibold))
+                    .symbolRenderingMode(.monochrome)
+                    .foregroundStyle(isSelected ? Color.white : inactiveForeground)
+                    .frame(width: Metrics.iconFrame, height: Metrics.iconFrame)
 
                 Text(tab.title)
-                    .font(.caption2.weight(isSelected ? .semibold : .medium))
+                    .font(.caption2.weight(.semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.86)
+                    .foregroundStyle(isSelected ? Color.white : inactiveForeground)
             }
-                .foregroundStyle(isSelected ? Color.white : Color.primary.opacity(colorScheme == .dark ? 0.76 : 0.68))
                 .shadow(color: isSelected ? .black.opacity(0.24) : .clear, radius: 2, y: 1)
                 .frame(maxWidth: .infinity, minHeight: Metrics.indicatorHeight)
-                .contentShape(RoundedRectangle(cornerRadius: Metrics.innerRadius, style: .continuous))
+                .contentShape(Capsule())
+                .transaction { transaction in
+                    transaction.animation = nil
+                }
         }
-        .buttonStyle(PressFeedbackButtonStyle(reduceMotion: reduceMotion))
+        .buttonStyle(.plain)
+        .simultaneousGesture(pressGesture(for: tab))
         .accessibilityLabel(tab.title)
         .accessibilityHint("Shows \(tab.title)")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
@@ -105,45 +114,68 @@ private struct GalleryJamCapsule: View {
 
     private var baseFrostedGlass: some View {
         GlassEffectContainer(spacing: 8) {
-            RoundedRectangle(cornerRadius: Metrics.outerRadius, style: .continuous)
+            Capsule()
                 .fill(.clear)
                 .glassEffect(.regular.tint(backgroundTint).interactive(), in: .capsule)
         }
         .overlay {
-            RoundedRectangle(cornerRadius: Metrics.outerRadius, style: .continuous)
+            Capsule()
                 .stroke(.primary.opacity(colorScheme == .dark ? 0.12 : 0.08), lineWidth: 1)
-        }
-        .overlay(alignment: .top) {
-            RoundedRectangle(cornerRadius: Metrics.outerRadius, style: .continuous)
-                .stroke(.white.opacity(colorScheme == .dark ? 0.10 : 0.22), lineWidth: 1)
-                .padding(.horizontal, 10)
-                .padding(.top, 1)
-                .frame(height: 18)
-                .accessibilityHidden(true)
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
 
     private var movingSelectionHighlight: some View {
-        RoundedRectangle(cornerRadius: Metrics.innerRadius, style: .continuous)
+        Capsule()
             .fill(selectionFill)
             .frame(width: Metrics.indicatorWidth, height: Metrics.indicatorHeight)
             .overlay {
-                RoundedRectangle(cornerRadius: Metrics.innerRadius, style: .continuous)
+                Capsule()
                     .stroke(selectionStroke, lineWidth: 1)
             }
-            .overlay(alignment: .top) {
-                RoundedRectangle(cornerRadius: Metrics.innerRadius, style: .continuous)
-                    .fill(specularHighlight)
-                    .accessibilityHidden(true)
-            }
-            .shadow(color: .black.opacity(colorScheme == .dark ? 0.20 : 0.10), radius: 5, y: 2)
-            .shadow(color: Color.accentColor.opacity(colorScheme == .dark ? 0.18 : 0.12), radius: 4, y: 1)
-            .offset(x: selectedTab == .gallery ? -Metrics.indicatorTravel : Metrics.indicatorTravel)
+            .scaleEffect(x: lensScaleX, y: lensScaleY)
+            .offset(x: lensOffset)
             .animation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.82), value: selectedTab)
+            .animation(reduceMotion ? nil : .spring(response: 0.16, dampingFraction: 0.94), value: pressedTab)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
+    }
+
+    private var lensOffset: CGFloat {
+        baseOffset(for: selectedTab) + pressOffset
+    }
+
+    private var lensScaleX: CGFloat {
+        guard !reduceMotion, pressedTab != nil else { return 1 }
+        return isPressingSelectedTab ? 1.02 : 1.06
+    }
+
+    private var lensScaleY: CGFloat {
+        guard !reduceMotion, pressedTab != nil else { return 1 }
+        return 0.96
+    }
+
+    private var pressOffset: CGFloat {
+        guard !reduceMotion, let pressedTab, pressedTab != selectedTab else { return 0 }
+        return baseOffset(for: pressedTab) > baseOffset(for: selectedTab)
+            ? Metrics.pressDirectionalOffset
+            : -Metrics.pressDirectionalOffset
+    }
+
+    private var isPressingSelectedTab: Bool {
+        pressedTab == selectedTab
+    }
+
+    private func baseOffset(for tab: RootDestination) -> CGFloat {
+        tab == .gallery ? -Metrics.indicatorTravel : Metrics.indicatorTravel
+    }
+
+    private func pressGesture(for tab: RootDestination) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .updating($pressedTab) { _, state, _ in
+                state = tab
+            }
     }
 
     private var backgroundTint: Color {
@@ -165,16 +197,10 @@ private struct GalleryJamCapsule: View {
         Color.white.opacity(colorScheme == .dark ? 0.34 : 0.44)
     }
 
-    private var specularHighlight: LinearGradient {
-        LinearGradient(
-            colors: [
-                .white.opacity(colorScheme == .dark ? 0.18 : 0.24),
-                .white.opacity(colorScheme == .dark ? 0.06 : 0.10),
-                .clear
-            ],
-            startPoint: .top,
-            endPoint: .center
-        )
+    private var inactiveForeground: Color {
+        colorScheme == .dark
+            ? Color.white.opacity(0.70)
+            : Color.primary.opacity(0.68)
     }
 
     private func tabSymbol(_ tab: RootDestination) -> String {
