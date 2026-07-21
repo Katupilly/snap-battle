@@ -3,7 +3,7 @@
 Status: Superseded
 Last updated: 2026-07-17
 
-Superseded by [Photo Pedal Library](pedal-library.md), which is the only planned Gallery/Library feature spec for future visual Library behavior. This file is retained only as historical context and must not be used as implementation authority.
+Superseded by [Dap Library](../current/pedal-library.md), which is the only planned Gallery/Library feature spec for future visual Library behavior. This file is retained only as historical context and must not be used as implementation authority.
 
 ## Goal
 

@@ -30,7 +30,7 @@ A spec permanece `Draft` até que `Open Decisions Before Ready` esteja vazio.
 
 ## 1. Contexto
 
-O Photo Pedal transforma uma foto em uma capa 2-bit, uma sequência MIDI determinística, um perfil sonoro e metadados opcionais. O pipeline essencial (`PhotoPedalPipeline.runEssential`) consome:
+O Dap transforma uma foto em uma capa 2-bit, uma sequência MIDI determinística, um perfil sonoro e metadados opcionais. O pipeline essencial (`PhotoPedalPipeline.runEssential`) consome:
 
 1. `ImageInputPreparer.makePixelBuffer` e `ImagePreparationExecutor.prepare` para normalizar e gerar um pixel buffer;
 2. `RetroImageProcessor.process` para a capa 2-bit;

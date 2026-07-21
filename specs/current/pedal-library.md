@@ -1,4 +1,4 @@
-# Photo Pedal Library
+# Dap Library
 
 Status: Ready
 Last updated: 2026-07-17
@@ -8,13 +8,13 @@ Framework: SwiftUI
 
 ## Goal
 
-Define the next Library experience for saved Photo Pedals: a dense chronological visual gallery with detail navigation, spatial transition, stable states, and clear technical responsibilities.
+Define the next Library experience for saved Dap pedals: a dense chronological visual gallery with detail navigation, spatial transition, stable states, and clear technical responsibilities.
 
 This specification is implementation authorization only for the explicitly approved phase and step.
 
 ## User Value
 
-Users can quickly recognize, find, and open any saved pedal through a familiar visual history inspired by the iPhone Photos library, adapted to Photo Pedal's visual and musical objects.
+Users can quickly recognize, find, and open any saved pedal through a familiar visual history inspired by the iPhone Photos library, adapted to Dap's visual and musical objects.
 
 The Library acts as the visual and sonic history of the user's creations. Covers are the primary interface element, while metadata, playback, effects, and actions stay available without making the grid feel like a list of cards.
 
@@ -732,8 +732,8 @@ This audit reflects the code present on 2026-07-17.
 
 ### Confirmed
 
-- The saved pedal type is `PhotoPedal` in `snap-battle/Domain/Pedal/Pedal.swift`.
-- `StoredPedal` wraps `PhotoPedal` and a loaded `UIImage` cover in `snap-battle/Services/Persistence/PedalStore.swift`.
+- The saved pedal type is `PhotoPedal` in `Dap/Domain/Pedal/Pedal.swift`.
+- `StoredPedal` wraps `PhotoPedal` and a loaded `UIImage` cover in `Dap/Services/Persistence/PedalStore.swift`.
 - `PhotoPedal.createdAt` is persisted.
 - `PhotoPedal.effect` is persisted as stable `PedalEffect` with `reverb` and `distortion`.
 - `PhotoPedal.sequence.harmony.scale` is persisted as `PedalScale`.
@@ -754,7 +754,7 @@ This audit reflects the code present on 2026-07-17.
 - No Library filter model exists.
 - No temporal section model exists.
 - No multi-selection state exists.
-- `ThumbnailLoader` exists in `snap-battle/Services/ImageLoading/ThumbnailLoader.swift`; it downsamples persisted covers, uses an in-memory `NSCache`, propagates cancellation, and has compilable focused tests in `snap-battleTests/ThumbnailLoaderTests.swift`.
+- `ThumbnailLoader` exists in `Dap/Services/ImageLoading/ThumbnailLoader.swift`; it downsamples persisted covers, uses an in-memory `NSCache`, propagates cancellation, and has compilable focused tests in `DapTests/ThumbnailLoaderTests.swift`.
 - `PedalStore` still loads a full `UIImage` into `StoredPedal` for the existing detail/persistence contract; the Library now resolves the UUID-associated persisted asset through the store and uses `ThumbnailLoader` for grid presentation.
 - Native matched-source/zoom transition is implemented for the Library thumbnail and detail cover; Reduce Motion skips the spatial zoom.
 - The detail cover uses a square, padded, `scaledToFill` frame with a 20 pt continuous corner radius.

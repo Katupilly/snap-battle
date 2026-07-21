@@ -2,7 +2,7 @@
 
 ## Current Contract
 
-`PhotoPedalPipeline` uses `ImageInputPreparer`, `RetroImageProcessor`, `PhotoColorAnalyzer`, and `ImageSequenceGenerator`. Foundation Models output does not affect music.
+`DapPipeline` uses `ImageInputPreparer`, `RetroImageProcessor`, `PhotoColorAnalyzer`, and `ImageSequenceGenerator`. Foundation Models output does not affect music.
 
 ## Inputs
 

@@ -1,11 +1,11 @@
-# Spec: Photo Pedal Vertical Slice Stabilization
+# Spec: Dap Vertical Slice Stabilization
 
 Status: Ready
 Priority: P0
 
 ## Context
 
-The current Photo Pedal vertical slice captures or imports a photo, prepares it, produces a four-tone cover, generates a deterministic `PedalSequence`, generates semantic metadata or static fallback metadata, plays it through `PhotoPedalSynth`, and persists the latest result. The product flow is active. The `snap-battleTests` target currently has 62 tests in 6 suites, including focused Photo Pedal coverage for deterministic generation, metadata fallback, latest-pedal persistence, audio lifecycle coordination, and App Intent routing where testable without device/framework invocation.
+The current Dap vertical slice captures or imports a photo, prepares it, produces a four-tone cover, generates a deterministic `PedalSequence`, generates semantic metadata or static fallback metadata, plays it through `DapSynth`, and persists the latest result. The product flow is active. The `DapTests` target currently has 62 tests in 6 suites, including focused Dap coverage for deterministic generation, metadata fallback, latest-pedal persistence, audio lifecycle coordination, and App Intent routing where testable without device/framework invocation.
 
 This specification stabilizes existing behavior. It does not authorize creative changes to the image-to-music algorithm or product expansion.
 
@@ -24,14 +24,14 @@ References:
 
 Current boundaries and remaining validation:
 
-- `PhotoPedalPipeline.run(image:stage:)` now falls back to static metadata when semantic metadata generation is unavailable, refused, failed, empty, or invalid after the musical result exists. Image preparation, cover processing, color analysis, and sequence-generation failures still interrupt the pipeline.
+- `DapPipeline.run(image:stage:)` now falls back to static metadata when semantic metadata generation is unavailable, refused, failed, empty, or invalid after the musical result exists. Image preparation, cover processing, color analysis, and sequence-generation failures still interrupt the pipeline.
 - `PedalStore` saves and loads only the latest pedal; save, reload, replacement, and incomplete-storage behavior have focused tests.
-- `PhotoPedalSynth.play(_:)` stops an existing playback before starting another. Focused tests cover clean stop state; route-change recovery, automatic interruption recovery, and a playback-concurrency policy are not implemented.
+- `DapSynth.play(_:)` stops an existing playback before starting another. Focused tests cover clean stop state; route-change recovery, automatic interruption recovery, and a playback-concurrency policy are not implemented.
 
 Potential risks requiring proportional validation, not assumed defects:
 
 - Camera, VisionKit, Foundation Models availability, output routes, interruptions, and audible playback depend on physical-device runtime conditions.
-- `PhotoPedalViewModel.play()` currently ignores a thrown playback error; a demonstrated failure must leave the view-model state usable and must not alter the stored pedal.
+- `DapViewModel.play()` currently ignores a thrown playback error; a demonstrated failure must leave the view-model state usable and must not alter the stored pedal.
 
 ## Objective
 
@@ -43,27 +43,27 @@ Users can complete the existing photo-to-pedal flow when semantic metadata servi
 
 ## Confirmed Current Behavior
 
-- `ImageInputPreparer.prepare(_:)` in `snap-battle/Services/ImageInputPreparer.swift` normalizes orientation and returns a `PreparedImage`; its SHA-256 fingerprint uses a 32 by 32 sRGB rendering but is not consumed by music generation or persistence.
-- `RetroImageProcessor.process(_:)` in `snap-battle/Services/ImageProcessing/RetroImageProcessor.swift` produces an aspect-preserving, 160-pixel-wide four-tone image.
-- `PhotoColorAnalyzer.analyze(_:)` in `snap-battle/Services/Pedal/PhotoColorAnalyzer.swift` produces hue, saturation, luminance, hue variance, and edge density.
-- `ImageSequenceGenerator.makeSequence(retroImage:colorProfile:)` in `snap-battle/Services/Pedal/ImageSequenceGenerator.swift` creates a 16-step by 8-row `PedalSequence`. Grid `level == 0` emits no event (a rest); levels `1...3` emit `PedalNote` events with velocity `level / 3`.
-- `PhotoPedalPipeline.run(image:stage:)` in `snap-battle/Services/Pedal/PhotoPedalPipeline.swift` prepares the image, creates the cover and sequence, runs subject extraction and visual analysis, obtains and validates a `PedalDraft` through `PedalMetadataGenerating`, then creates `PhotoPedal` with a new UUID and creation date. If semantic metadata fails after the musical result exists, it uses fallback name `Photo Pedal` and description `A photo-generated sound pedal.`.
-- `FoundationModelsPedalGenerator.generate(observation:harmony:)` in `snap-battle/Services/FoundationModels/FoundationModelsPedalGenerator.swift` requires available Foundation Models and locale support for model-generated metadata. `PedalDraftValidator.validate(_:)` rejects empty or over-limit metadata. Pipeline fallback handles unavailable, refused, failed, empty, or invalid metadata output without changing the musical result.
-- `PhotoPedalSynth.play(_:)` in `snap-battle/Services/Audio/PhotoPedalSynth.swift` calls `stop()`, configures `AVAudioSession` as `.playback` with `.default` mode, activates it, renders the current 16-step sequence to memory, and starts `AVAudioEngine`. `stop()` detaches the source node, clears playback, stops the engine, and clears `isPlaying`. An interruption beginning calls `stop()`.
-- `PedalStore.save(_:cover:)` and `PedalStore.loadLatest()` in `snap-battle/Services/Persistence/PedalStore.swift` overwrite/load `latest-pedal.json` and `latest-pedal.png` in Application Support. `loadLatest()` returns `nil` if either component cannot load.
-- `PhotoPedalViewModel` in `snap-battle/Features/Capture/CaptureViewModel.swift` blocks duplicate `process(_:)` calls while `isProcessing`, resets that state with `defer`, saves generated results, reloads the latest pedal at initialization, and calls `synth.play(_:)` from `play()`.
-- `CreatePedalIntent` and `PlayLastPedalIntent` in `snap-battle/Intents/PhotoPedalIntents.swift` set `AppIntentRouter.shared.request`; `ContentView` in `snap-battle/Features/Capture/CaptureView.swift` handles `.create` by resetting and opening `CameraScreen`, and `.playLast` by calling `PhotoPedalViewModel.playLast()`.
-- Current Photo Pedal coverage includes deterministic generation, fallback metadata paths through `PedalMetadataGenerating`, storage replacement/reload behavior, selected audio lifecycle coordination, and App Intent routing. Legacy Snap Battle coverage remains present.
+- `ImageInputPreparer.prepare(_:)` in `Dap/Services/ImageInputPreparer.swift` normalizes orientation and returns a `PreparedImage`; its SHA-256 fingerprint uses a 32 by 32 sRGB rendering but is not consumed by music generation or persistence.
+- `RetroImageProcessor.process(_:)` in `Dap/Services/ImageProcessing/RetroImageProcessor.swift` produces an aspect-preserving, 160-pixel-wide four-tone image.
+- `PhotoColorAnalyzer.analyze(_:)` in `Dap/Services/Pedal/PhotoColorAnalyzer.swift` produces hue, saturation, luminance, hue variance, and edge density.
+- `ImageSequenceGenerator.makeSequence(retroImage:colorProfile:)` in `Dap/Services/Pedal/ImageSequenceGenerator.swift` creates a 16-step by 8-row `PedalSequence`. Grid `level == 0` emits no event (a rest); levels `1...3` emit `PedalNote` events with velocity `level / 3`.
+- `DapPipeline.run(image:stage:)` in `Dap/Services/Pedal/DapPipeline.swift` prepares the image, creates the cover and sequence, runs subject extraction and visual analysis, obtains and validates a `PedalDraft` through `PedalMetadataGenerating`, then creates `PhotoPedal` with a new UUID and creation date. If semantic metadata fails after the musical result exists, it uses fallback name `Dap` and description `A photo-generated sound pedal.`.
+- `FoundationModelsPedalGenerator.generate(observation:harmony:)` in `Dap/Services/FoundationModels/FoundationModelsPedalGenerator.swift` requires available Foundation Models and locale support for model-generated metadata. `PedalDraftValidator.validate(_:)` rejects empty or over-limit metadata. Pipeline fallback handles unavailable, refused, failed, empty, or invalid metadata output without changing the musical result.
+- `DapSynth.play(_:)` in `Dap/Services/Audio/DapSynth.swift` calls `stop()`, configures `AVAudioSession` as `.playback` with `.default` mode, activates it, renders the current 16-step sequence to memory, and starts `AVAudioEngine`. `stop()` detaches the source node, clears playback, stops the engine, and clears `isPlaying`. An interruption beginning calls `stop()`.
+- `PedalStore.save(_:cover:)` and `PedalStore.loadLatest()` in `Dap/Services/Persistence/PedalStore.swift` overwrite/load `latest-pedal.json` and `latest-pedal.png` in Application Support. `loadLatest()` returns `nil` if either component cannot load.
+- `DapViewModel` in `Dap/Features/Capture/CaptureViewModel.swift` blocks duplicate `process(_:)` calls while `isProcessing`, resets that state with `defer`, saves generated results, reloads the latest pedal at initialization, and calls `synth.play(_:)` from `play()`.
+- `CreatePedalIntent` and `PlayLastPedalIntent` in `Dap/Intents/DapIntents.swift` set `AppIntentRouter.shared.request`; `ContentView` in `Dap/Features/Capture/CaptureView.swift` handles `.create` by opening Capture, and `.playLast` by asking Gallery to play the latest pedal.
+- Current Dap coverage includes deterministic generation, fallback metadata paths through `PedalMetadataGenerating`, storage replacement/reload behavior, selected audio lifecycle coordination, and App Intent routing. Legacy Snap Battle coverage remains present.
 
 ## In Scope
 
-- Focused Photo Pedal domain regression tests for the current deterministic generation contract.
+- Focused Dap domain regression tests for the current deterministic generation contract.
 - Minimal deterministic fixtures that do not use the fingerprint as a contract.
 - Metadata fallback for unavailable, refused, failed, empty, or invalid Foundation Models output through the existing `PedalMetadataGenerating` seam.
 - Focused tests for latest-pedal storage: save, reload, replacement, and absence.
 - App Intent routing tests at the level supported by `AppIntentRouter` and manual validation for framework integration.
-- Small, demonstrated lifecycle fixes in `PhotoPedalSynth` or `PhotoPedalViewModel` only when required to meet this specification.
-- Preventing conflicting playback from one `PhotoPedalSynth` instance, preserving the existing stop-then-start behavior.
+- Small, demonstrated lifecycle fixes in `DapSynth` or `DapViewModel` only when required to meet this specification.
+- Preventing conflicting playback from one `DapSynth` instance, preserving the existing stop-then-start behavior.
 - DEBUG-only diagnostics only when required to verify a failure path that cannot otherwise be observed by tests or device validation.
 - Documentation updates caused directly by the implementation.
 
@@ -91,7 +91,7 @@ Users can complete the existing photo-to-pedal flow when semantic metadata servi
 ### Metadata Fallback
 
 - Sequence and cover creation must complete when subject extraction, Vision metadata-context analysis, Foundation Models availability, Foundation Models generation, or `PedalDraftValidator` fails after the musical result is available.
-- The fallback `PedalDraft` must be valid under `PedalDraftValidator`: name `Photo Pedal`; description `A photo-generated sound pedal.`. These static values are metadata only and must not affect the musical result.
+- The fallback `PedalDraft` must be valid under `PedalDraftValidator`: name `Dap`; description `A photo-generated sound pedal.`. These static values are metadata only and must not affect the musical result.
 - Image preparation, cover processing, color analysis, and sequence-generation failures remain errors; they must not be hidden by metadata fallback.
 - No timeout is required by this specification because the current code has no timeout behavior and no timeout defect has been demonstrated.
 
@@ -110,7 +110,7 @@ Users can complete the existing photo-to-pedal flow when semantic metadata servi
 
 ## Reliability Requirements
 
-- `PhotoPedalViewModel.isProcessing` must return to `false` after success, cancellation, or error; its task reference must be cleared.
+- `DapViewModel.isProcessing` must return to `false` after success, cancellation, or error; its task reference must be cleared.
 - A duplicate `process(_:)` call while processing must not start another pipeline task.
 - Metadata failure must not discard an already generated cover or sequence.
 - A save or playback failure must not mutate the musical result already held in memory.
@@ -119,10 +119,10 @@ Users can complete the existing photo-to-pedal flow when semantic metadata servi
 
 ## Audio Lifecycle Requirements
 
-- One `PhotoPedalSynth` instance may have at most one active source/playback buffer. Starting another pedal must retain the current `stop()`-then-start behavior.
+- One `DapSynth` instance may have at most one active source/playback buffer. Starting another pedal must retain the current `stop()`-then-start behavior.
 - `stop()` must leave the synth without an attached active source, without a retained playback buffer, with the engine stopped, and with `isPlaying == false`.
-- If `engine.start()` throws, the synth and `PhotoPedalViewModel` must remain usable for a later playback attempt; implementation changes are permitted only if a focused test or device reproduction demonstrates cleanup is incomplete.
-- `AVAudioSession` activation remains owned by `PhotoPedalSynth.play(_:)`, not SwiftUI views.
+- If `engine.start()` throws, the synth and `DapViewModel` must remain usable for a later playback attempt; implementation changes are permitted only if a focused test or device reproduction demonstrates cleanup is incomplete.
+- `AVAudioSession` activation remains owned by `DapSynth.play(_:)`, not SwiftUI views.
 - Interruption beginning currently calls `stop()`. Automatic recovery and route-change handling are not required implementation work in this spec; validate them manually and record results.
 - No pause/resume, seek, loop, board playback, or concurrent multi-synth coordination is introduced.
 
@@ -149,7 +149,7 @@ Users can complete the existing photo-to-pedal flow when semantic metadata servi
 
 ### Pure Deterministic Tests
 
-- Add Photo Pedal-focused tests under a new `snap-battleTests/PhotoPedalStabilizationTests.swift` file. Keep legacy tests untouched unless a shared current behavior requires a narrowly scoped correction.
+- Add Dap-focused tests under a new `DapTests/DapStabilizationTests.swift` file. Keep legacy tests untouched unless a shared current behavior requires a narrowly scoped correction.
 - Use synthetic `UIImage` inputs and explicit `PhotoColorProfile`/domain values. Do not add large photos, binary snapshots, or fingerprint-based expectations.
 - Cover identical input producing equal `PedalSequence` values across repeated generation.
 - Cover `level == 0` as no `PedalNote` event and levels `1...3` as note events with current velocities.
@@ -175,7 +175,7 @@ Users can complete the existing photo-to-pedal flow when semantic metadata servi
 
 ### Regression Scope
 
-New tests must protect Photo Pedal code. This work does not pursue coverage percentage or expand legacy Snap Battle tests.
+New tests must protect Dap code. This work does not pursue coverage percentage or expand legacy Snap Battle tests.
 
 ## Device Validation Requirements
 
@@ -207,14 +207,14 @@ Follow [Device Validation](../../docs/DEVICE_VALIDATION.md). Record each result 
 - Use the current Swift 6 project and current iOS target settings.
 - Add no dependencies.
 - Keep deterministic domain logic independent of SwiftUI.
-- Keep audio graph/session ownership in `PhotoPedalSynth`, outside SwiftUI views.
+- Keep audio graph/session ownership in `DapSynth`, outside SwiftUI views.
 - Do not introduce new fingerprint use or `generatorVersion`.
 - Do not intentionally change musical output or persisted format beyond the minimum correction for a demonstrated defect.
 - Prefer localized, reversible changes. Create new abstractions only when a concrete testing or lifecycle seam requires them and existing protocols are insufficient.
 
 ## Acceptance Criteria
 
-- [ ] Focused Photo Pedal tests protect the current deterministic generation contract.
+- [ ] Focused Dap tests protect the current deterministic generation contract.
 - [ ] An identical synthetic fixture produces equal essential musical data across repeated runs.
 - [ ] Tests exclude UUID, creation date, and generated metadata from deterministic assertions.
 - [ ] Tests cover `level == 0` as a rest and levels `1...3` as notes with current velocities.
@@ -253,7 +253,7 @@ Use the device matrix above together with `docs/DEVICE_VALIDATION.md`. At minimu
 
 ## Observability
 
-- Reuse existing `PhotoPedalViewModel.errorMessage`, `PedalProcessingStage`, and `AppError` reporting for user-visible failures.
+- Reuse existing `DapViewModel.errorMessage`, `PedalProcessingStage`, and `AppError` reporting for user-visible failures.
 - Add DEBUG-only diagnostics only when needed to distinguish a demonstrated metadata fallback, store failure, or playback-start failure during validation.
 - Do not add analytics, persistent diagnostic records, or product-facing debug controls.
 
@@ -261,20 +261,20 @@ Use the device matrix above together with `docs/DEVICE_VALIDATION.md`. At minimu
 
 ### Expected
 
-- `snap-battle/Services/Pedal/PhotoPedalPipeline.swift`
-- `snap-battle/Services/FoundationModels/FoundationModelsPedalGenerator.swift`
-- `snap-battle/Domain/Pedal/Pedal.swift`
-- `snap-battle/Services/Persistence/PedalStore.swift`
-- `snap-battle/Services/Audio/PhotoPedalSynth.swift`
-- `snap-battle/Features/Capture/CaptureViewModel.swift`
-- `snap-battle/Intents/PhotoPedalIntents.swift`
-- `snap-battleTests/PhotoPedalStabilizationTests.swift`
+- `Dap/Services/Pedal/DapPipeline.swift`
+- `Dap/Services/FoundationModels/FoundationModelsPedalGenerator.swift`
+- `Dap/Domain/Pedal/Pedal.swift`
+- `Dap/Services/Persistence/PedalStore.swift`
+- `Dap/Services/Audio/DapSynth.swift`
+- `Dap/Features/Capture/CaptureViewModel.swift`
+- `Dap/Intents/PhotoPedalIntents.swift`
+- `DapTests/PhotoPedalStabilizationTests.swift`
 
 ### Conditional
 
-- `snap-battle/Features/Capture/CaptureView.swift`, only for a demonstrated state-routing or accessible error-state defect.
-- `snap-battle/Supporting/AppError.swift`, only for a specific fallback or lifecycle error that cannot be represented by existing cases.
-- `snap-battle/Services/Pedal/ImageSequenceGenerator.swift`, `PhotoColorAnalyzer.swift`, `snap-battle/Services/ImageInputPreparer.swift`, or `snap-battle/Services/ImageProcessing/RetroImageProcessor.swift`, only to correct a demonstrated violation of current tested behavior.
+- `Dap/Features/Capture/CaptureView.swift`, only for a demonstrated state-routing or accessible error-state defect.
+- `Dap/Supporting/AppError.swift`, only for a specific fallback or lifecycle error that cannot be represented by existing cases.
+- `Dap/Services/Pedal/ImageSequenceGenerator.swift`, `PhotoColorAnalyzer.swift`, `Dap/Services/ImageInputPreparer.swift`, or `Dap/Services/ImageProcessing/RetroImageProcessor.swift`, only to correct a demonstrated violation of current tested behavior.
 
 ### Documentation
 
@@ -306,14 +306,14 @@ Non-blocking follow-up: musical-variation, fingerprint-responsibility, generator
 Run focused and full tests using the shared scheme and an installed simulator:
 
 ```sh
-xcodebuild test -project "snap-battle.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>'
+xcodebuild test -project "Dap.xcodeproj" -scheme "Dap" -destination 'platform=iOS Simulator,name=<installed simulator>'
 ```
 
 Build both configurations using the current project and scheme:
 
 ```sh
-xcodebuild build -project "snap-battle.xcodeproj" -scheme "snap-battle" -configuration Debug
-xcodebuild build -project "snap-battle.xcodeproj" -scheme "snap-battle" -configuration Release
+xcodebuild build -project "Dap.xcodeproj" -scheme "Dap" -configuration Debug
+xcodebuild build -project "Dap.xcodeproj" -scheme "Dap" -configuration Release
 git diff --check
 ```
 

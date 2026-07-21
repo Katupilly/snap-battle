@@ -2,15 +2,15 @@
 
 ## Current Shape
 
-The `snap-battle` app target is a SwiftUI app. `snap_battleApp` presents `ContentView`, whose active flow enters `Features/Capture/CaptureView.swift`. `PhotoPedalViewModel` owns capture state, the current `PhotoPedal`, `PhotoPedalSynth`, and `PedalStore` coordination. `PedalResultView` presents the result and playback controls.
+The `Dap` app target is a SwiftUI app. `DapApp` presents `ContentView`, whose active flow enters `Features/Capture/CaptureView.swift`. `DapViewModel` owns capture state, the current `PhotoPedal`, `DapSynth`, and `PedalStore` coordination. `PedalResultView` presents the result and playback controls.
 
 ```text
 Captured or imported image
 -> ImageInputPreparer
 -> RetroImageProcessor and PhotoColorAnalyzer
 -> ImageSequenceGenerator
--> PhotoPedalPipeline
--> PedalStore / PhotoPedalSynth / PedalResultView
+-> DapPipeline
+-> PedalStore / DapSynth / PedalResultView
 
 VisionKit + Vision -> FoundationModelsPedalGenerator -> name and description
 ```
@@ -19,18 +19,18 @@ VisionKit + Vision -> FoundationModelsPedalGenerator -> name and description
 
 | Area | Current files/types |
 | --- | --- |
-| App and routing | `snap_battleApp.swift`, `ContentView`, `AppIntentRouter` |
+| App and routing | `DapApp.swift`, `ContentView`, `AppIntentRouter` |
 | Capture and view state | `Features/Capture/CaptureView.swift`, `CaptureViewModel.swift`, `CameraPicker.swift` |
 | Presentation | `Features/Pedal/PedalResultView.swift` |
 | Domain | `Domain/Pedal/Pedal.swift` |
 | Input and cover processing | `Services/ImageInputPreparer.swift`, `Services/ImageProcessing/RetroImageProcessor.swift` |
-| Music generation | `Services/Pedal/PhotoColorAnalyzer.swift`, `ImageSequenceGenerator.swift`, `PedalHeuristics.swift`, `PhotoPedalPipeline.swift` |
-| Audio | `Services/Audio/PhotoPedalSynth.swift` |
+| Music generation | `Services/Pedal/PhotoColorAnalyzer.swift`, `ImageSequenceGenerator.swift`, `PedalHeuristics.swift`, `DapPipeline.swift` |
+| Audio | `Services/Audio/DapSynth.swift` |
 | Persistence | `Services/Persistence/PedalStore.swift` |
 | Metadata | `Services/Vision/`, `Services/FoundationModels/FoundationModelsPedalGenerator.swift` |
-| Shortcuts | `Intents/PhotoPedalIntents.swift` |
+| Shortcuts | `Intents/DapIntents.swift` |
 
-Dependencies currently flow from SwiftUI views to `PhotoPedalViewModel`, then to pipeline, storage, and audio services. Services construct and consume domain values; SwiftUI views present and forward user actions. `PhotoPedalViewModel` currently bridges UI, services, storage, and playback, so it is the main state owner for the active flow.
+Dependencies currently flow from SwiftUI views to `DapViewModel`, then to pipeline, storage, and audio services. Services construct and consume domain values; SwiftUI views present and forward user actions. `DapViewModel` currently bridges UI, services, storage, and playback, so it is the main state owner for the active flow.
 
 ## Persistence Boundary
 
@@ -48,10 +48,10 @@ UIKit/AVFoundation support camera capture; PhotosUI imports images; Vision/Visio
 
 ### Legacy And Apparently Isolated
 
-The target also compiles legacy `Creature*` domain/services, `Services/Battle/`, `Features/Generation/`, `Features/Result/`, and `Features/Battle/`. These areas are not reached from the active Photo Pedal flow, but this observation alone does not make them safe to remove because target membership and tests still compile them.
+The target also compiles legacy `Creature*` domain/services, `Services/Battle/`, `Features/Generation/`, `Features/Result/`, and `Features/Battle/`. These areas are not reached from the active Dap flow, but this observation alone does not make them safe to remove because target membership and tests still compile them.
 
 ### Naming Legacy
 
-Legacy tests and names include `snap-battle`, `snap_battleApp`, and `RetroImageConfiguration.snapBattle`.
+Legacy tests and names include `DapApp` and `RetroImageConfiguration.fourToneRetro`.
 
 Legacy cleanup requires a dedicated audit and an approved cleanup spec.

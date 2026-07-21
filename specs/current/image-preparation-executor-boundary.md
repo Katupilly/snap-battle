@@ -8,7 +8,7 @@ Last updated: 2026-07-16
 
 Remove the confirmed synchronous `imagePreparation` block from the MainActor
 without changing the visual, musical, persistence, cancellation, or result
-presentation behavior of the Photo Pedal flow.
+presentation behavior of the Dap flow.
 
 The device evidence motivating this spec is a warmed median of 196.3 ms and a
 maximum of 394.5 ms for `imagePreparation` on the main executor. This spec does
@@ -21,13 +21,13 @@ This specification is `Ready` because ADR 0005 resolves the two previously
 blocking decisions without changing project settings or requiring a compiler
 experiment to choose between representations:
 
-1. `PhotoPedalPipeline` and `PhotoPedalViewModel` are `@MainActor`, while
+1. `DapPipeline` and `DapViewModel` are `@MainActor`, while
    `PreparedImage` crosses the existing boundary as `@unchecked Sendable` and
-   stores a `UIImage` ([ImageInputPreparer.swift:5-10](../../snap-battle/Services/ImageInputPreparer.swift#L5-L10)).
+   stores a `UIImage` ([ImageInputPreparer.swift:5-10](../../Dap/Services/ImageInputPreparer.swift#L5-L10)).
    The code has no approved immutable representation for sending prepared image
    data to another executor without adding another unsafe suppression.
 2. The repository documentation says Swift 6, but the project declares
-   `SWIFT_VERSION = 5.0` in `snap-battle.xcodeproj/project.pbxproj` at the app
+   `SWIFT_VERSION = 5.0` in `Dap.xcodeproj/project.pbxproj` at the app
    and test configurations. The implementation must first decide whether to
    validate the boundary under the current language mode or separately migrate
    strict concurrency. This spec does not authorize that migration.
@@ -43,40 +43,40 @@ executor contracts listed below. Do not solve the boundary with
 
 The active path is:
 
-`CaptureView` → `PhotoPedalViewModel.process/load` → `PhotoPedalPipeline.run` →
+`CaptureView` → `DapViewModel.process/load` → `DapPipeline.run` →
 `ImageInputPreparer.prepare` → cover/color/sequence generation → Vision and
 Foundation Models metadata → persistence → `PedalResultView`.
 
 Inspected symbols and current locations:
 
-- `PhotoPedalViewModel` and the inherited `Task` in
-  `snap-battle/Features/Capture/CaptureViewModel.swift:4-55`.
+- `DapViewModel` and the inherited `Task` in
+  `Dap/Features/Capture/CaptureViewModel.swift:4-55`.
 - PhotosPicker transfer, camera handoff, and MainActor UI state in
-  `snap-battle/Features/Capture/CaptureView.swift:109-153`.
-- `PhotoPedalPipeline.run(image:runID:stage:)` in
-  `snap-battle/Services/Pedal/PhotoPedalPipeline.swift:3-101`.
+  `Dap/Features/Capture/CaptureView.swift:109-153`.
+- `DapPipeline.run(image:runID:stage:)` in
+  `Dap/Services/Pedal/DapPipeline.swift:3-101`.
 - `ImageInputPreparer.prepare`, orientation normalization, and fingerprint in
-  `snap-battle/Services/ImageInputPreparer.swift:5-74`.
+  `Dap/Services/ImageInputPreparer.swift:5-74`.
 - `PreparedImage`'s current `UIImage` boundary in
-  `snap-battle/Services/ImageInputPreparer.swift:5-10`.
+  `Dap/Services/ImageInputPreparer.swift:5-10`.
 - `RetroImageProcessor.process` is already `nonisolated` and uses a detached
-  task in `snap-battle/Services/ImageProcessing/RetroImageProcessor.swift:4-50`;
+  task in `Dap/Services/ImageProcessing/RetroImageProcessor.swift:4-50`;
   it is not a reason to broaden parallelism in this change.
 - `PhotoColorAnalyzer.analyze` in
-  `snap-battle/Services/Pedal/PhotoColorAnalyzer.swift:4-30`.
+  `Dap/Services/Pedal/PhotoColorAnalyzer.swift:4-30`.
 - `ImageSequenceGenerator.makeSequence` in
-  `snap-battle/Services/Pedal/ImageSequenceGenerator.swift:4-17`.
+  `Dap/Services/Pedal/ImageSequenceGenerator.swift:4-17`.
 - Reused `SubjectExtracting` and `ObjectAnalyzing` MainActor protocols in
-  `snap-battle/Services/Pipeline.swift:5-14`.
+  `Dap/Services/Pipeline.swift:5-14`.
 - `SubjectExtractionService.extract` in
-  `snap-battle/Services/Vision/SubjectExtractionService.swift:21-48`.
+  `Dap/Services/Vision/SubjectExtractionService.swift:21-48`.
 - `VisionObjectAnalyzer.analyze` and its `CGImage` conversion in
-  `snap-battle/Services/Vision/VisionObjectAnalyzer.swift:5-23`.
+  `Dap/Services/Vision/VisionObjectAnalyzer.swift:5-23`.
 - DEBUG-only signposts in
-  `snap-battle/Supporting/PerformanceDiagnostics.swift:13-73`.
+  `Dap/Supporting/PerformanceDiagnostics.swift:13-73`.
 - Existing focused deterministic, orientation, fingerprint, cover, and
-  sequence tests in `snap-battleTests/PhotoPedalStabilizationTests.swift:8-128`
-  and `snap-battleTests/CreatureAuditTests.swift:42-76`.
+  sequence tests in `DapTests/DapStabilizationTests.swift:8-128`
+  and `DapTests/CreatureAuditTests.swift:42-76`.
 
 Relevant contracts are defined by [Architecture](../../docs/ARCHITECTURE.md),
 [Image-to-Music](../../docs/IMAGE_TO_MUSIC.md), [Testing](../../docs/TESTING.md),
@@ -191,17 +191,17 @@ or a concurrency assertion that reflects Swift Concurrency's executor model.
 Only the following areas may be changed by a future implementation of this
 spec, after it is promoted to `Ready`:
 
-- `snap-battle/Features/Capture/CaptureViewModel.swift`, only for the async
+- `Dap/Features/Capture/CaptureViewModel.swift`, only for the async
   handoff, cancellation, duplicate prevention, and MainActor state updates.
-- `snap-battle/Services/Pedal/PhotoPedalPipeline.swift`, only for the serial
+- `Dap/Services/Pedal/DapPipeline.swift`, only for the serial
   preparation boundary and unchanged sequential handoff.
-- `snap-battle/Services/ImageInputPreparer.swift`, including `PreparedImage`,
+- `Dap/Services/ImageInputPreparer.swift`, including `PreparedImage`,
   only to establish the approved immutable representation and preserve output.
 - One new focused image-preparation service/actor under
-  `snap-battle/Services/`, only if required by the selected boundary.
-- `snap-battle/Supporting/PerformanceDiagnostics.swift`, only to report the
+  `Dap/Services/`, only if required by the selected boundary.
+- `Dap/Supporting/PerformanceDiagnostics.swift`, only to report the
   executor accurately without adding personal data or Release instrumentation.
-- Focused tests under `snap-battleTests/` covering the contracts above.
+- Focused tests under `DapTests/` covering the contracts above.
 - Directly affected documentation or this specification.
 
 Do not authorize changes to PhotosPicker, `CaptureView` UI behavior,
@@ -248,10 +248,10 @@ Do not run these commands as part of this documentation task. Future
 implementation validation should use:
 
 ```sh
-xcodebuild test -project "snap-battle.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>' -only-testing:snap-battleTests/PhotoPedalStabilizationTests
-xcodebuild test -project "snap-battle.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>'
-xcodebuild build -project "snap-battle.xcodeproj" -scheme "snap-battle" -configuration Debug
-xcodebuild build -project "snap-battle.xcodeproj" -scheme "snap-battle" -configuration Release
+xcodebuild test -project "Dap.xcodeproj" -scheme "Dap" -destination 'platform=iOS Simulator,name=<installed simulator>' -only-testing:DapTests/DapStabilizationTests
+xcodebuild test -project "Dap.xcodeproj" -scheme "Dap" -destination 'platform=iOS Simulator,name=<installed simulator>'
+xcodebuild build -project "Dap.xcodeproj" -scheme "Dap" -configuration Debug
+xcodebuild build -project "Dap.xcodeproj" -scheme "Dap" -configuration Release
 git diff --check
 ```
 

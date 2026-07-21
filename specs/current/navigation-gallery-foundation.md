@@ -6,9 +6,9 @@ Last updated: 2026-07-17
 
 ## Context
 
-The active Photo Pedal vertical slice captures or imports an image, creates a four-tone cover and deterministic `PedalSequence`, generates metadata or fallback metadata, automatically persists the result, and presents `PedalResultView`. `ContentView` is in `snap-battle/Features/Capture/CaptureView.swift`; it currently presents either the private `PedalCaptureView` or `PedalResultView` in one `NavigationStack`. `CameraScreen` is a sheet and photo-library import uses `PhotosPicker`.
+The active Dap vertical slice captures or imports an image, creates a four-tone cover and deterministic `PedalSequence`, generates metadata or fallback metadata, automatically persists the result, and presents `PedalResultView`. `ContentView` is in `Dap/Features/Capture/CaptureView.swift`; it currently presents either the private `PedalCaptureView` or `PedalResultView` in one `NavigationStack`. `CameraScreen` is a sheet and photo-library import uses `PhotosPicker`.
 
-`PhotoPedalViewModel.process(_:)` in `snap-battle/Features/Capture/CaptureViewModel.swift` blocks duplicate processing with `isProcessing`, runs `PhotoPedalPipeline`, updates in-memory state, and calls `PedalStore.save(_:cover:)`. `PedalStore` currently writes only `latest-pedal.json` and `latest-pedal.png` in Application Support. `PhotoPedal` in `snap-battle/Domain/Pedal/Pedal.swift` already has UUID identity, creation date, final sequence, effect, sound settings, metadata, and a cover filename.
+`DapViewModel.process(_:)` in `Dap/Features/Capture/CaptureViewModel.swift` blocks duplicate processing with `isProcessing`, runs `DapPipeline`, updates in-memory state, and calls `PedalStore.save(_:cover:)`. `PedalStore` currently writes only `latest-pedal.json` and `latest-pedal.png` in Application Support. `PhotoPedal` in `Dap/Domain/Pedal/Pedal.swift` already has UUID identity, creation date, final sequence, effect, sound settings, metadata, and a cover filename.
 
 This work follows [ADR 0001](../../docs/decisions/0001-deterministic-local-music-generation.md), [ADR 0002](../../docs/decisions/0002-persist-generated-musical-results.md), and [ADR 0003](../../docs/decisions/0003-foundation-models-for-semantic-metadata.md). `docs/ROADMAP.md` mentions original-image retention and `generatorVersion`; those are lower-precedence planned direction and are intentionally excluded. The current model, ADR 0002, and this specification persist only the processed cover and final musical data.
 
@@ -16,7 +16,7 @@ This work follows [ADR 0001](../../docs/decisions/0001-deterministic-local-music
 
 This specification remains the source of truth for the implemented navigation and persistence foundation: persistent Gallery and Jam roots, transient Capture, automatic save/result completion, collection storage, legacy migration, safe writes, deletion, playback coordination, App Intent routing, and shared latest-pedal selection.
 
-It is no longer the source of truth for the future visual Library experience. The future Photos-like Library grid, chronological visual order, month grouping, initial scroll position, shared-element transition, standardized detail cover frame, and scroll preservation are governed by [Photo Pedal Library](pedal-library.md).
+It is no longer the source of truth for the future visual Library experience. The future Photos-like Library grid, chronological visual order, month grouping, initial scroll position, shared-element transition, standardized detail cover frame, and scroll preservation are governed by [Dap Library](pedal-library.md).
 
 Until that promotion happens, the implemented Gallery list remains valid current behavior. Do not use the baseline list/card requirements in this foundation spec to block or override the future Library feature spec.
 
@@ -52,14 +52,14 @@ Collaboration is an optional future action inside an existing Jam. It is not a p
 
 ## Confirmed Current Behavior
 
-- `ContentView` owns `PhotoPedalViewModel`, selected `PhotosPickerItem`, and camera-sheet presentation. It handles `AppIntentRouter.Request.create` by resetting the model and opening `CameraScreen`, and `.playLast` by calling `PhotoPedalViewModel.playLast()`.
-- `CameraScreen` dismisses itself for cancellation and supplies a captured `UIImage` to `PhotoPedalViewModel.process(_:)`; photo-library selection calls `load(data:)`, which reaches the same processing method.
-- `PhotoPedalPipeline.run(image:stage:)` creates the cover, deterministic sequence, metadata or fallback metadata, and a new `PhotoPedal`; it does not save itself.
-- `PhotoPedalViewModel.process(_:)` automatically saves a successful result before the UI changes to `PedalResultView`. There is no explicit save action.
+- `ContentView` owns `DapViewModel`, selected `PhotosPickerItem`, and camera-sheet presentation. It handles `AppIntentRouter.Request.create` by resetting the model and opening `CameraScreen`, and `.playLast` by calling `DapViewModel.playLast()`.
+- `CameraScreen` dismisses itself for cancellation and supplies a captured `UIImage` to `DapViewModel.process(_:)`; photo-library selection calls `load(data:)`, which reaches the same processing method.
+- `DapPipeline.run(image:stage:)` creates the cover, deterministic sequence, metadata or fallback metadata, and a new `PhotoPedal`; it does not save itself.
+- `DapViewModel.process(_:)` automatically saves a successful result before the UI changes to `PedalResultView`. There is no explicit save action.
 - `PedalResultView` displays cover, metadata, sequence grid, effect controls, playback, and `Criar outro`; effect changes currently rewrite the latest-pedal pair.
 - `PedalStore.loadLatest()` returns `nil` if either current legacy file is missing, unreadable, or incomplete.
 - `CreatePedalIntent` and `PlayLastPedalIntent` set `AppIntentRouter.shared.request`; they do not duplicate pipeline, storage, or audio work.
-- `PhotoPedalSynth.play(_:)` stops existing playback before starting another pedal from the same synth instance.
+- `DapSynth.play(_:)` stops existing playback before starting another pedal from the same synth instance.
 
 ## Navigation Model
 
@@ -82,7 +82,7 @@ Each baseline card shows at least the processed cover, name, and an accessible p
 
 ## Capture Action Model
 
-Capture reuses `CameraScreen`, `PhotosPicker`, `PhotoPedalViewModel`, and `PhotoPedalPipeline`; it does not authorize reconstruction of the vertical slice. The processing lock, metadata fallback, deterministic music, cover algorithm, and automatic persistence remain unchanged. A failed save keeps the processed result available for controlled retry rather than treating it as saved. No camera zoom, exposure, or advanced controls are introduced.
+Capture reuses `CameraScreen`, `PhotosPicker`, `DapViewModel`, and `DapPipeline`; it does not authorize reconstruction of the vertical slice. The processing lock, metadata fallback, deterministic music, cover algorithm, and automatic persistence remain unchanged. A failed save keeps the processed result available for controlled retry rather than treating it as saved. No camera zoom, exposure, or advanced controls are introduced.
 
 ## Jam Placeholder Model
 
@@ -152,7 +152,7 @@ Detail initially shows cover, name, description, current effect, play, stop, and
 
 ## Capture Integration Requirements
 
-- Keep the automatic-save boundary: successful `PhotoPedalViewModel.process(_:)` persistence creates the record before result review.
+- Keep the automatic-save boundary: successful `DapViewModel.process(_:)` persistence creates the record before result review.
 - Do not add Save UI or a second persistence operation to result completion.
 - Preserve duplicate-processing prevention and prevent duplicate persistence/completion actions for one processed result.
 - On save failure, preserve the in-memory result and report a controlled retry path; do not navigate as if persistence succeeded.
@@ -186,7 +186,7 @@ Detail initially shows cover, name, description, current effect, play, stop, and
 - One invalid record cannot prevent valid records from loading or playing.
 - A transient collection issue with valid records remains recoverable and nonblocking.
 - Migration never deletes the legacy pair before collection validation succeeds.
-- Starting a different pedal retains `PhotoPedalSynth` stop-then-start behavior.
+- Starting a different pedal retains `DapSynth` stop-then-start behavior.
 - When deleting the currently playing pedal, stop playback first, delete JSON and PNG, update collection, then recalculate latest under shared ordering.
 - On deletion failure, retain the item in UI and show an error; do not report successful deletion.
 - Closing detail cannot corrupt playback or collection state.
@@ -219,7 +219,7 @@ Validate manually: main navigation and Capture control, camera, library import, 
 
 - Use current Swift 6, deployment targets, native APIs, and no dependencies.
 - Keep persistence out of SwiftUI views and audio graph/session coordination out of views.
-- Do not alter `PhotoPedalPipeline`, deterministic generation, four-tone cover, Foundation Models metadata boundary, or effect semantics except minimum required integration.
+- Do not alter `DapPipeline`, deterministic generation, four-tone cover, Foundation Models metadata boundary, or effect semantics except minimum required integration.
 - Do not use fingerprint for identity, cache, deduplication, migration, or new behavior.
 - Do not introduce `generatorVersion`, database, cloud sync, or broad legacy renaming/refactoring.
 - Prefer localized, reversible changes.
@@ -276,19 +276,19 @@ Validate manually: main navigation and Capture control, camera, library import, 
 
 ### Expected
 
-- `snap-battle/Features/Capture/CaptureView.swift`
-- `snap-battle/Features/Capture/CaptureViewModel.swift`
+- `Dap/Features/Capture/CaptureView.swift`
+- `Dap/Features/Capture/CaptureViewModel.swift`
 - New focused Gallery/navigation Swift files
-- `snap-battle/Features/Pedal/PedalResultView.swift`
-- `snap-battle/Services/Persistence/PedalStore.swift`
+- `Dap/Features/Pedal/PedalResultView.swift`
+- `Dap/Services/Persistence/PedalStore.swift`
 - New focused Gallery, persistence, navigation, and playback tests
 
 ### Conditional
 
-- `snap-battle/Domain/Pedal/Pedal.swift`, only for minimum UUID-associated cover-filename or collection support.
-- `snap-battle/Intents/PhotoPedalIntents.swift`, only for shared collection/latest integration.
-- `snap-battle/Services/Audio/PhotoPedalSynth.swift`, only for demonstrated deletion/playback coordination defect.
-- `snap-battle/Features/Capture/CameraPicker.swift`, only for transient presentation/dismiss integration.
+- `Dap/Domain/Pedal/Pedal.swift`, only for minimum UUID-associated cover-filename or collection support.
+- `Dap/Intents/DapIntents.swift`, only for shared collection/latest integration.
+- `Dap/Services/Audio/DapSynth.swift`, only for demonstrated deletion/playback coordination defect.
+- `Dap/Features/Capture/CameraPicker.swift`, only for transient presentation/dismiss integration.
 
 ### Documentation
 
@@ -308,16 +308,16 @@ Validate manually: main navigation and Capture control, camera, library import, 
 
 ## Open Questions
 
-None for this foundation. Automatic persistence, post-save behavior, Gallery as initial destination, no cover sharing, Jam empty state, migration, safe writes, latest selection, and foundation accessibility requirements are resolved. Future visual Library behavior is governed by [Photo Pedal Library](pedal-library.md).
+None for this foundation. Automatic persistence, post-save behavior, Gallery as initial destination, no cover sharing, Jam empty state, migration, safe writes, latest selection, and foundation accessibility requirements are resolved. Future visual Library behavior is governed by [Dap Library](pedal-library.md).
 
 ## Verification
 
 For implementation work, run focused and full tests using the current scheme and an installed simulator, then build both configurations:
 
 ```sh
-xcodebuild test -project "snap-battle.xcodeproj" -scheme "snap-battle" -destination 'platform=iOS Simulator,name=<installed simulator>'
-xcodebuild build -project "snap-battle.xcodeproj" -scheme "snap-battle" -configuration Debug
-xcodebuild build -project "snap-battle.xcodeproj" -scheme "snap-battle" -configuration Release
+xcodebuild test -project "Dap.xcodeproj" -scheme "Dap" -destination 'platform=iOS Simulator,name=<installed simulator>'
+xcodebuild build -project "Dap.xcodeproj" -scheme "Dap" -configuration Debug
+xcodebuild build -project "Dap.xcodeproj" -scheme "Dap" -configuration Release
 git diff --check
 ```
 
