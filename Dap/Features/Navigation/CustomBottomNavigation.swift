@@ -2,13 +2,13 @@ import SwiftUI
 
 struct CustomBottomNavigation: View {
     private enum Metrics {
-        static let height: CGFloat = 58
+        static let height: CGFloat = 66
         static let galleryJamWidth: CGFloat = 212
         static let captureWidth: CGFloat = 88
         static let gap: CGFloat = 22
         static let horizontalMargin: CGFloat = 18
         static let bottomPadding: CGFloat = 10
-        static let cornerRadius: CGFloat = 29
+        static let cornerRadius: CGFloat = 33
     }
 
     let selectedTab: RootDestination
@@ -36,12 +36,14 @@ struct CustomBottomNavigation: View {
 
 private struct GalleryJamCapsule: View {
     private enum Metrics {
-        static let outerRadius: CGFloat = 29
+        static let outerRadius: CGFloat = 33
         static let inset: CGFloat = 4
         static let innerRadius: CGFloat = outerRadius - inset
         static let indicatorWidth: CGFloat = 102
-        static let indicatorHeight: CGFloat = 50
+        static let indicatorHeight: CGFloat = 58
         static let indicatorTravel: CGFloat = indicatorWidth / 2
+        static let itemSpacing: CGFloat = 3
+        static let iconSize: CGFloat = 19
     }
 
     let selectedTab: RootDestination
@@ -57,18 +59,14 @@ private struct GalleryJamCapsule: View {
             movingSelectionHighlight
                 .zIndex(1)
 
-            HStack(spacing: 4) {
+            HStack(spacing: 0) {
                 tabButton(.gallery)
-                Divider()
-                    .frame(height: 24)
-                    .overlay(.primary.opacity(colorScheme == .dark ? 0.14 : 0.10))
-                    .accessibilityHidden(true)
                 tabButton(.jam)
             }
-            .padding(6)
+            .padding(Metrics.inset)
             .zIndex(2)
         }
-        .clipShape(Capsule())
+        .clipShape(RoundedRectangle(cornerRadius: Metrics.outerRadius, style: .continuous))
         .shadow(color: .black.opacity(colorScheme == .dark ? 0.26 : 0.12), radius: 16, y: 8)
     }
 
@@ -78,19 +76,25 @@ private struct GalleryJamCapsule: View {
             if reduceMotion {
                 selectTab(tab)
             } else {
-                withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) {
+                withAnimation(.spring(response: 0.32, dampingFraction: 0.82)) {
                     selectTab(tab)
                 }
             }
         } label: {
-            Label(tab.title, systemImage: tab.systemImage)
-                .font(.subheadline.weight(isSelected ? .semibold : .medium))
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-                .foregroundStyle(isSelected ? Color.white : Color.primary.opacity(0.72))
+            VStack(spacing: Metrics.itemSpacing) {
+                Image(systemName: tabSymbol(tab))
+                    .font(.system(size: Metrics.iconSize, weight: isSelected ? .semibold : .medium))
+                    .symbolRenderingMode(.hierarchical)
+
+                Text(tab.title)
+                    .font(.caption2.weight(isSelected ? .semibold : .medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.86)
+            }
+                .foregroundStyle(isSelected ? Color.white : Color.primary.opacity(colorScheme == .dark ? 0.76 : 0.68))
                 .shadow(color: isSelected ? .black.opacity(0.24) : .clear, radius: 2, y: 1)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .contentShape(.capsule)
+                .frame(maxWidth: .infinity, minHeight: Metrics.indicatorHeight)
+                .contentShape(RoundedRectangle(cornerRadius: Metrics.innerRadius, style: .continuous))
         }
         .buttonStyle(PressFeedbackButtonStyle(reduceMotion: reduceMotion))
         .accessibilityLabel(tab.title)
@@ -101,16 +105,16 @@ private struct GalleryJamCapsule: View {
 
     private var baseFrostedGlass: some View {
         GlassEffectContainer(spacing: 8) {
-            Capsule()
+            RoundedRectangle(cornerRadius: Metrics.outerRadius, style: .continuous)
                 .fill(.clear)
                 .glassEffect(.regular.tint(backgroundTint).interactive(), in: .capsule)
         }
         .overlay {
-            Capsule()
+            RoundedRectangle(cornerRadius: Metrics.outerRadius, style: .continuous)
                 .stroke(.primary.opacity(colorScheme == .dark ? 0.12 : 0.08), lineWidth: 1)
         }
         .overlay(alignment: .top) {
-            Capsule()
+            RoundedRectangle(cornerRadius: Metrics.outerRadius, style: .continuous)
                 .stroke(.white.opacity(colorScheme == .dark ? 0.10 : 0.22), lineWidth: 1)
                 .padding(.horizontal, 10)
                 .padding(.top, 1)
@@ -131,10 +135,7 @@ private struct GalleryJamCapsule: View {
             }
             .overlay(alignment: .top) {
                 RoundedRectangle(cornerRadius: Metrics.innerRadius, style: .continuous)
-                    .fill(.white.opacity(colorScheme == .dark ? 0.20 : 0.28))
-                    .frame(height: 14)
-                    .padding(.horizontal, 10)
-                    .padding(.top, 2)
+                    .fill(specularHighlight)
                     .accessibilityHidden(true)
             }
             .shadow(color: .black.opacity(colorScheme == .dark ? 0.20 : 0.10), radius: 5, y: 2)
@@ -162,6 +163,27 @@ private struct GalleryJamCapsule: View {
 
     private var selectionStroke: Color {
         Color.white.opacity(colorScheme == .dark ? 0.34 : 0.44)
+    }
+
+    private var specularHighlight: LinearGradient {
+        LinearGradient(
+            colors: [
+                .white.opacity(colorScheme == .dark ? 0.18 : 0.24),
+                .white.opacity(colorScheme == .dark ? 0.06 : 0.10),
+                .clear
+            ],
+            startPoint: .top,
+            endPoint: .center
+        )
+    }
+
+    private func tabSymbol(_ tab: RootDestination) -> String {
+        switch tab {
+        case .gallery:
+            return "photo.on.rectangle.angled.fill"
+        case .jam:
+            return "music.note.square.stack.fill"
+        }
     }
 }
 
