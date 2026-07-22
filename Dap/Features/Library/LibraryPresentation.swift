@@ -89,11 +89,11 @@ final class GalleryEntryHaptics {
     }
 
     private static let events = [
-        GalleryHapticEvent(delay: 0, intensity: 0.42, impactStyle: .light),
-        GalleryHapticEvent(delay: 0.055, intensity: 0.50, impactStyle: .light),
-        GalleryHapticEvent(delay: 0.110, intensity: 0.58, impactStyle: .light),
-        GalleryHapticEvent(delay: 0.170, intensity: 0.66, impactStyle: .light),
-        GalleryHapticEvent(delay: 0.240, intensity: 0.68, impactStyle: .medium)
+        GalleryHapticEvent(delay: 0, intensity: 0.62, impactStyle: .light),
+        GalleryHapticEvent(delay: 0.055, intensity: 0.28, impactStyle: .light),
+        GalleryHapticEvent(delay: 0.110, intensity: 0.62, impactStyle: .light),
+        GalleryHapticEvent(delay: 0.170, intensity: 0.28, impactStyle: .light),
+        GalleryHapticEvent(delay: 0.240, intensity: 0.62, impactStyle: .medium)
     ]
 }
 

@@ -194,7 +194,7 @@ struct LibraryGridView: View {
             .padding(.bottom, selectionMode && !selectedIDs.isEmpty ? 96 : 8)
         }
         .task(id: entryPresentationID) {
-            guard entryPresentationID > 0 else { return }
+            guard entryPresentationID > 0, entryPresentationID != activeEntryPresentationID else { return }
             activeEntryPresentationID = entryPresentationID
             revealedRowCount = 0
             await Task.yield()
@@ -205,7 +205,11 @@ struct LibraryGridView: View {
             for row in 1...participatingRows {
                 guard !Task.isCancelled else { return }
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) { revealedRowCount = row }
-                try? await Task.sleep(for: .milliseconds(55))
+                do {
+                    try await Task.sleep(for: .milliseconds(55))
+                } catch {
+                    return
+                }
             }
         }
         .accessibilityElement(children: .contain)

@@ -42,7 +42,6 @@ struct ContentView: View {
                 .transition(.opacity)
             }
         }
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: navigation.rootNavigation.visibility)
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: gallery.isSelecting)
         .task {
             #if DEBUG
