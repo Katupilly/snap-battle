@@ -158,13 +158,13 @@ struct NavigationGalleryTests {
         // reappears with Gallery and its state intact.
         let navigation = AppNavigationModel()
         let pedalID = UUID()
-        navigation.path = [.pedalDetail(pedalID)]
+        navigation.galleryPath = [.inspector(pedalID)]
 
         #expect(navigation.rootNavigation.visibility == .hidden)
         #expect(navigation.selectedDestination == .gallery)
-        #expect(navigation.path == [.pedalDetail(pedalID)])
+        #expect(navigation.galleryPath == [.inspector(pedalID)])
 
-        navigation.path.removeLast()
+        navigation.galleryPath.removeLast()
         #expect(navigation.rootNavigation.visibility == .visible)
         #expect(navigation.rootNavigation.selectedDestination == .gallery)
 
@@ -175,9 +175,9 @@ struct NavigationGalleryTests {
 
         #expect(navigation.rootNavigation.visibility == .hidden)
         #expect(navigation.selectedDestination == .jam)
-        #expect(navigation.path == [.pedalboardDetail(boardID)])
+        #expect(navigation.jamPath == [.pedalboardDetail(boardID)])
 
-        navigation.path.removeLast()
+        navigation.jamPath.removeLast()
         #expect(navigation.rootNavigation.visibility == .visible)
         #expect(navigation.rootNavigation.selectedDestination == .jam)
     }
@@ -187,16 +187,16 @@ struct NavigationGalleryTests {
         let pedalID = UUID()
         let boardID = UUID()
 
-        navigation.galleryPath = [.pedalDetail(pedalID)]
+        navigation.galleryPath = [.inspector(pedalID)]
         navigation.selectedDestination = .jam
         navigation.jamPath = [.pedalboardDetail(boardID)]
 
         #expect(navigation.rootNavigation.visibility == .hidden)
-        #expect(navigation.path == [.pedalboardDetail(boardID)])
+        #expect(navigation.jamPath == [.pedalboardDetail(boardID)])
 
         navigation.selectedDestination = .gallery
         #expect(navigation.rootNavigation.visibility == .hidden)
-        #expect(navigation.path == [.pedalDetail(pedalID)])
+        #expect(navigation.galleryPath == [.inspector(pedalID)])
 
         navigation.galleryPath.removeAll()
         #expect(navigation.rootNavigation.visibility == .visible)
@@ -238,22 +238,22 @@ struct NavigationGalleryTests {
         // Photo Inspector: hidden, selection preserved.
         navigation.selectedDestination = .gallery
         let pedalID = UUID()
-        navigation.path = [.pedalDetail(pedalID)]
+        navigation.galleryPath = [.inspector(pedalID)]
         #expect(navigation.rootNavigation.visibility == .hidden)
         #expect(navigation.selectedDestination == .gallery)
 
         // Back to Gallery root: visible, path popped.
-        navigation.path.removeAll()
+        navigation.galleryPath.removeAll()
         #expect(navigation.rootNavigation.visibility == .visible)
         #expect(navigation.rootNavigation.selectedDestination == .gallery)
 
         // Pedalboard detail: hidden, selection preserved.
         navigation.selectedDestination = .jam
         let boardID = UUID()
-        navigation.path = [.pedalboardDetail(boardID)]
+        navigation.jamPath = [.pedalboardDetail(boardID)]
         #expect(navigation.rootNavigation.visibility == .hidden)
         #expect(navigation.selectedDestination == .jam)
-        navigation.path.removeAll()
+        navigation.jamPath.removeAll()
 
         // Capture picker: hidden via isPresentingCapture.
         navigation.beginCapture()
@@ -266,6 +266,53 @@ struct NavigationGalleryTests {
         #expect(navigation.rootNavigation.selectedDestination == .jam)
     }
 
+    @Test func rootChromeSeparatesTabVisibilityFromGallerySelectionCaptureAvailability() {
+        let navigation = AppNavigationModel()
+
+        var presentation = RootChromePresentation(
+            rootNavigation: navigation.rootNavigation,
+            galleryBottomChromeMode: .navigation
+        )
+        #expect(presentation.shouldShowTab)
+        #expect(presentation.shouldShowCapture)
+
+        presentation = RootChromePresentation(
+            rootNavigation: navigation.rootNavigation,
+            galleryBottomChromeMode: .selectingEmpty
+        )
+        #expect(!presentation.shouldShowTab)
+        #expect(!presentation.shouldShowCapture)
+
+        presentation = RootChromePresentation(
+            rootNavigation: navigation.rootNavigation,
+            galleryBottomChromeMode: .selecting(count: 2)
+        )
+        #expect(!presentation.shouldShowTab)
+        #expect(!presentation.shouldShowCapture)
+
+        navigation.selectedDestination = .jam
+        presentation = RootChromePresentation(
+            rootNavigation: navigation.rootNavigation,
+            galleryBottomChromeMode: .selecting(count: 2)
+        )
+        #expect(presentation.shouldShowTab)
+        #expect(presentation.shouldShowCapture)
+
+        navigation.jamPath = [.pedalboardDetail(UUID())]
+        presentation = RootChromePresentation(
+            rootNavigation: navigation.rootNavigation,
+            galleryBottomChromeMode: .selecting(count: 2)
+        )
+        #expect(!presentation.shouldShowTab)
+        #expect(!presentation.shouldShowCapture)
+    }
+
+    @Test func galleryBottomChromeModeHasNoEmptyFourthState() {
+        #expect(GalleryBottomChromeMode(isSelecting: false, selectedCount: 0) == .navigation)
+        #expect(GalleryBottomChromeMode(isSelecting: true, selectedCount: 0) == .selectingEmpty)
+        #expect(GalleryBottomChromeMode(isSelecting: true, selectedCount: 2) == .selecting(count: 2))
+    }
+
     // Increment 5A: the custom root navigation observes the same
     // RootNavigationVisibility. There is no parallel accessory state.
     @Test func rootNavigationVisibilityIsTheSingleSourceForCustomNavigation() {
@@ -275,9 +322,9 @@ struct NavigationGalleryTests {
         #expect(initial.selectedDestination == .gallery)
 
         // Detail path: single flip hides the cluster.
-        navigation.path = [.pedalDetail(UUID())]
+        navigation.galleryPath = [.inspector(UUID())]
         #expect(navigation.rootNavigation.visibility == .hidden)
-        navigation.path.removeAll()
+        navigation.galleryPath.removeAll()
         #expect(navigation.rootNavigation.visibility == .visible)
 
         // Capture: single flip hides the cluster, selection preserved.
@@ -303,21 +350,21 @@ struct NavigationGalleryTests {
     @Test func hidingRootNavigationDoesNotClearNavigationPaths() {
         let navigation = AppNavigationModel()
         let pedalID = UUID()
-        navigation.path = [.pedalDetail(pedalID)]
+        navigation.galleryPath = [.inspector(pedalID)]
         #expect(navigation.rootNavigation.visibility == .hidden)
-        #expect(navigation.galleryPath == [.pedalDetail(pedalID)])
+        #expect(navigation.galleryPath == [.inspector(pedalID)])
 
         // Open and cancel capture; the pedal detail path is intact.
         navigation.beginCapture()
-        #expect(navigation.galleryPath == [.pedalDetail(pedalID)])
+        #expect(navigation.galleryPath == [.inspector(pedalID)])
         navigation.cancelCapture()
-        #expect(navigation.galleryPath == [.pedalDetail(pedalID)])
+        #expect(navigation.galleryPath == [.inspector(pedalID)])
 
         // Tab switch preserves the per-tab path independently.
         navigation.selectedDestination = .jam
-        #expect(navigation.galleryPath == [.pedalDetail(pedalID)])
+        #expect(navigation.galleryPath == [.inspector(pedalID)])
         #expect(navigation.jamPath.isEmpty)
-        #expect(navigation.rootNavigation.visibility == .hidden)
+        #expect(navigation.rootNavigation.visibility == .visible)
     }
 
     // Increment 5A: contextual states (picker, camera, processing,
@@ -360,13 +407,13 @@ struct NavigationGalleryTests {
     @Test func pedalDetailRouteHidesBottomBarWithoutChangingSelectedRoot() {
         let navigation = AppNavigationModel()
         let pedalID = UUID()
-        navigation.path = [.pedalDetail(pedalID)]
+        navigation.galleryPath = [.inspector(pedalID)]
 
         #expect(navigation.selectedDestination == .gallery)
-        #expect(navigation.path == [.pedalDetail(pedalID)])
+        #expect(navigation.galleryPath == [.inspector(pedalID)])
         #expect(navigation.rootNavigation.visibility == .hidden)
 
-        navigation.path.removeLast()
+        navigation.galleryPath.removeLast()
         #expect(navigation.rootNavigation.visibility == .visible)
         #expect(navigation.rootNavigation.selectedDestination == .gallery)
     }
@@ -375,10 +422,10 @@ struct NavigationGalleryTests {
         let navigation = AppNavigationModel()
         let boardID = UUID()
         navigation.selectedDestination = .jam
-        navigation.path = [.pedalboardDetail(boardID)]
+        navigation.jamPath = [.pedalboardDetail(boardID)]
 
         #expect(navigation.selectedDestination == .jam)
-        #expect(navigation.path == [.pedalboardDetail(boardID)])
+        #expect(navigation.jamPath == [.pedalboardDetail(boardID)])
         #expect(navigation.rootNavigation.visibility == .hidden)
     }
 
@@ -389,23 +436,38 @@ struct NavigationGalleryTests {
         navigation.openPedalboard(id: boardID)
 
         #expect(navigation.selectedDestination == .jam)
-        #expect(navigation.path == [.pedalboardDetail(boardID)])
+        #expect(navigation.jamPath == [.pedalboardDetail(boardID)])
+    }
+
+    @Test func externalInspectorRouteSelectsGalleryWithoutChangingJamPath() {
+        let navigation = AppNavigationModel()
+        let pedalID = UUID()
+        let boardID = UUID()
+        navigation.selectedDestination = .jam
+        navigation.jamPath = [.pedalboardDetail(boardID)]
+
+        navigation.openInspector(id: pedalID)
+
+        #expect(navigation.selectedDestination == .gallery)
+        #expect(navigation.galleryPath == [.inspector(pedalID)])
+        #expect(navigation.jamPath == [.pedalboardDetail(boardID)])
+        #expect(navigation.rootNavigation.visibility == .hidden)
     }
 
     @Test func detailRouteUsesOnlyPersistentID() {
         let pedalID = UUID()
         let boardID = UUID()
 
-        #expect(AppRoute.pedalDetail(pedalID) == .pedalDetail(pedalID))
-        #expect(AppRoute.pedalboardDetail(boardID) == .pedalboardDetail(boardID))
+        #expect(GalleryRoute.inspector(pedalID) == .inspector(pedalID))
+        #expect(JamRoute.pedalboardDetail(boardID) == .pedalboardDetail(boardID))
     }
 
     @Test func captureKeepsPrecedenceOverRootAndDetailState() {
         let navigation = AppNavigationModel()
-        navigation.path = [.pedalDetail(UUID())]
+        navigation.galleryPath = [.inspector(UUID())]
         navigation.beginCapture()
 
-        #expect(navigation.path.count == 1)
+        #expect(navigation.galleryPath.count == 1)
         #expect(navigation.isPresentingCapture)
         #expect(navigation.rootNavigation.visibility == .hidden)
     }
@@ -509,6 +571,25 @@ struct NavigationGalleryTests {
 
         #expect(!model.isSelecting)
         #expect(model.selectedIDs.isEmpty)
+    }
+
+    @Test func gallerySelectionShareAndDeleteUseOnlySelectedIDs() throws {
+        let directory = temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let store = PedalStore(directory: directory)
+        let first = pedal(name: "First")
+        let second = pedal(name: "Second")
+        try store.save(first, cover: cover(.blue))
+        try store.save(second, cover: cover(.orange))
+        let model = GalleryViewModel(store: store, player: PlayerDouble())
+        model.reload()
+
+        model.beginSelection()
+        model.toggleSelection(for: first.id)
+
+        #expect(model.shareURLs(for: model.selectedIDs).count == 1)
+        #expect(model.delete(ids: Array(model.selectedIDs)))
+        #expect(model.state.pedals.map(\.id) == [second.id])
     }
 
     @Test func galleryReportsPlaybackFailureWithoutDroppingCollection() throws {

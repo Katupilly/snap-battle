@@ -27,3 +27,10 @@ xcodebuild test -project "Dap.xcodeproj" -scheme "Dap" -destination 'platform=iO
 | Haptics | No | No | No | Planned feature |
 
 The repository has no documented fixture-image set; do not add binary fixtures without an approved specification. Simulator builds can validate deterministic, persistence, fallback, and routing behavior, but cannot complete camera hardware, perceptual audio, route-change, Siri/Shortcuts, or live Foundation Models validation.
+
+## Persistent root navigation validation
+
+- Unit tests cover independent Gallery/Jam typed paths, root switching without path loss, Inspector derivation from `galleryPath`, Capture precedence, and external pedal routing into Gallery.
+- Gallery open, Back, completed swipe-back, and cancelled swipe-back must produce zero Gallery reloads.
+- Manual Simulator validation covers all three grid columns, repeated Back and interactive-pop cycles, scroll preservation, pull-to-refresh completion, Gallery/Jam switching, Capture cancel/complete, background/foreground, and Reduce Motion.
+- The Gallery shared-element Hero is deferred. Current validation checks the default native push, Back and swipe-back behavior, root chrome restoration, and zero Gallery reloads.

@@ -52,6 +52,18 @@ iPad-specific layout.
 
 ## Current Decision
 
+### Persistent root-stack revision (authorized 2026-07-22)
+
+The Gallery recovery decision supersedes ownership details below that place Gallery and Jam destinations in one global route type or allow root chrome inside a root transition subtree. The approved custom root-navigation visuals remain unchanged.
+
+- Gallery and Jam are persistent sibling navigation roots with independent typed paths.
+- Gallery owns `GalleryRoute.inspector(UUID)`; Jam owns only Jam routes. The Gallery Hero is deferred for this delivery.
+- Root chrome and Capture remain shell-owned siblings of both stacks, stay mounted, and derive visibility from the active root path and Capture presentation.
+- Root switching preserves both paths. Capture remains transient and outside the stacks.
+- The current Gallery to Inspector transition is the default native push. A future Hero spike must not capture the header, root chrome, Jam, or shell safe areas.
+
+See [ADR 0006](../../docs/decisions/0006-persistent-root-navigation-stacks.md).
+
 **Increment 5A update — the native-tab direction is superseded.**
 The production implementation no longer uses `TabView`, `UITabBar`,
 or a native tab bar accessory for root navigation. The approved

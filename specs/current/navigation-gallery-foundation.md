@@ -2,7 +2,7 @@
 
 Status: Ready
 Priority: P0
-Last updated: 2026-07-17
+Last updated: 2026-07-22
 
 ## Context
 
@@ -65,6 +65,21 @@ Collaboration is an optional future action inside an existing Jam. It is not a p
 
 The app has two persistent destinations, Gallery and Jam. Capture is one central action, not a third persistent tab or selected navigation state.
 
+### Root-owned stack revision (authorized 2026-07-22)
+
+This section supersedes earlier language in this specification that describes one global `NavigationStack`, one shared route type, or clearing a root path when another root is selected.
+
+- Gallery and Jam are persistent sibling roots. Each owns one persistent `NavigationStack` and an independently typed path.
+- `GalleryRoute.inspector(UUID)` is owned only by Gallery. The route stores the persisted UUID, never a `StoredPedal` or collection index.
+- Jam uses its own route type and never stores Gallery routes.
+- Switching roots preserves both paths and the state already mounted inside each root.
+- Capture remains a transient shell presentation outside both root stacks. Cancellation restores the previously selected root; successful completion selects Gallery according to the existing completion contract.
+- Root navigation chrome and Capture are shell-owned siblings of the root stacks. Their visibility is derived from the selected root, the active root path, Capture presentation, and Gallery selection chrome; they remain mounted outside Gallery's stack transition lifecycle.
+- App Intents and external routes select the owning root before mutating only that root's path.
+- Gallery's shared-element Hero is removed from the current delivery. Photo Inspector remains `GalleryRoute.inspector(UUID)` and uses the default native `NavigationStack` push. Hero continuity is deferred to a future isolated spike; overlays, manual matched geometry, custom gestures, global fades, delays, offsets, and snapshot transitions are not authorized.
+
+See [ADR 0006](../../docs/decisions/0006-persistent-root-navigation-stacks.md).
+
 - Gallery is initially selected.
 - Jam is available through the main navigation control.
 - Triggering Capture records the current destination and opens the existing camera/import flow in a modal or equally transient native presentation.
@@ -117,6 +132,9 @@ Jam presents an accessible empty state communicating an individual outcome equiv
 ## Navigation Requirements
 
 - Gallery is selected at launch.
+- Gallery and Jam own independent typed paths; selecting either root does not clear the other path.
+- Photo Inspector is represented only by `GalleryRoute.inspector(UUID)`.
+- Root chrome remains outside both root stacks and derives visibility without a duplicate presentation flag.
 - Capture never becomes persistent selected state.
 - Cancellation before successful processing returns to the pre-Capture destination.
 - A successful automatic save retains the result screen until completion or dismissal.
@@ -207,6 +225,8 @@ On collection initialization, load and validate both legacy `latest-pedal.json` 
 
 - Persistence: empty collection, insert, specific recovery, multiple records, ordering and UUID tie-break, delete, safe-write failure, incomplete pairs, temporary cleanup, legacy fallback, idempotent migration, incomplete legacy, partial corruption, and latest after deletion.
 - Navigation/coordinator: Gallery initial state, Gallery/Jam switch, Capture nonpersistent state, cancellation return, result retained after auto-save, completion to Gallery, dismissal retaining record, and intent routing.
+- Root paths: Gallery/Jam independence, root switching without path loss, Inspector derivation from `galleryPath`, Capture precedence, and external pedal routing into Gallery.
+- Gallery transition state: opening, Back, completed/cancelled interactive pop, and root switching do not reload the collection or replace the persisted pedal UUID.
 - Gallery state owner: loading, empty, content, recoverable partial error, blocking error, insert, delete, reload, quick play, missing item, and delete failure.
 - Playback: play item, play another, delete playing item, absent item, and playback error without losing Gallery state.
 - Keep deterministic-generation/serialization coverage focused; do not require byte-for-byte audio tests.

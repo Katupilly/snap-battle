@@ -1,5 +1,12 @@
 import SwiftUI
 
+enum BottomBarMetrics {
+    /// Content height of the custom bottom navigation (capsule + padding),
+    /// used to reserve geometric space when the visual bar is rendered
+    /// outside the NavigationStack subtree.
+    static let reservedHeight: CGFloat = 86
+}
+
 struct CustomBottomNavigation: View {
     private enum Metrics {
         static let height: CGFloat = 68
@@ -14,15 +21,27 @@ struct CustomBottomNavigation: View {
     let selectedTab: RootDestination
     let selectTab: (RootDestination) -> Void
     let capture: () -> Void
+    let isAccessibilityHidden: Bool
+    let isCaptureVisible: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: Metrics.gap) {
-            GalleryJamCapsule(selectedTab: selectedTab, selectTab: selectTab)
+            GalleryJamCapsule(
+                selectedTab: selectedTab,
+                selectTab: selectTab,
+                isAccessibilityHidden: isAccessibilityHidden
+            )
                 .frame(width: Metrics.galleryJamWidth, height: Metrics.height)
 
-            CaptureCapsule(action: capture)
+            CaptureCapsule(
+                action: capture,
+                isAccessibilityHidden: isAccessibilityHidden || !isCaptureVisible
+            )
                 .frame(width: Metrics.captureWidth, height: Metrics.height)
+                .opacity(isCaptureVisible ? 1 : 0)
+                .allowsHitTesting(isCaptureVisible)
+                .accessibilityHidden(isAccessibilityHidden || !isCaptureVisible)
         }
         .padding(.horizontal, Metrics.horizontalMargin)
         .padding(.top, 8)
@@ -50,6 +69,7 @@ private struct GalleryJamCapsule: View {
 
     let selectedTab: RootDestination
     let selectTab: (RootDestination) -> Void
+    let isAccessibilityHidden: Bool
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @GestureState private var pressedTab: RootDestination?
@@ -110,6 +130,7 @@ private struct GalleryJamCapsule: View {
         .accessibilityHint("Shows \(tab.title)")
         .accessibilityAddTraits(isSelected ? [.isSelected] : [])
         .accessibilityIdentifier(tab.accessibilityIdentifier)
+        .accessibilityHidden(isAccessibilityHidden)
     }
 
     private var baseFrostedGlass: some View {
@@ -215,6 +236,7 @@ private struct GalleryJamCapsule: View {
 
 private struct CaptureCapsule: View {
     let action: () -> Void
+    let isAccessibilityHidden: Bool
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -240,6 +262,7 @@ private struct CaptureCapsule: View {
         .accessibilityLabel("Capture")
         .accessibilityHint("Opens the camera")
         .accessibilityIdentifier("bottomBar.action.capture")
+        .accessibilityHidden(isAccessibilityHidden)
     }
 }
 

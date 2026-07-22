@@ -27,6 +27,7 @@ A person without music-production knowledge can capture or choose a photo, recei
 - Four-tone processed cover generation and a 16-step by 8-row image-to-music sequence.
 - Reverb or distortion selection with a generic intensity control.
 - Local collection persistence with Gallery browsing, detail, delete, and playback.
+- Persistent Gallery and Jam roots with independent navigation history, shell-owned root chrome, and transient Capture presentation.
 - Immediate playable result presentation with valid fallback metadata.
 - Foundation Models-generated name and description as post-result enrichment, with fallback metadata retained when generation is unavailable, refused, failed, empty, invalid, stale, or unable to update the stored record.
 

@@ -2,7 +2,17 @@
 
 ## Current Shape
 
-The `Dap` app target is a SwiftUI app. `DapApp` presents `ContentView`, whose active flow enters `Features/Capture/CaptureView.swift`. `DapViewModel` owns capture state, the current `PhotoPedal`, `DapSynth`, and `PedalStore` coordination. `PedalResultView` presents the result and playback controls.
+The `Dap` app target is a SwiftUI app. `DapApp` owns the long-lived navigation and feature models and presents the shell in `Features/Capture/CaptureView.swift`. The shell keeps persistent Gallery and Jam navigation roots as siblings, keeps root chrome outside both transition trees, and presents Capture transiently outside the root stacks. `DapViewModel` owns capture state, the current `PhotoPedal`, `DapSynth`, and `PedalStore` coordination. `PedalResultView` presents the result and playback controls.
+
+```text
+DapApp / RootShell
+├── GalleryNavigationRoot → NavigationStack<[GalleryRoute]>
+├── JamNavigationRoot → NavigationStack<[JamRoute]>
+├── RootChromeOverlay
+└── Capture sheet
+```
+
+Photo Inspector remains `GalleryRoute.inspector(UUID)` inside the persistent Gallery stack, but the shared-element Hero is deferred. Gallery currently uses the default native `NavigationStack` push so root chrome stability takes precedence over spatial continuity. See [ADR 0006](decisions/0006-persistent-root-navigation-stacks.md).
 
 ```text
 Captured or imported image
@@ -19,7 +29,7 @@ VisionKit + Vision -> FoundationModelsPedalGenerator -> name and description
 
 | Area | Current files/types |
 | --- | --- |
-| App and routing | `DapApp.swift`, `ContentView`, `AppIntentRouter` |
+| App and routing | `DapApp.swift`, `ContentView`, `GalleryNavigationRoot`, `JamNavigationRoot`, `AppNavigationModel`, `AppIntentRouter` |
 | Capture and view state | `Features/Capture/CaptureView.swift`, `CaptureViewModel.swift`, `CameraPicker.swift` |
 | Presentation | `Features/Pedal/PedalResultView.swift` |
 | Domain | `Domain/Pedal/Pedal.swift` |

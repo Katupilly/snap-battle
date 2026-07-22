@@ -57,9 +57,9 @@ struct GalleryReloadInstrumentationTests {
         await model.reloadAsync(reason: .initialLoad)
         counter.assert(equals: 1)
 
-        navigation.path = [.pedalDetail(item.id)]
+        navigation.galleryPath = [.inspector(item.id)]
         try await Task.sleep(for: .milliseconds(80))
-        navigation.path.removeLast()
+        navigation.galleryPath.removeLast()
 
         try await Task.sleep(for: .milliseconds(80))
         counter.assert(equals: 1)

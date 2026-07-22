@@ -79,7 +79,7 @@ struct PedalboardsView: View {
 
     private func boardList(_ boards: [Pedalboard]) -> some View {
         List(boards) { board in
-            NavigationLink(value: AppRoute.pedalboardDetail(board.id)) {
+            NavigationLink(value: JamRoute.pedalboardDetail(board.id)) {
                 PedalboardSummaryRow(board: board)
             }
             .accessibilityLabel("\(board.name), \(entryCountText(board.entries.count))")

@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "custom.music.note.list.badge.plus.svg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

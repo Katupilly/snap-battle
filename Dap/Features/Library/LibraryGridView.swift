@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum LibraryGridState {
     case loading
@@ -34,12 +35,12 @@ struct LibraryGridView: View {
     let imageProvider: LibraryGridImageProvider
     let thumbnailLoader: ThumbnailLoader?
     let assetProvider: (UUID) -> PersistedImageAsset?
-    let transitionNamespace: Namespace.ID?
     let selectionMode: Bool
     let selectedIDs: Set<UUID>
     let onToggleSelection: ((UUID) -> Void)?
     let onDelete: ((StoredPedal) -> Void)?
     let onAddToJam: (([UUID]) -> Void)?
+    let bottomContentPadding: CGFloat
     let entryPresentationID: Int
     let reduceMotion: Bool
 
@@ -55,12 +56,12 @@ struct LibraryGridView: View {
         imageProvider: LibraryGridImageProvider = .persistedCover,
         thumbnailLoader: ThumbnailLoader? = nil,
         assetProvider: @escaping (UUID) -> PersistedImageAsset? = { _ in nil },
-        transitionNamespace: Namespace.ID? = nil,
         selectionMode: Bool = false,
         selectedIDs: Set<UUID> = [],
         onToggleSelection: ((UUID) -> Void)? = nil,
         onDelete: ((StoredPedal) -> Void)? = nil,
         onAddToJam: (([UUID]) -> Void)? = nil,
+        bottomContentPadding: CGFloat = 0,
         entryPresentationID: Int = 0,
         reduceMotion: Bool = false
     ) {
@@ -70,12 +71,12 @@ struct LibraryGridView: View {
         self.imageProvider = imageProvider
         self.thumbnailLoader = thumbnailLoader
         self.assetProvider = assetProvider
-        self.transitionNamespace = transitionNamespace
         self.selectionMode = selectionMode
         self.selectedIDs = selectedIDs
         self.onToggleSelection = onToggleSelection
         self.onDelete = onDelete
         self.onAddToJam = onAddToJam
+        self.bottomContentPadding = bottomContentPadding
         self.entryPresentationID = entryPresentationID
         self.reduceMotion = reduceMotion
     }
@@ -86,15 +87,13 @@ struct LibraryGridView: View {
         imageProvider: LibraryGridImageProvider = .persistedCover,
         thumbnailLoader: ThumbnailLoader? = nil,
         assetProvider: @escaping (UUID) -> PersistedImageAsset? = { _ in nil },
-        transitionNamespace: Namespace.ID? = nil
     ) {
         self.init(
             state: pedals.isEmpty ? .empty : .content(pedals),
             calendar: calendar,
             imageProvider: imageProvider,
             thumbnailLoader: thumbnailLoader,
-            assetProvider: assetProvider,
-            transitionNamespace: transitionNamespace
+            assetProvider: assetProvider
         )
     }
 
@@ -178,7 +177,6 @@ struct LibraryGridView: View {
                         imageProvider: imageProvider,
                         thumbnailLoader: thumbnailLoader,
                         asset: assetProvider(item.id),
-                        transitionNamespace: transitionNamespace,
                         isSelectionMode: selectionMode,
                         isSelected: selectedIDs.contains(item.id),
                         onToggleSelection: { onToggleSelection?(item.id) },
@@ -191,7 +189,7 @@ struct LibraryGridView: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
-            .padding(.bottom, selectionMode && !selectedIDs.isEmpty ? 96 : 8)
+            .padding(.bottom, selectionMode ? 116 : 8 + bottomContentPadding)
         }
         .task(id: entryPresentationID) {
             guard entryPresentationID > 0, entryPresentationID != activeEntryPresentationID else { return }
@@ -234,7 +232,6 @@ private struct LibraryGridCell: View {
     let imageProvider: LibraryGridImageProvider
     let thumbnailLoader: ThumbnailLoader?
     let asset: PersistedImageAsset?
-    let transitionNamespace: Namespace.ID?
     let isSelectionMode: Bool
     let isSelected: Bool
     let onToggleSelection: () -> Void
@@ -251,7 +248,7 @@ private struct LibraryGridCell: View {
             if isSelectionMode {
                 Button(action: onToggleSelection) { cellContent }
             } else {
-                NavigationLink(value: AppRoute.pedalDetail(item.id)) { cellContent }
+                NavigationLink(value: GalleryRoute.inspector(item.id)) { cellContent }
             }
         }
         .contextMenu {
@@ -263,18 +260,19 @@ private struct LibraryGridCell: View {
                 Button(role: .destructive, action: onDelete) { Label("Delete", systemImage: "trash") }
             }
         }
-        .overlay(alignment: .topTrailing) {
-            if isSelectionMode && isSelected {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.title2)
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(.white, Color.accentColor)
-                    .padding(8)
-                    .accessibilityHidden(true)
-            }
-        }
         .aspectRatio(0.78, contentMode: .fit)
         .clipShape(.rect(cornerRadius: 4, style: .continuous))
+        .overlay {
+            if isSelectionMode && isSelected {
+                ZStack {
+                    Color.black.opacity(0.5)
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(.white)
+                }
+                .accessibilityHidden(true)
+            }
+        }
         .opacity(isEntryHidden ? 0 : 1)
         .scaleEffect(reduceMotion || !isEntryHidden ? 1 : 0.94)
         .offset(y: reduceMotion || !isEntryHidden ? 0 : 16)
@@ -290,24 +288,22 @@ private struct LibraryGridCell: View {
     private var cellContent: some View {
         GeometryReader { proxy in
             let targetSize = CGSize(width: proxy.size.width, height: proxy.size.height)
-            transitionSource(
-                ZStack {
-                    if let loadedImage {
-                        Image(uiImage: loadedImage).resizable().interpolation(.none).scaledToFill().accessibilityHidden(true)
-                    } else if thumbnailLoader == nil || asset == nil || loadFailed {
-                        if let fallback = imageProvider(item), !loadFailed {
-                            fallback.resizable().interpolation(.none).scaledToFill().accessibilityHidden(true)
-                        } else {
-                            unavailableCover
-                        }
-                    } else if let fallback = imageProvider(item) {
+            ZStack {
+                if let loadedImage {
+                    Image(uiImage: loadedImage).resizable().interpolation(.none).scaledToFill().accessibilityHidden(true)
+                } else if thumbnailLoader == nil || asset == nil || loadFailed {
+                    if let fallback = imageProvider(item), !loadFailed {
                         fallback.resizable().interpolation(.none).scaledToFill().accessibilityHidden(true)
                     } else {
-                        ProgressView().tint(.secondary)
+                        unavailableCover
                     }
+                } else if let fallback = imageProvider(item) {
+                    fallback.resizable().interpolation(.none).scaledToFill().accessibilityHidden(true)
+                } else {
+                    ProgressView().tint(.secondary)
                 }
-                .frame(width: proxy.size.width, height: proxy.size.height)
-            )
+            }
+            .frame(width: proxy.size.width, height: proxy.size.height)
             .task(id: targetSize) {
                 guard loadedImage == nil, let thumbnailLoader, let asset else { return }
                 do {
@@ -329,15 +325,6 @@ private struct LibraryGridCell: View {
                 .accessibilityHidden(true)
         }
         .accessibilityHidden(true)
-    }
-
-    @ViewBuilder
-    private func transitionSource<Content: View>(_ content: Content) -> some View {
-        if let transitionNamespace {
-            content.matchedTransitionSource(id: item.id, in: transitionNamespace)
-        } else {
-            content
-        }
     }
 
     private func accessibilityLabel(hasUnavailableCover: Bool) -> String {

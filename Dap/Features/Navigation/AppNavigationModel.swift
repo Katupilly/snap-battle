@@ -1,8 +1,11 @@
 import Observation
 import Foundation
 
-enum AppRoute: Hashable {
-    case pedalDetail(UUID)
+enum GalleryRoute: Hashable {
+    case inspector(UUID)
+}
+
+enum JamRoute: Hashable {
     case pedalboardDetail(UUID)
 }
 
@@ -17,22 +20,8 @@ final class AppNavigationModel {
     typealias Destination = AppTab
 
     var selectedDestination: Destination = .gallery
-    var galleryPath: [AppRoute] = []
-    var jamPath: [AppRoute] = []
-    var path: [AppRoute] {
-        get {
-            switch selectedDestination {
-            case .gallery: galleryPath
-            case .jam: jamPath
-            }
-        }
-        set {
-            switch selectedDestination {
-            case .gallery: galleryPath = newValue
-            case .jam: jamPath = newValue
-            }
-        }
-    }
+    var galleryPath: [GalleryRoute] = []
+    var jamPath: [JamRoute] = []
     var isPresentingCapture = false
     private(set) var destinationBeforeCapture: Destination = .gallery
 
@@ -57,16 +46,17 @@ final class AppNavigationModel {
         jamPath.append(.pedalboardDetail(id))
     }
 
-    var isShowingPedalDetail: Bool {
-        currentPathContainsDetail
+    func openInspector(id: UUID) {
+        selectedDestination = .gallery
+        galleryPath = [.inspector(id)]
     }
 
-    private var currentPathContainsDetail: Bool {
-        path.contains { route in
-            switch route {
-            case .pedalDetail, .pedalboardDetail:
-                true
-            }
+    var isShowingRootDetail: Bool {
+        switch selectedDestination {
+        case .gallery:
+            !galleryPath.isEmpty
+        case .jam:
+            !jamPath.isEmpty
         }
     }
 
@@ -76,7 +66,7 @@ final class AppNavigationModel {
     var rootNavigation: RootNavigationState {
         RootNavigationState(
             selectedDestination: RootDestination(selectedDestination) ?? .gallery,
-            visibility: (isShowingPedalDetail || isPresentingCapture) ? .hidden : .visible
+            visibility: (isShowingRootDetail || isPresentingCapture) ? .hidden : .visible
         )
     }
 }
@@ -185,7 +175,7 @@ enum BottomBarPresentation: Equatable {
     }
 
     static func forNavigation(_ navigation: AppNavigationModel) -> Self {
-        if navigation.isShowingPedalDetail { return .hidden(.pedalDetail) }
+        if navigation.isShowingRootDetail { return .hidden(.pedalDetail) }
         return .root(selected: navigation.selectedDestination)
     }
 

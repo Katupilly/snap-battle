@@ -3,49 +3,48 @@ import SwiftUI
 import UIKit
 
 struct ContentView: View {
-    @State private var navigation = AppNavigationModel()
-    @State private var gallery = GalleryViewModel()
-    @State private var pedalboards = PedalboardsViewModel()
-    @State private var thumbnailLoader = ThumbnailLoader()
     @State private var galleryImportItem: PhotosPickerItem?
-    #if DEBUG
-    @State private var showingLibraryDebug = false
-    #endif
     @Namespace private var bottomBarNamespace
-    @Namespace private var libraryTransitionNamespace
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private let navigation: AppNavigationModel
+    private let gallery: GalleryViewModel
+    private let pedalboards: PedalboardsViewModel
+    private let thumbnailLoader: ThumbnailLoader
+
+    init(
+        navigation: AppNavigationModel,
+        gallery: GalleryViewModel,
+        pedalboards: PedalboardsViewModel,
+        thumbnailLoader: ThumbnailLoader
+    ) {
+        self.navigation = navigation
+        self.gallery = gallery
+        self.pedalboards = pedalboards
+        self.thumbnailLoader = thumbnailLoader
+    }
 
     var body: some View {
         @Bindable var navigation = navigation
         ZStack {
-            galleryStack
+            GalleryNavigationRoot(
+                navigation: navigation,
+                gallery: gallery,
+                thumbnailLoader: thumbnailLoader,
+                selectedImportItem: $galleryImportItem
+            )
                 .opacity(navigation.selectedDestination == .gallery ? 1 : 0)
                 .disabled(navigation.selectedDestination != .gallery)
                 .allowsHitTesting(navigation.selectedDestination == .gallery)
                 .accessibilityHidden(navigation.selectedDestination != .gallery)
                 .zIndex(navigation.selectedDestination == .gallery ? 1 : 0)
 
-            jamStack
+            JamNavigationRoot(navigation: navigation, pedalboards: pedalboards)
                 .opacity(navigation.selectedDestination == .jam ? 1 : 0)
                 .disabled(navigation.selectedDestination != .jam)
                 .allowsHitTesting(navigation.selectedDestination == .jam)
                 .accessibilityHidden(navigation.selectedDestination != .jam)
                 .zIndex(navigation.selectedDestination == .jam ? 1 : 0)
         }
-        .safeAreaInset(edge: .bottom) {
-            if !gallery.isSelecting {
-                CustomBottomNavigation(
-                    selectedTab: navigation.rootNavigation.selectedDestination,
-                    selectTab: { navigation.selectedDestination = $0.appDestination },
-                    capture: navigation.beginCapture
-                )
-                .opacity(navigation.rootNavigation.visibility == .visible ? 1 : 0)
-                .allowsHitTesting(navigation.rootNavigation.visibility == .visible)
-                .accessibilityHidden(navigation.rootNavigation.visibility != .visible)
-                .zIndex(1)
-            }
-        }
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: gallery.isSelecting)
         .task {
             #if DEBUG
             if CommandLine.arguments.contains("--install-fixtures") {
@@ -85,46 +84,55 @@ struct ContentView: View {
         }
     }
 
-    private var galleryStack: some View {
+}
+
+private struct GalleryNavigationRoot: View {
+    let navigation: AppNavigationModel
+    let gallery: GalleryViewModel
+    let thumbnailLoader: ThumbnailLoader
+    @Binding var selectedImportItem: PhotosPickerItem?
+
+    var body: some View {
         @Bindable var navigation = navigation
-        return NavigationStack(path: $navigation.galleryPath) {
+        NavigationStack(path: $navigation.galleryPath) {
             GalleryView(
                 model: gallery,
                 thumbnailLoader: thumbnailLoader,
-                transitionNamespace: libraryTransitionNamespace,
                 isActive: navigation.selectedDestination == .gallery,
                 isAtRoot: navigation.galleryPath.isEmpty,
-                selectedImportItem: $galleryImportItem
+                rootChromePadding: BottomBarMetrics.reservedHeight,
+                selectedImportItem: $selectedImportItem
             )
             .accessibilityHidden(navigation.selectedDestination != .gallery)
-            .navigationDestination(for: AppRoute.self) { route in
+            .navigationDestination(for: GalleryRoute.self) { route in
                 switch route {
-                case .pedalDetail(let id):
-                    PedalDetailView(itemID: id, model: gallery, transitionNamespace: libraryTransitionNamespace)
-                case .pedalboardDetail:
-                    EmptyView()
+                case .inspector(let id):
+                    PedalDetailView(
+                        itemID: id,
+                        model: gallery
+                    )
                 }
             }
-            #if DEBUG
-            .navigationDestination(isPresented: $showingLibraryDebug) {
-                LibraryDebugLauncher()
-            }
-            #endif
         }
+        .toolbarVisibility(.hidden, for: .navigationBar)
     }
+}
 
-    private var jamStack: some View {
+private struct JamNavigationRoot: View {
+    let navigation: AppNavigationModel
+    let pedalboards: PedalboardsViewModel
+
+    var body: some View {
         @Bindable var navigation = navigation
-        return NavigationStack(path: $navigation.jamPath) {
+        NavigationStack(path: $navigation.jamPath) {
             PedalboardsView(
                 model: pedalboards,
                 openBoard: navigation.openPedalboard
             )
+            .safeAreaPadding(.bottom, BottomBarMetrics.reservedHeight)
             .accessibilityHidden(navigation.selectedDestination != .jam)
-            .navigationDestination(for: AppRoute.self) { route in
+            .navigationDestination(for: JamRoute.self) { route in
                 switch route {
-                case .pedalDetail:
-                    EmptyView()
                 case .pedalboardDetail(let id):
                     PedalboardDetailView(boardID: id, model: pedalboards)
                 }

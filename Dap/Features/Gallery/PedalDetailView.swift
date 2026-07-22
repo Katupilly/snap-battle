@@ -3,10 +3,8 @@ import SwiftUI
 struct PedalDetailView: View {
     let itemID: UUID
     let model: GalleryViewModel
-    let transitionNamespace: Namespace.ID
 
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isConfirmingDeletion = false
 
     private var item: StoredPedal? {
@@ -21,9 +19,17 @@ struct PedalDetailView: View {
                 ContentUnavailableView("Pedal indisponível", systemImage: "exclamationmark.triangle")
             }
         }
-        .navigationTitle("Pedal")
-        .navigationBarTitleDisplayMode(.inline)
-        .modifier(DetailTransitionModifier(itemID: itemID, namespace: transitionNamespace, reduceMotion: reduceMotion))
+        .safeAreaInset(edge: .top, spacing: 0) {
+            HStack {
+                Button("Back", systemImage: "chevron.left", action: dismiss.callAsFunction)
+                    .accessibilityIdentifier("gallery.inspector.back")
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(.bar)
+        }
+        .toolbarVisibility(.hidden, for: .navigationBar)
     }
 
     @ViewBuilder
@@ -90,20 +96,5 @@ struct PedalDetailView: View {
     private func delete() {
         guard let item, model.delete(item) else { return }
         dismiss()
-    }
-}
-
-private struct DetailTransitionModifier: ViewModifier {
-    let itemID: UUID
-    let namespace: Namespace.ID
-    let reduceMotion: Bool
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if reduceMotion {
-            content
-        } else {
-            content.navigationTransition(.zoom(sourceID: itemID, in: namespace))
-        }
     }
 }

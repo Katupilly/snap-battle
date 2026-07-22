@@ -19,3 +19,32 @@ struct RootNavigationState: Equatable {
     var selectedDestination: RootDestination
     var visibility: RootNavigationVisibility
 }
+
+/// Visual availability for the custom root chrome.
+struct RootChromePresentation: Equatable {
+    let shouldShowTab: Bool
+    let shouldShowCapture: Bool
+
+    init(rootNavigation: RootNavigationState, galleryBottomChromeMode: GalleryBottomChromeMode = .navigation) {
+        let gallerySelectionChromeIsActive = rootNavigation.selectedDestination == .gallery
+            && galleryBottomChromeMode != .navigation
+        shouldShowTab = rootNavigation.visibility == .visible && !gallerySelectionChromeIsActive
+        shouldShowCapture = shouldShowTab
+    }
+}
+
+enum GalleryBottomChromeMode: Equatable {
+    case navigation
+    case selectingEmpty
+    case selecting(count: Int)
+
+    init(isSelecting: Bool, selectedCount: Int) {
+        if !isSelecting {
+            self = .navigation
+        } else if selectedCount == 0 {
+            self = .selectingEmpty
+        } else {
+            self = .selecting(count: selectedCount)
+        }
+    }
+}

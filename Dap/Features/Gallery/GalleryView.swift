@@ -4,12 +4,12 @@ import SwiftUI
 struct GalleryView: View {
     let model: GalleryViewModel
     let thumbnailLoader: ThumbnailLoader
-    let transitionNamespace: Namespace.ID
     let imageProvider: LibraryGridImageProvider
     let assetProvider: ((UUID) -> PersistedImageAsset?)?
     let addToJam: ([UUID]) -> Void
     let isActive: Bool
     let isAtRoot: Bool
+    let rootChromePadding: CGFloat
     @Binding private var selectedImportItem: PhotosPickerItem?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pendingDeletionIDs: [UUID]?
@@ -20,59 +20,50 @@ struct GalleryView: View {
     init(
         model: GalleryViewModel,
         thumbnailLoader: ThumbnailLoader,
-        transitionNamespace: Namespace.ID,
         imageProvider: LibraryGridImageProvider = .persistedCover,
         assetProvider: ((UUID) -> PersistedImageAsset?)? = nil,
         addToJam: @escaping ([UUID]) -> Void = { _ in },
         isActive: Bool = true,
         isAtRoot: Bool = true,
+        transitionNamespace: Namespace.ID? = nil,
+        rootChromePadding: CGFloat = 0,
         selectedImportItem: Binding<PhotosPickerItem?> = .constant(nil)
     ) {
+        _ = transitionNamespace
         self.model = model
         self.thumbnailLoader = thumbnailLoader
-        self.transitionNamespace = transitionNamespace
         self.imageProvider = imageProvider
         self.assetProvider = assetProvider
         self.addToJam = addToJam
         self.isActive = isActive
         self.isAtRoot = isAtRoot
+        self.rootChromePadding = rootChromePadding
         self._selectedImportItem = selectedImportItem
     }
 
     var body: some View {
-        content(for: model.state)
-            .navigationTitle(model.isSelecting && !model.selectedIDs.isEmpty ? "\(model.selectedIDs.count) Selected" : "Gallery")
-            .toolbar {
-                if !model.isSelecting {
-                    ToolbarItem(placement: .topBarLeading) {
-                        PhotosPicker(selection: $selectedImportItem, matching: .images) {
-                            Label("Import Photos", systemImage: "plus")
-                        }
-                        .accessibilityIdentifier("gallery.import")
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    if model.isSelecting {
-                        Button("Cancel Selection", systemImage: "xmark") { model.cancelSelection() }
-                            .accessibilityIdentifier("gallery.cancel-selection")
-                    } else if !model.state.pedals.isEmpty {
-                        Button("Select Photos", systemImage: "checkmark.circle") { model.beginSelection() }
-                            .accessibilityIdentifier("gallery.select")
-                    }
-                }
-            }
+        VStack(spacing: 0) {
+            GalleryHeader(
+                mode: bottomChromeMode,
+                selectedImportItem: $selectedImportItem,
+                cancelSelection: model.cancelSelection,
+                beginSelection: model.beginSelection
+            )
+            content(for: model.state)
+        }
+            .toolbarVisibility(.hidden, for: .navigationBar)
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                if model.isSelecting && !model.selectedIDs.isEmpty {
+                if model.isSelecting {
                     GallerySelectionBar(
-                        count: model.selectedIDs.count,
+                        mode: bottomChromeMode,
                         shareURLs: model.shareURLs(for: model.selectedIDs),
                         addToJam: { addToJam(Array(model.selectedIDs)) },
                         delete: { requestDelete(Array(model.selectedIDs)) }
                     )
-                    .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+                    .transition(.opacity)
                 }
             }
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: model.isSelecting)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.14), value: bottomChromeMode)
             .alert(
                 deleteTitle,
                 isPresented: Binding(
@@ -96,18 +87,20 @@ struct GalleryView: View {
                 if active { prepareEntryPresentation() } else { resetEntryPresentation() }
             }
             .onChange(of: model.state.pedals.map(\.id)) { _, _ in startEntryPresentationIfPossible() }
-            .onDisappear { resetEntryPresentation() }
+            .onDisappear {
+                resetEntryPresentation()
+            }
     }
 
     @ViewBuilder
     private func content(for state: GalleryViewModel.State) -> some View {
         switch state {
         case .loading:
-            LibraryGridView(state: .loading, imageProvider: imageProvider, thumbnailLoader: thumbnailLoader, assetProvider: asset(for:), transitionNamespace: transitionNamespace)
+            LibraryGridView(state: .loading, imageProvider: imageProvider, thumbnailLoader: thumbnailLoader, assetProvider: asset(for:))
         case .empty:
-            LibraryGridView(state: .empty, imageProvider: imageProvider, thumbnailLoader: thumbnailLoader, assetProvider: asset(for:), transitionNamespace: transitionNamespace)
+            LibraryGridView(state: .empty, imageProvider: imageProvider, thumbnailLoader: thumbnailLoader, assetProvider: asset(for:))
         case .blockingError(let message):
-            LibraryGridView(state: .error(message: message), onRetry: { Task { await model.reloadAsync(reason: .retry) } }, imageProvider: imageProvider, thumbnailLoader: thumbnailLoader, assetProvider: asset(for:), transitionNamespace: transitionNamespace)
+            LibraryGridView(state: .error(message: message), onRetry: { Task { await model.reloadAsync(reason: .retry) } }, imageProvider: imageProvider, thumbnailLoader: thumbnailLoader, assetProvider: asset(for:))
         case .content(let pedals):
             libraryGrid(state: .content(pedals))
         case .partialError(let pedals, let message):
@@ -122,12 +115,12 @@ struct GalleryView: View {
             imageProvider: imageProvider,
             thumbnailLoader: thumbnailLoader,
             assetProvider: asset(for:),
-            transitionNamespace: transitionNamespace,
             selectionMode: model.isSelecting,
             selectedIDs: model.selectedIDs,
             onToggleSelection: model.toggleSelection(for:),
             onDelete: { requestDelete([$0.id]) },
             onAddToJam: addToJam,
+            bottomContentPadding: rootChromePadding,
             entryPresentationID: isActive ? entryPresentationID : 0,
             reduceMotion: reduceMotion
         )
@@ -168,38 +161,221 @@ struct GalleryView: View {
     }
 
     private var deletionCount: Int { pendingDeletionIDs?.count ?? 0 }
+    private var bottomChromeMode: GalleryBottomChromeMode {
+        GalleryBottomChromeMode(isSelecting: model.isSelecting, selectedCount: model.selectedIDs.count)
+    }
     private var deleteTitle: String { deletionCount == 1 ? "Delete Photo?" : "Delete \(deletionCount) Photos?" }
     private var deleteMessage: String { deletionCount == 1 ? "This photo will be permanently deleted from Dap. This action can’t be undone." : "These photos will be permanently deleted from Dap. This action can’t be undone." }
     private var deleteActionTitle: String { deletionCount == 1 ? "Delete Photo" : "Delete \(deletionCount) Photos" }
 }
 
+private struct GalleryHeader: View {
+    let mode: GalleryBottomChromeMode
+    @Binding var selectedImportItem: PhotosPickerItem?
+    let cancelSelection: () -> Void
+    let beginSelection: () -> Void
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Gallery")
+                    .font(.largeTitle.bold())
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 22)
+                Spacer(minLength: 0)
+            }
+
+            HStack {
+                if mode == .navigation {
+                    PhotosPicker(selection: $selectedImportItem, matching: .images) {
+                        GalleryGlassSymbol(systemName: "square.and.arrow.down")
+                    }
+                    .tint(.primary)
+                    .accessibilityLabel("Import Photos")
+                    .accessibilityIdentifier("gallery.import")
+                }
+
+                Spacer()
+
+                if mode == .navigation {
+                    Button(action: beginSelection) {
+                        GalleryGlassSymbol(systemName: "checkmark.app")
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Select Photos")
+                    .accessibilityIdentifier("gallery.select")
+                } else if mode != .navigation {
+                    Button(action: cancelSelection) {
+                        GalleryGlassSymbol(systemName: "xmark")
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Cancel Selection")
+                    .accessibilityIdentifier("gallery.cancel-selection")
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 10)
+
+            if case .selecting(let count) = mode {
+                Text(selectedCountText(count))
+                    .font(.footnote)
+                    .foregroundStyle(.white)
+                    .accessibilityIdentifier("gallery.selection.count")
+                    .padding(.bottom, 16)
+            }
+        }
+        .frame(height: 112)
+        .background {
+            LinearGradient(
+                colors: [.black.opacity(0.22), .black.opacity(0.08), .clear],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .blur(radius: 4)
+            .ignoresSafeArea(edges: .top)
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private func selectedCountText(_ count: Int) -> String {
+        count == 1 ? "1 selected" : "\(count) selected"
+    }
+}
+
 private struct GallerySelectionBar: View {
-    let count: Int
+    let mode: GalleryBottomChromeMode
     let shareURLs: [URL]
     let addToJam: () -> Void
     let delete: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            if !shareURLs.isEmpty {
-                ShareLink(items: shareURLs) {
-                    Label("Share", systemImage: "square.and.arrow.up")
+        ZStack {
+            LinearGradient(
+                colors: [.clear, .black.opacity(0.16), .black.opacity(0.24)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .blur(radius: 5)
+            .accessibilityHidden(true)
+
+            if case .selecting(let count) = mode {
+                HStack {
+                    if !shareURLs.isEmpty {
+                        ShareLink(items: shareURLs) {
+                            GalleryGlassSymbol(systemName: "square.and.arrow.up")
+                        }
+                        .tint(.primary)
+                        .accessibilityLabel(count == 1 ? "Share Selected Photo" : "Share Selected Photos")
+                        .accessibilityIdentifier("gallery.selection.share")
+                    } else {
+                        GalleryGlassSymbol(systemName: "square.and.arrow.up")
+                            .opacity(0.34)
+                            .allowsHitTesting(false)
+                            .accessibilityLabel(count == 1 ? "Share Selected Photo unavailable" : "Share Selected Photos unavailable")
+                    }
+
+                    Spacer()
+                    GalleryAddToJamButton(action: addToJam)
+                    Spacer()
+                    GalleryGlassSymbolAction(systemName: "trash", action: delete)
+                        .accessibilityLabel(count == 1 ? "Delete Selected Photo" : "Delete Selected Photos")
+                        .accessibilityIdentifier("gallery.selection.delete")
                 }
-                .accessibilityLabel("Share Selected Photos")
+                .padding(.horizontal, 16)
             }
-            Button("Add to Jam", systemImage: "plus.circle", action: addToJam)
-                .accessibilityLabel("Add Selected Photos to Jam")
-            Button("Delete", systemImage: "trash", role: .destructive, action: delete)
-                .accessibilityLabel("Delete Selected Photos")
         }
-        .buttonStyle(.bordered)
-        .controlSize(.large)
+        .frame(height: 116)
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(.bar)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("\(count) Selected")
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityIdentifier("gallery.selection.chrome")
+    }
+
+    private var accessibilityLabel: String {
+        switch mode {
+        case .navigation:
+            "Gallery navigation"
+        case .selectingEmpty:
+            "Selection mode, no photos selected"
+        case .selecting(let count):
+            count == 1 ? "1 selected" : "\(count) selected"
+        }
+    }
+}
+
+private struct GalleryGlassSymbol: View {
+    let systemName: String
+
+    var body: some View {
+        Image(systemName: systemName)
+            .symbolRenderingMode(.monochrome)
+            .font(.system(size: 22, weight: .semibold))
+            .foregroundStyle(.primary)
+            .frame(width: 48, height: 48)
+            .background {
+                Circle()
+                    .fill(.clear)
+                    .glassEffect(.regular.tint(.primary.opacity(0.04)).interactive(), in: .circle)
+            }
+            .overlay {
+                Circle()
+                    .stroke(.white.opacity(0.34), lineWidth: 1)
+            }
+            .contentShape(.circle)
+            .accessibilityHidden(true)
+    }
+}
+
+private struct GalleryGlassSymbolAction: View {
+    let systemName: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            GalleryGlassSymbol(systemName: systemName)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct GalleryAddToJamButton: View {
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 1) {
+                Image("CustomMusicNoteListBadgePlus")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .foregroundStyle(.primary)
+                    .frame(width: 32, height: 27)
+                    .accessibilityHidden(true)
+
+                Text("Add to Jam")
+                    .font(.system(size: 10, weight: .semibold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.86)
+            }
+            .foregroundStyle(.primary)
+            .frame(width: 106, height: 40)
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 4)
+        .frame(width: 114, height: 48)
+        .background {
+            Capsule()
+                .fill(.clear)
+                .glassEffect(.regular.tint(.primary.opacity(0.04)).interactive(), in: .capsule)
+        }
+        .overlay {
+            Capsule()
+                .stroke(.white.opacity(0.30), lineWidth: 1)
+        }
+        .contentShape(.capsule)
+        .accessibilityLabel("Add Selected Photos to Jam")
+        .accessibilityIdentifier("gallery.selection.addToJam")
     }
 }
 

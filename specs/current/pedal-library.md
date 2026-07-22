@@ -47,6 +47,20 @@ This revision supersedes conflicting Phase 1 statements elsewhere in this specif
 - Gallery supports selection and adding selected photos to a Jam.
 - Initial entry uses a viewport-limited card choreography and five independent haptic pulses. With Reduce Motion enabled, it uses a short opacity transition only and no haptic sequence.
 
+### Navigation architecture revision (authorized 2026-07-22)
+
+This revision supersedes the Phase 1 route contract and any instruction below that requires one global `NavigationStack`, `AppRoute.pedalDetail`, a transition namespace owned by `ContentView`, or clearing Gallery state when Jam is selected.
+
+- `GalleryNavigationRoot` owns a persistent `NavigationStack` and `[GalleryRoute]`.
+- Photo Inspector is `GalleryRoute.inspector(UUID)` and resolves the current stored item by UUID at the destination.
+- `JamNavigationRoot` is a persistent sibling with its own typed path.
+- Root chrome and Capture remain mounted outside both root stacks.
+- The shared-element Hero is removed from the current delivery. Gallery uses the default native `NavigationStack` push to Inspector. Hero continuity is deferred to a future isolated spike; no manual overlay, `matchedGeometryEffect`, source/destination proxy, custom gesture, global grid fade, delay, offset choreography, or snapshot transition is authorized.
+- Gallery's header is root content rather than navigation-bar content. The Gallery navigation bar remains hidden, while the custom Inspector Back action pops the native stack without replacing the native interactive-pop gesture.
+- Reduce Motion uses the same route and destination layout with no spatial zoom.
+
+See [ADR 0006](../../docs/decisions/0006-persistent-root-navigation-stacks.md).
+
 Relevant documents:
 
 - [Architecture](../../docs/ARCHITECTURE.md)
@@ -102,7 +116,7 @@ Phase 1 contains only:
 - grouping by month;
 - initial entry near recent items;
 - navigation to detail by persisted ID;
-- shared-element or native zoom transition from thumbnail;
+- default native push to detail by persisted ID;
 - standardized detail cover frame;
 - scroll preservation when returning from detail;
 - loading, empty, error, recoverable partial-error, and unavailable-asset states;
@@ -373,32 +387,9 @@ The cover is the shared visual element between Library and detail. The transitio
 - end in a standard detail frame;
 - reverse to the same cell when returning.
 
-It must not feel like a fade between unrelated images, a new screen followed by a zoom, or an abrupt crop change.
+This spatial transition is deferred for the current delivery. The implemented Gallery uses the default native `NavigationStack` push until a future isolated Hero spike is authorized.
 
-Preferred implementation for iOS 26+ uses native navigation transition APIs, adapted to the current navigation architecture:
-
-```swift
-@Namespace private var libraryTransitionNamespace
-
-NavigationLink(value: pedal.id) {
-    PedalLibraryCell(pedal: pedal)
-        .matchedTransitionSource(
-            id: pedal.id,
-            in: libraryTransitionNamespace
-        )
-}
-.navigationDestination(for: StoredPedal.ID.self) { pedalID in
-    PedalDetailRoute(pedalID: pedalID)
-        .navigationTransition(
-            .zoom(
-                sourceID: pedalID,
-                in: libraryTransitionNamespace
-            )
-        )
-}
-```
-
-Do not create a second parallel navigation system solely for Library.
+Do not create an overlay or nested navigation system parallel to `GalleryNavigationRoot`.
 
 ### Detail Cover Frame
 
@@ -581,27 +572,25 @@ Not responsible for:
 
 ### Phase 1 Route Contract
 
-The existing shell keeps one `NavigationStack`; Phase 1 adds an explicit typed path to that stack rather than a second navigation system:
+Gallery owns its explicit typed path:
 
 ```swift
-enum AppRoute: Hashable {
-    case pedalDetail(UUID)
+enum GalleryRoute: Hashable {
+    case inspector(UUID)
 }
 ```
 
-The shell/navigation model owns the path and derives presentation from it:
+`AppNavigationModel` retains independent root paths and derives presentation from the active one:
 
-- root Library: `selectedDestination == .gallery && path.isEmpty`;
-- pedal detail: `selectedDestination == .gallery && path == [.pedalDetail(id)]`;
-- return to Library: pop the detail route so `path.isEmpty`, preserving the same Library view model and scroll state.
+- root Library: `selectedDestination == .gallery && galleryPath.isEmpty`;
+- pedal detail: `selectedDestination == .gallery && galleryPath == [.inspector(id)]`;
+- return to Library: pop the Inspector route so `galleryPath.isEmpty`, preserving the same Library view model and scroll state.
 
-Selecting another root clears the path. Capture state remains a separate transient state and has precedence over root/detail presentation. The bottom bar is `.navigation` only for a root, `.hidden` for pedal detail, and keeps the existing capture-flow derivation while Capture is presented. The selected root remains Library after returning from detail.
+Selecting another root preserves both root paths. Capture remains a separate transient shell state and has precedence over root/detail presentation. The selected root remains Library after returning from detail.
 
-### Transition Namespace
+### Transition Deferral
 
-`ContentView` owns a dedicated `@Namespace` shared by the Library cells and the ID-based detail destination. It is distinct from the shell's existing bottom-bar namespace and is passed through `GalleryView`/`LibraryGridView`. This keeps the namespace in the common ancestor without recreating it per cell.
-
-The native transition is allowed without changing the navigation architecture: keep the existing value-based `NavigationStack`, push `AppRoute.pedalDetail(id)`, attach `.matchedTransitionSource(id:in:)` to the cell cover, and attach `.navigationTransition(.zoom(sourceID:in:))` to the detail destination. A Reduce Motion fallback remains required. The project deployment target is iOS 26.5, which satisfies the API availability; implementation should still retain an availability fallback if the deployment target changes.
+Gallery currently pushes `GalleryRoute.inspector(id)` with the default native `NavigationStack` transition. The shared-element Hero namespace, thumbnail source, and zoom destination are deferred to a future isolated spike.
 
 ### Detail Extraction Boundary
 
@@ -766,7 +755,7 @@ This audit reflects the code present on 2026-07-17.
 - No multi-selection state exists.
 - `ThumbnailLoader` exists in `Dap/Services/ImageLoading/ThumbnailLoader.swift`; it downsamples persisted covers, uses an in-memory `NSCache`, propagates cancellation, and has compilable focused tests in `DapTests/ThumbnailLoaderTests.swift`.
 - `PedalStore` still loads a full `UIImage` into `StoredPedal` for the existing detail/persistence contract; the Library now resolves the UUID-associated persisted asset through the store and uses `ThumbnailLoader` for grid presentation.
-- Native matched-source/zoom transition is implemented for the Library thumbnail and detail cover; Reduce Motion skips the spatial zoom.
+- Gallery uses the default native push to Inspector; the matched-source/zoom transition is deferred.
 - The detail cover uses a square, padded, `scaledToFill` frame with a 20 pt continuous corner radius.
 - Current bottom bar does not know about future Gallery selection mode.
 - Current Ready spec excludes filters, favorites, and multi-selection; this remains compatible with Phase 1 and becomes relevant only for Phase 2/3.
@@ -823,9 +812,9 @@ This audit reflects the code present on 2026-07-17.
 | Does the destination use a persisted ID? | Yes. `AppRoute.pedalDetail(UUID)` carries only `PhotoPedal.id`; the destination resolves the current item from `GalleryViewModel`. |
 | Does the bottom bar interfere? | Potentially. The root bottom bar is inserted with `safeAreaInset` in `ContentView` and currently remains while detail is pushed. Phase 1 should make bottom bar presentation route-aware so Capture is hidden on detail and the transition destination is not visually competing with the bar. |
 | Can the detail receive the standardized frame? | Yes. Current `PedalDetailView` is local to `GalleryView` and shows `Image(uiImage:)` inside a `ScrollView`. It can be extracted or refactored to use `scaledToFill`, `aspectRatio(1, contentMode: .fill)`, horizontal padding, and a 20 pt corner radius. |
-| Is swipe back preserved? | It should be preserved if Phase 1 keeps value-based `NavigationStack` navigation and applies native `.navigationTransition(.zoom(...))` to the destination instead of building a custom overlay navigation. |
+| Is swipe back preserved? | It should be preserved because Gallery keeps value-based `NavigationStack` navigation and the current delivery uses the default native push instead of a custom overlay navigation. |
 | Which mutations can remove the source cell? | Phase 1: deletion can remove the source item; reload after capture or metadata update can rebuild the collection. Phase 2: filters/favorites can remove source cells. Phase 3: batch delete can remove several sources. Phase 1 should avoid deleting/reordering during the transition and use a fallback unavailable-detail state if the item disappears. |
-| Is `matchedTransitionSource`/`.zoom` architecture-compatible? | Architecturally yes, because source cells and destination are already in the same `NavigationStack` route tree. Implementation must confirm exact API availability against the project deployment target and provide a Reduce Motion/fallback transition if needed. |
+| Is a future matched-source/zoom architecture-compatible? | Deferred. A future spike must confirm stability against root chrome before reintroducing any Hero. |
 
 ### Initial Scroll Position Audit
 
@@ -871,7 +860,7 @@ This audit reflects the code present on 2026-07-17.
 - [ ] IDs stay stable after updates.
 - [ ] Returning from detail does not reset Library state.
 - [ ] Capture action is visible at Library root and hidden while detail/capture/Jam contexts require it.
-- [ ] No filter, favorite, selection, pedalboard, or batch-action control is displayed.
+- [ ] No filter, favorite, or unauthorized pedalboard control is displayed.
 - [ ] Debug build passes.
 - [ ] Release build passes.
 - [ ] Existing tests remain green.
@@ -973,8 +962,8 @@ When implementation is authorized and completed, update:
 - Presentation derives `createdAt`-ascending visual order in `LibraryViewModel`/a Library projection. `PedalStore` keeps its global newest-first order and `loadLatest()` contract.
 - Route state is an explicit typed path: empty path is the selected Library root; `.pedalDetail(UUID)` is detail; popping it returns to Library.
 - The detail is extracted before transition implementation and resolves a persisted ID without duplicating persisted state.
-- `LibraryView` owns the transition namespace; the bottom-bar namespace remains shell-owned and separate.
-- Native `.matchedTransitionSource` plus `.navigationTransition(.zoom)` is compatible with the current single `NavigationStack` and iOS 26.5 deployment target, with Reduce Motion fallback.
+- No Gallery transition namespace is active in this delivery; the bottom-bar namespace remains shell-owned and separate.
+- Native matched-source/zoom is deferred to a future isolated Hero spike.
 - Full-resolution cover loading is confirmed in `PedalStore.load(id:)` and `loadLegacy()`. Phase 1 therefore includes downsampled grid thumbnails and a minimal memory-only cache; no disk cache or schema change.
 - The product label is `Biblioteca`; new presentation types use `Library`, while existing `Gallery` names remain only for compatibility during the refactor.
 - Tests must separately assert visual ascending order, latest selection, month grouping, initial recent-end target, and scroll preservation after detail return.
@@ -992,7 +981,7 @@ Phase 1 implementation order is:
 3. Implement the grouped three-column grid and all Phase 1 states.
 4. Implement initial end positioning and scroll preservation, including async reload and creation return.
 5. Integrate the explicit route/path with bottom-bar presentation.
-6. Add the shared-element/native zoom transition and standardized detail frame.
+6. Keep the default native push and standardized detail frame; defer shared-element/native zoom to a future isolated spike.
 7. Complete accessibility, Reduce Motion, Dynamic Type, and state polish.
 8. Add focused tests, UI/manual validation, and Debug/Release verification.
 
