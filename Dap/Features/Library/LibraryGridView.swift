@@ -309,7 +309,7 @@ private struct LibraryGridCell: View {
                 .frame(width: proxy.size.width, height: proxy.size.height)
             )
             .task(id: targetSize) {
-                guard let thumbnailLoader, let asset else { return }
+                guard loadedImage == nil, let thumbnailLoader, let asset else { return }
                 do {
                     loadedImage = try await thumbnailLoader.loadThumbnail(for: asset, targetSize: targetSize, pixelScale: displayScale)
                 } catch is CancellationError {

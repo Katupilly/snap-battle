@@ -33,13 +33,15 @@ struct ContentView: View {
                 .zIndex(navigation.selectedDestination == .jam ? 1 : 0)
         }
         .safeAreaInset(edge: .bottom) {
-            if navigation.rootNavigation.visibility == .visible && !gallery.isSelecting {
+            if !gallery.isSelecting {
                 CustomBottomNavigation(
                     selectedTab: navigation.rootNavigation.selectedDestination,
                     selectTab: { navigation.selectedDestination = $0.appDestination },
                     capture: navigation.beginCapture
                 )
-                .transition(.opacity)
+                .opacity(navigation.rootNavigation.visibility == .visible ? 1 : 0)
+                .allowsHitTesting(navigation.rootNavigation.visibility == .visible)
+                .accessibilityHidden(navigation.rootNavigation.visibility != .visible)
             }
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: gallery.isSelecting)
@@ -90,6 +92,7 @@ struct ContentView: View {
                 thumbnailLoader: thumbnailLoader,
                 transitionNamespace: libraryTransitionNamespace,
                 isActive: navigation.selectedDestination == .gallery,
+                isAtRoot: navigation.galleryPath.isEmpty,
                 selectedImportItem: $galleryImportItem
             )
             .accessibilityHidden(navigation.selectedDestination != .gallery)

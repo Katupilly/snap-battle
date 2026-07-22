@@ -9,6 +9,7 @@ struct GalleryView: View {
     let assetProvider: ((UUID) -> PersistedImageAsset?)?
     let addToJam: ([UUID]) -> Void
     let isActive: Bool
+    let isAtRoot: Bool
     @Binding private var selectedImportItem: PhotosPickerItem?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var pendingDeletionIDs: [UUID]?
@@ -24,6 +25,7 @@ struct GalleryView: View {
         assetProvider: ((UUID) -> PersistedImageAsset?)? = nil,
         addToJam: @escaping ([UUID]) -> Void = { _ in },
         isActive: Bool = true,
+        isAtRoot: Bool = true,
         selectedImportItem: Binding<PhotosPickerItem?> = .constant(nil)
     ) {
         self.model = model
@@ -33,6 +35,7 @@ struct GalleryView: View {
         self.assetProvider = assetProvider
         self.addToJam = addToJam
         self.isActive = isActive
+        self.isAtRoot = isAtRoot
         self._selectedImportItem = selectedImportItem
     }
 
@@ -147,7 +150,7 @@ struct GalleryView: View {
     }
 
     private func prepareEntryPresentation() {
-        guard isActive else { return }
+        guard isActive, isAtRoot else { return }
         entryIsPending = true
         startEntryPresentationIfPossible()
     }
