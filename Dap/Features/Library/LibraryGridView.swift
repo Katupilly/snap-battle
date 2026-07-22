@@ -35,11 +35,18 @@ struct LibraryGridView: View {
     let thumbnailLoader: ThumbnailLoader?
     let assetProvider: (UUID) -> PersistedImageAsset?
     let transitionNamespace: Namespace.ID?
+    let selectionMode: Bool
+    let selectedIDs: Set<UUID>
+    let onToggleSelection: ((UUID) -> Void)?
+    let onDelete: ((StoredPedal) -> Void)?
+    let onAddToJam: (([UUID]) -> Void)?
+    let entryPresentationID: Int
+    let reduceMotion: Bool
 
     @Environment(\.locale) private var locale
     @Environment(\.displayScale) private var displayScale
-    @State private var scrollPosition = ScrollPosition(idType: UUID.self)
-    @State private var didPerformInitialPositioning = false
+    @State private var activeEntryPresentationID = 0
+    @State private var revealedRowCount = 0
 
     init(
         state: LibraryGridState,
@@ -48,7 +55,14 @@ struct LibraryGridView: View {
         imageProvider: LibraryGridImageProvider = .persistedCover,
         thumbnailLoader: ThumbnailLoader? = nil,
         assetProvider: @escaping (UUID) -> PersistedImageAsset? = { _ in nil },
-        transitionNamespace: Namespace.ID? = nil
+        transitionNamespace: Namespace.ID? = nil,
+        selectionMode: Bool = false,
+        selectedIDs: Set<UUID> = [],
+        onToggleSelection: ((UUID) -> Void)? = nil,
+        onDelete: ((StoredPedal) -> Void)? = nil,
+        onAddToJam: (([UUID]) -> Void)? = nil,
+        entryPresentationID: Int = 0,
+        reduceMotion: Bool = false
     ) {
         self.state = state
         self.calendar = calendar
@@ -57,6 +71,13 @@ struct LibraryGridView: View {
         self.thumbnailLoader = thumbnailLoader
         self.assetProvider = assetProvider
         self.transitionNamespace = transitionNamespace
+        self.selectionMode = selectionMode
+        self.selectedIDs = selectedIDs
+        self.onToggleSelection = onToggleSelection
+        self.onDelete = onDelete
+        self.onAddToJam = onAddToJam
+        self.entryPresentationID = entryPresentationID
+        self.reduceMotion = reduceMotion
     }
 
     init(
@@ -144,69 +165,60 @@ struct LibraryGridView: View {
     }
 
     private func gridView(for pedals: [StoredPedal]) -> some View {
-        let sections = LibraryProjection.sections(from: pedals, calendar: calendar)
-        let recentID = sections.last?.items.last?.id
-
+        let ordered = PedalStore.ordered(pedals)
+        let participatingRows = min((ordered.count + 2) / 3, 5)
         return ScrollView {
-            LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
-                ForEach(sections) { section in
-                    Section {
-                        LazyVGrid(columns: gridColumns, spacing: 1) {
-                            ForEach(section.items) { item in
-                                LibraryGridCell(
-                                    item: item,
-                                    calendar: calendar,
-                                    locale: locale,
-                                    displayScale: displayScale,
-                                    imageProvider: imageProvider,
-                                    thumbnailLoader: thumbnailLoader,
-                                    asset: assetProvider(item.id),
-                                    transitionNamespace: transitionNamespace
-                                )
-                            }
-                        }
-                        .padding(.bottom, 18)
-                    } header: {
-                        Text(monthTitle(for: section.id))
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 9)
-                            .background(.background)
-                            .accessibilityAddTraits(.isHeader)
-                            .accessibilityIdentifier("library.section.\(section.id.year)-\(section.id.month)")
-                    }
+            LazyVGrid(columns: gridColumns, spacing: 12) {
+                ForEach(Array(ordered.enumerated()), id: \.element.id) { index, item in
+                    LibraryGridCell(
+                        item: item,
+                        calendar: calendar,
+                        locale: locale,
+                        displayScale: displayScale,
+                        imageProvider: imageProvider,
+                        thumbnailLoader: thumbnailLoader,
+                        asset: assetProvider(item.id),
+                        transitionNamespace: transitionNamespace,
+                        isSelectionMode: selectionMode,
+                        isSelected: selectedIDs.contains(item.id),
+                        onToggleSelection: { onToggleSelection?(item.id) },
+                        onDelete: { onDelete?(item) },
+                        onAddToJam: { onAddToJam?([item.id]) },
+                        isEntryHidden: isEntryHidden(row: index / 3, participatingRows: participatingRows),
+                        reduceMotion: reduceMotion
+                    )
                 }
             }
-            .scrollTargetLayout()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .padding(.bottom, selectionMode && !selectedIDs.isEmpty ? 96 : 8)
         }
-        .scrollPosition($scrollPosition)
-        .task(id: recentID) {
-            guard let recentID, !didPerformInitialPositioning else { return }
+        .task(id: entryPresentationID) {
+            guard entryPresentationID > 0 else { return }
+            activeEntryPresentationID = entryPresentationID
+            revealedRowCount = 0
             await Task.yield()
-            guard !Task.isCancelled else { return }
-            scrollPosition.scrollTo(id: recentID, anchor: .bottom)
-            didPerformInitialPositioning = true
+            if reduceMotion {
+                withAnimation(.easeOut(duration: 0.15)) { revealedRowCount = participatingRows }
+                return
+            }
+            for row in 1...participatingRows {
+                guard !Task.isCancelled else { return }
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.82)) { revealedRowCount = row }
+                try? await Task.sleep(for: .milliseconds(55))
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("library.grid")
     }
 
     private var gridColumns: [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: 1), count: 3)
+        Array(repeating: GridItem(.flexible(), spacing: 8), count: 3)
     }
 
-    private func monthTitle(for yearMonth: YearMonth) -> String {
-        guard let date = calendar.date(from: DateComponents(year: yearMonth.year, month: yearMonth.month, day: 1)) else {
-            return "\(yearMonth.month)/\(yearMonth.year)"
-        }
-        let formatter = DateFormatter()
-        formatter.calendar = calendar
-        formatter.locale = locale
-        formatter.timeZone = calendar.timeZone
-        formatter.setLocalizedDateFormatFromTemplate("MMMM yyyy")
-        return formatter.string(from: date)
+    private func isEntryHidden(row: Int, participatingRows: Int) -> Bool {
+        guard row < participatingRows else { return false }
+        return entryPresentationID != activeEntryPresentationID || row >= revealedRowCount
     }
 }
 
@@ -219,55 +231,89 @@ private struct LibraryGridCell: View {
     let thumbnailLoader: ThumbnailLoader?
     let asset: PersistedImageAsset?
     let transitionNamespace: Namespace.ID?
+    let isSelectionMode: Bool
+    let isSelected: Bool
+    let onToggleSelection: () -> Void
+    let onDelete: () -> Void
+    let onAddToJam: () -> Void
+    let isEntryHidden: Bool
+    let reduceMotion: Bool
 
     @State private var loadedImage: UIImage?
     @State private var loadFailed = false
 
     var body: some View {
-        NavigationLink(value: AppRoute.pedalDetail(item.id)) {
-            GeometryReader { proxy in
-                let targetSize = CGSize(width: proxy.size.width, height: proxy.size.height)
-                transitionSource(
-                    ZStack {
-                        if let loadedImage {
-                            Image(uiImage: loadedImage)
-                                .resizable()
-                                .interpolation(.none)
-                                .scaledToFill()
-                                .accessibilityHidden(true)
-                        } else if thumbnailLoader == nil || asset == nil || loadFailed {
-                            if let fallback = imageProvider(item), !loadFailed {
-                                fallback.resizable().interpolation(.none).scaledToFill().accessibilityHidden(true)
-                            } else {
-                                unavailableCover
-                            }
+        Group {
+            if isSelectionMode {
+                Button(action: onToggleSelection) { cellContent }
+            } else {
+                NavigationLink(value: AppRoute.pedalDetail(item.id)) { cellContent }
+            }
+        }
+        .contextMenu {
+            if !isSelectionMode {
+                Button(action: onAddToJam) { Label("Add to Jam", systemImage: "plus.circle") }
+                if let url = asset?.fileURL {
+                    ShareLink(item: url) { Label("Share", systemImage: "square.and.arrow.up") }
+                }
+                Button(role: .destructive, action: onDelete) { Label("Delete", systemImage: "trash") }
+            }
+        }
+        .overlay(alignment: .topTrailing) {
+            if isSelectionMode && isSelected {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title2)
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(.white, Color.accentColor)
+                    .padding(8)
+                    .accessibilityHidden(true)
+            }
+        }
+        .aspectRatio(0.78, contentMode: .fit)
+        .clipShape(.rect(cornerRadius: 4, style: .continuous))
+        .opacity(isEntryHidden ? 0 : 1)
+        .scaleEffect(reduceMotion || !isEntryHidden ? 1 : 0.94)
+        .offset(y: reduceMotion || !isEntryHidden ? 0 : 16)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel(hasUnavailableCover: loadFailed || (asset == nil && imageProvider(item) == nil)))
+        .accessibilityValue(isSelectionMode && isSelected ? "Selected" : "")
+        .accessibilityHint(isSelectionMode ? "Toggles selection" : "Opens the photo details")
+        .accessibilityAddTraits(isSelectionMode ? .isButton : [])
+        .accessibilityAddTraits(isSelectionMode && isSelected ? .isSelected : [])
+        .accessibilityIdentifier("library.cell.\(item.id.uuidString)")
+    }
+
+    private var cellContent: some View {
+        GeometryReader { proxy in
+            let targetSize = CGSize(width: proxy.size.width, height: proxy.size.height)
+            transitionSource(
+                ZStack {
+                    if let loadedImage {
+                        Image(uiImage: loadedImage).resizable().interpolation(.none).scaledToFill().accessibilityHidden(true)
+                    } else if thumbnailLoader == nil || asset == nil || loadFailed {
+                        if let fallback = imageProvider(item), !loadFailed {
+                            fallback.resizable().interpolation(.none).scaledToFill().accessibilityHidden(true)
                         } else {
-                            ProgressView().tint(.secondary)
+                            unavailableCover
                         }
+                    } else if let fallback = imageProvider(item) {
+                        fallback.resizable().interpolation(.none).scaledToFill().accessibilityHidden(true)
+                    } else {
+                        ProgressView().tint(.secondary)
                     }
-                    .frame(width: proxy.size.width, height: proxy.size.height)
-                )
-                .task(id: targetSize) {
-                    guard let thumbnailLoader, let asset else { return }
-                    do {
-                        loadedImage = try await thumbnailLoader.loadThumbnail(
-                            for: asset,
-                            targetSize: targetSize,
-                            pixelScale: displayScale
-                        )
-                    } catch is CancellationError {
-                    } catch {
-                        loadFailed = true
-                    }
+                }
+                .frame(width: proxy.size.width, height: proxy.size.height)
+            )
+            .task(id: targetSize) {
+                guard let thumbnailLoader, let asset else { return }
+                do {
+                    loadedImage = try await thumbnailLoader.loadThumbnail(for: asset, targetSize: targetSize, pixelScale: displayScale)
+                } catch is CancellationError {
+                } catch {
+                    loadFailed = true
                 }
             }
         }
-        .aspectRatio(1, contentMode: .fit)
-        .clipped()
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityLabel(hasUnavailableCover: loadFailed || (asset == nil && imageProvider(item) == nil)))
-        .accessibilityHint("Abre os detalhes deste pedal")
-        .accessibilityIdentifier("library.cell.\(item.id.uuidString)")
     }
 
     private var unavailableCover: some View {

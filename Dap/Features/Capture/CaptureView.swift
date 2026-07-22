@@ -7,11 +7,13 @@ struct ContentView: View {
     @State private var gallery = GalleryViewModel()
     @State private var pedalboards = PedalboardsViewModel()
     @State private var thumbnailLoader = ThumbnailLoader()
+    @State private var galleryImportItem: PhotosPickerItem?
     #if DEBUG
     @State private var showingLibraryDebug = false
     #endif
     @Namespace private var bottomBarNamespace
     @Namespace private var libraryTransitionNamespace
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         @Bindable var navigation = navigation
@@ -31,7 +33,7 @@ struct ContentView: View {
                 .zIndex(navigation.selectedDestination == .jam ? 1 : 0)
         }
         .safeAreaInset(edge: .bottom) {
-            if navigation.rootNavigation.visibility == .visible {
+            if navigation.rootNavigation.visibility == .visible && !gallery.isSelecting {
                 CustomBottomNavigation(
                     selectedTab: navigation.rootNavigation.selectedDestination,
                     selectTab: { navigation.selectedDestination = $0.appDestination },
@@ -40,7 +42,8 @@ struct ContentView: View {
                 .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 0.16), value: navigation.rootNavigation.visibility)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: navigation.rootNavigation.visibility)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: gallery.isSelecting)
         .task {
             #if DEBUG
             if CommandLine.arguments.contains("--install-fixtures") {
@@ -53,13 +56,22 @@ struct ContentView: View {
         .sheet(isPresented: $navigation.isPresentingCapture) {
             CaptureFlowView(
                 bottomBarNamespace: bottomBarNamespace,
-                onCancel: navigation.cancelCapture,
+                initialItem: galleryImportItem,
+                onCancel: {
+                    galleryImportItem = nil
+                    navigation.cancelCapture()
+                },
                 onComplete: {
+                    galleryImportItem = nil
                     navigation.completeCapture()
                     gallery.insertedSavedPedal()
                 },
                 onMetadataUpdate: { gallery.updateExistingPedal($0) }
             )
+        }
+        .onChange(of: galleryImportItem) { _, item in
+            guard item != nil else { return }
+            navigation.beginCapture()
         }
         .onChange(of: AppIntentRouter.shared.request, initial: true) { _, request in
             guard let request else { return }
@@ -76,9 +88,10 @@ struct ContentView: View {
         return NavigationStack(path: $navigation.galleryPath) {
             GalleryView(
                 model: gallery,
-                beginCapture: navigation.beginCapture,
                 thumbnailLoader: thumbnailLoader,
-                transitionNamespace: libraryTransitionNamespace
+                transitionNamespace: libraryTransitionNamespace,
+                isActive: navigation.selectedDestination == .gallery,
+                selectedImportItem: $galleryImportItem
             )
             .accessibilityHidden(navigation.selectedDestination != .gallery)
             .navigationDestination(for: AppRoute.self) { route in
@@ -90,15 +103,6 @@ struct ContentView: View {
                 }
             }
             #if DEBUG
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Library Debug", systemImage: "wrench.and.screwdriver") {
-                        showingLibraryDebug = true
-                    }
-                    .accessibilityHint("Abre datasets determinísticos para validar a Biblioteca")
-                    .accessibilityIdentifier("debug.openLibrary")
-                }
-            }
             .navigationDestination(isPresented: $showingLibraryDebug) {
                 LibraryDebugLauncher()
             }
@@ -358,6 +362,7 @@ struct PressFeedbackButtonStyle: ButtonStyle {
 
 private struct CaptureFlowView: View {
     let bottomBarNamespace: Namespace.ID
+    let initialItem: PhotosPickerItem?
     let onCancel: () -> Void
     let onComplete: () -> Void
     @State private var model: DapViewModel
@@ -367,14 +372,17 @@ private struct CaptureFlowView: View {
 
     init(
         bottomBarNamespace: Namespace.ID,
+        initialItem: PhotosPickerItem? = nil,
         onCancel: @escaping () -> Void,
         onComplete: @escaping () -> Void,
         onMetadataUpdate: @escaping (StoredPedal) -> Void
     ) {
         self.bottomBarNamespace = bottomBarNamespace
+        self.initialItem = initialItem
         self.onCancel = onCancel
         self.onComplete = onComplete
         _model = State(initialValue: DapViewModel(metadataUpdateHandler: onMetadataUpdate))
+        _selectedItem = State(initialValue: initialItem)
     }
 
     var body: some View {
@@ -405,7 +413,7 @@ private struct CaptureFlowView: View {
                     model.process(image)
                 }
             }
-            .onChange(of: selectedItem) {
+            .onChange(of: selectedItem, initial: true) {
                 guard let selectedItem else { return }
                 let runID = PerformanceDiagnostics.makeRunID()
                 PerformanceDiagnostics.signpostEvent("pickerSelection", runID: runID, details: "executor=main")

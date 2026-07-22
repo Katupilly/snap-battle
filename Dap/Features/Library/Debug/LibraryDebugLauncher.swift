@@ -46,7 +46,6 @@ struct LibraryDebugLauncher: View {
             Divider()
             GalleryView(
                 model: model,
-                beginCapture: {},
                 thumbnailLoader: thumbnailLoader,
                 transitionNamespace: transitionNamespace,
                 imageProvider: LibraryGridImageProvider { item in

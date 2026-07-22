@@ -492,6 +492,25 @@ struct NavigationGalleryTests {
         if case .empty = model.state {} else { Issue.record("Expected empty Gallery after delete") }
     }
 
+    @Test func gallerySelectionUsesStableIDsAndCancelClearsIt() {
+        let model = GalleryViewModel(store: PedalStore(directory: temporaryDirectory()), player: PlayerDouble())
+        let firstID = UUID()
+        let secondID = UUID()
+
+        model.beginSelection()
+        model.toggleSelection(for: firstID)
+        model.toggleSelection(for: secondID)
+        model.toggleSelection(for: firstID)
+
+        #expect(model.isSelecting)
+        #expect(model.selectedIDs == [secondID])
+
+        model.cancelSelection()
+
+        #expect(!model.isSelecting)
+        #expect(model.selectedIDs.isEmpty)
+    }
+
     @Test func galleryReportsPlaybackFailureWithoutDroppingCollection() throws {
         let directory = temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

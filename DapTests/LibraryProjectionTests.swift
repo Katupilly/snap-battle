@@ -17,7 +17,7 @@ struct LibraryProjectionTests {
         #expect(sections.first?.items.map(\.id) == [item.id])
     }
 
-    @Test func itemsAreAscendingByDateWithinAndAcrossMonths() {
+    @Test func itemsAreDescendingByDateWithinAndAcrossMonths() {
         let items = [
             storedPedal(id: id(3), date: date(2026, 7, 17)),
             storedPedal(id: id(1), date: date(2025, 12, 31)),
@@ -27,8 +27,8 @@ struct LibraryProjectionTests {
 
         let sections = LibraryProjection.sections(from: items)
 
-        #expect(sections.map(\.id) == [YearMonth(year: 2025, month: 12), YearMonth(year: 2026, month: 1), YearMonth(year: 2026, month: 7)])
-        #expect(sections.flatMap { $0.items }.map(\.id) == [id(1), id(2), id(4), id(3)])
+        #expect(sections.map(\.id) == [YearMonth(year: 2026, month: 7), YearMonth(year: 2026, month: 1), YearMonth(year: 2025, month: 12)])
+        #expect(sections.flatMap { $0.items }.map(\.id) == [id(3), id(4), id(2), id(1)])
     }
 
     @Test func equalDatesUseUUIDAsDeterministicTieBreak() {
@@ -73,7 +73,7 @@ struct LibraryProjectionTests {
 
         let sections = LibraryProjection.sections(from: [newer, older])
 
-        #expect(sections.flatMap { $0.items }.map(\.id) == [older.id, newer.id])
+        #expect(sections.flatMap { $0.items }.map(\.id) == [newer.id, older.id])
         #expect(store.loadLatest()?.id == newer.id)
     }
 

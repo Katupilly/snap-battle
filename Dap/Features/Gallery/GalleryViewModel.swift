@@ -23,6 +23,8 @@ final class GalleryViewModel {
     var playbackErrorMessage: String?
     var deletionErrorMessage: String?
     var playingID: UUID?
+    var isSelecting = false
+    var selectedIDs: Set<UUID> = []
 
     private let store: PedalStore
     private let player: any PedalPlaying
@@ -60,6 +62,7 @@ final class GalleryViewModel {
 
     private func apply(_ result: PedalStoreLoadResult) {
         thumbnailAssets = store.thumbnailAssets(for: result.pedals)
+        selectedIDs.formIntersection(result.pedals.map(\.id))
         if result.pedals.isEmpty {
             state = result.issues.isEmpty ? .empty : .blockingError(result.issues.joined(separator: " "))
         } else {
@@ -90,6 +93,29 @@ final class GalleryViewModel {
         thumbnailAssets[id]
     }
 
+    func shareURLs(for ids: Set<UUID>) -> [URL] {
+        state.pedals.compactMap { ids.contains($0.id) ? thumbnailAssets[$0.id]?.fileURL : nil }
+    }
+
+    func beginSelection() {
+        isSelecting = true
+        selectedIDs.removeAll()
+    }
+
+    func cancelSelection() {
+        isSelecting = false
+        selectedIDs.removeAll()
+    }
+
+    func toggleSelection(for id: UUID) {
+        guard isSelecting else { return }
+        if selectedIDs.contains(id) {
+            selectedIDs.remove(id)
+        } else {
+            selectedIDs.insert(id)
+        }
+    }
+
     func quickPlay(_ item: StoredPedal) {
         do {
             try player.play(item.pedal)
@@ -108,16 +134,25 @@ final class GalleryViewModel {
 
     @discardableResult
     func delete(_ item: StoredPedal) -> Bool {
+        delete(ids: [item.id])
+    }
+
+    @discardableResult
+    func delete(ids: [UUID]) -> Bool {
         deletionErrorMessage = nil
-        if playingID == item.id { player.stop(); playingID = nil }
-        do {
-            try store.delete(id: item.id)
-            reload()
-            return true
-        } catch {
-            deletionErrorMessage = error.localizedDescription
-            return false
+        for id in ids {
+            if playingID == id { player.stop(); playingID = nil }
+            do {
+                try store.delete(id: id)
+            } catch {
+                deletionErrorMessage = error.localizedDescription
+                reload()
+                return false
+            }
         }
+        selectedIDs.subtract(ids)
+        reload()
+        return true
     }
 
     func stop(_ item: StoredPedal) {

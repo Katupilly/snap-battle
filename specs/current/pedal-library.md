@@ -1,7 +1,7 @@
 # Dap Library
 
 Status: Ready
-Last updated: 2026-07-17
+Last updated: 2026-07-21
 Feature: Biblioteca de pedais
 Platform: iOS 26+
 Framework: SwiftUI
@@ -36,6 +36,16 @@ Confirmed product decisions for the future Library:
 - Do not use inverted `ScrollView`, transforms, or rotation to simulate reverse order.
 - Phase 1 excludes favorites, filters, multi-selection, pedalboards, and batch actions.
 - Phase 1 reuses the persisted cover asset and may add only a minimal in-memory thumbnail cache; no disk cache or schema change is authorized.
+
+## Current Gallery Revision
+
+This revision supersedes conflicting Phase 1 statements elsewhere in this specification.
+
+- Gallery presents pedals in descending creation order, with recent photos first.
+- The current presentation has no month grouping.
+- Cards use an approximately `0.78` aspect ratio.
+- Gallery supports selection and adding selected photos to a Jam.
+- Initial entry uses a viewport-limited card choreography and five independent haptic pulses. With Reduce Motion enabled, it uses a short opacity transition only and no haptic sequence.
 
 Relevant documents:
 
