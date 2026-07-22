@@ -42,6 +42,7 @@ struct ContentView: View {
                 .opacity(navigation.rootNavigation.visibility == .visible ? 1 : 0)
                 .allowsHitTesting(navigation.rootNavigation.visibility == .visible)
                 .accessibilityHidden(navigation.rootNavigation.visibility != .visible)
+                .zIndex(1)
             }
         }
         .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: gallery.isSelecting)
