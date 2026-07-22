@@ -48,7 +48,7 @@ final class GalleryViewModel {
     }
 
     func reloadAsync(reason: GalleryReloadReason = .initialLoad) async {
-        state = .loading
+        if reason != .pullToRefresh { state = .loading }
         let store = store
         let runID = PerformanceDiagnostics.makeRunID()
         let reasonRaw = reason.rawValue

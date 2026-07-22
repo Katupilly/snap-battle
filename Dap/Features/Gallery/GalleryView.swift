@@ -125,7 +125,7 @@ struct GalleryView: View {
             onToggleSelection: model.toggleSelection(for:),
             onDelete: { requestDelete([$0.id]) },
             onAddToJam: addToJam,
-            entryPresentationID: entryPresentationID,
+            entryPresentationID: isActive ? entryPresentationID : 0,
             reduceMotion: reduceMotion
         )
         .refreshable { await model.reloadAsync(reason: .pullToRefresh) }
@@ -160,7 +160,6 @@ struct GalleryView: View {
     }
 
     private func resetEntryPresentation() {
-        entryPresentationID &+= 1
         entryIsPending = false
         entryHaptics.cancel()
     }
